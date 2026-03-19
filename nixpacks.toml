@@ -38,4 +38,4 @@ cmds = [
 [start]
 # Run migrations then start the server.
 # php artisan serve binds to Railway's dynamic $PORT.
-cmd = "php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
+cmd = "php artisan storage:link --force; php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=$PORT"
