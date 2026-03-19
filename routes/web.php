@@ -14,6 +14,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Simple health check for Railway — no DB or session required
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok']);
+});
+
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
