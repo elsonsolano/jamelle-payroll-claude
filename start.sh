@@ -7,8 +7,16 @@ php artisan storage:link --force
 php artisan migrate --force
 
 echo "==> Writing PHP-FPM config..."
-CURRENT_USER=$(whoami)
-CURRENT_GROUP=$(id -gn)
+# PHP-FPM cannot run workers as root; use nobody
+FPM_USER="nobody"
+if getent group nobody > /dev/null 2>&1; then
+    FPM_GROUP="nobody"
+else
+    FPM_GROUP="nogroup"
+fi
+
+# Make storage and cache writable by the FPM worker user
+chmod -R o+w /app/storage /app/bootstrap/cache
 
 cat > /tmp/php-fpm.conf << FPMEOF
 [global]
@@ -17,8 +25,8 @@ daemonize = no
 pid = /tmp/php-fpm.pid
 
 [www]
-user = ${CURRENT_USER}
-group = ${CURRENT_GROUP}
+user = ${FPM_USER}
+group = ${FPM_GROUP}
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
