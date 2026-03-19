@@ -7,13 +7,18 @@ php artisan storage:link --force
 php artisan migrate --force
 
 echo "==> Writing PHP-FPM config..."
-cat > /tmp/php-fpm.conf << 'FPMEOF'
+CURRENT_USER=$(whoami)
+CURRENT_GROUP=$(id -gn)
+
+cat > /tmp/php-fpm.conf << FPMEOF
 [global]
 error_log = /dev/stderr
 daemonize = no
 pid = /tmp/php-fpm.pid
 
 [www]
+user = ${CURRENT_USER}
+group = ${CURRENT_GROUP}
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -31,7 +36,7 @@ php-fpm --fpm-config /tmp/php-fpm.conf &
 sleep 1
 
 echo "==> Writing nginx config on port ${PORT}..."
-mkdir -p /tmp/nginx-tmp
+mkdir -p /tmp/nginx-tmp /var/log/nginx
 
 cat > /tmp/nginx.conf << NGINXEOF
 worker_processes auto;
@@ -48,7 +53,6 @@ http {
         text/css                    css;
         text/javascript             js mjs;
         application/json            json;
-        application/javascript      js;
         image/png                   png;
         image/jpeg                  jpeg jpg;
         image/gif                   gif;
