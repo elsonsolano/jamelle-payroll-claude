@@ -71,6 +71,12 @@
                         ₱{{ number_format($entry->overtime_pay, 2) }}
                     </span>
                 </div>
+                <div class="px-5 py-3 flex justify-between text-sm">
+                    <span class="text-gray-600">Holiday Pay</span>
+                    <span class="font-medium {{ $entry->holiday_pay > 0 ? 'text-green-600' : 'text-gray-300' }}">
+                        ₱{{ number_format($entry->holiday_pay, 2) }}
+                    </span>
+                </div>
                 <div class="px-5 py-3 flex justify-between text-sm bg-gray-50">
                     <span class="font-semibold text-gray-700">Gross Pay</span>
                     <span class="font-bold text-gray-900">₱{{ number_format($entry->gross_pay, 2) }}</span>

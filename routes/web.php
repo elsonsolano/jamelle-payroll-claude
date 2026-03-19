@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\PayrollCutoffController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\TimemarkController;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +76,12 @@ Route::middleware('auth')->group(function () {
     // Timemark
     Route::post('timemark/fetch', [TimemarkController::class, 'fetch'])->name('timemark.fetch');
     Route::get('timemark/logs', [TimemarkController::class, 'index'])->name('timemark.logs');
+
+    // Holidays
+    Route::get('holidays', [HolidayController::class, 'index'])->name('holidays.index');
+    Route::post('holidays', [HolidayController::class, 'store'])->name('holidays.store');
+    Route::put('holidays/{holiday}', [HolidayController::class, 'update'])->name('holidays.update');
+    Route::delete('holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
 });
 
 require __DIR__.'/auth.php';

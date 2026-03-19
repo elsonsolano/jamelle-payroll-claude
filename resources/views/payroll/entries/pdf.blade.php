@@ -212,6 +212,12 @@
             <td class="label">Overtime Pay</td>
             <td class="amount">₱{{ number_format($entry->overtime_pay, 2) }}</td>
         </tr>
+        @if($entry->holiday_pay > 0)
+        <tr>
+            <td class="label">Holiday Pay</td>
+            <td class="amount">₱{{ number_format($entry->holiday_pay, 2) }}</td>
+        </tr>
+        @endif
         <tr class="subtotal">
             <td class="label">Gross Pay</td>
             <td class="amount">₱{{ number_format($entry->gross_pay, 2) }}</td>

@@ -1,7 +1,25 @@
 {
     "$schema": "https://railway.app/railway.schema.json",
     "build": {
-        "builder": "NIXPACKS"
+        "builder": "NIXPACKS",
+        "watchPatterns": [
+            "app/**",
+            "bootstrap/**",
+            "config/**",
+            "database/**",
+            "public/**",
+            "resources/**",
+            "routes/**",
+            "start.sh",
+            "nixpacks.toml",
+            "composer.json",
+            "composer.lock",
+            "package.json",
+            "package-lock.json",
+            "vite.config.js",
+            "tailwind.config.js",
+            "postcss.config.js"
+        ]
     },
     "deploy": {
         "startCommand": "bash start.sh",

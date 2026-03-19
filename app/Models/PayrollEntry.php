@@ -13,6 +13,7 @@ class PayrollEntry extends Model
         'employee_id',
         'basic_pay',
         'overtime_pay',
+        'holiday_pay',
         'late_deduction',
         'undertime_deduction',
         'gross_pay',
@@ -25,6 +26,7 @@ class PayrollEntry extends Model
     protected $casts = [
         'basic_pay' => 'decimal:2',
         'overtime_pay' => 'decimal:2',
+        'holiday_pay' => 'decimal:2',
         'late_deduction' => 'decimal:2',
         'undertime_deduction' => 'decimal:2',
         'gross_pay' => 'decimal:2',
