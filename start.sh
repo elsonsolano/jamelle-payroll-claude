@@ -3,6 +3,7 @@ set -e
 
 echo "==> Running Laravel startup tasks..."
 php artisan config:cache
+php artisan view:cache
 php artisan storage:link --force
 php artisan migrate --force
 
