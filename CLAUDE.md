@@ -39,7 +39,8 @@ npm run build
 - `EmployeeSchedule` → weekly schedule per employee with `rest_days` (array) and optional custom work hours
 - `EmployeeStandingDeduction` → recurring deductions (SSS, PhilHealth, PagIBIG, loan, cash_advance, uniform, other); `active` flag; `cutoff_period` (`both` | `first` | `second`) controls which semi-monthly cutoff it applies to — determined by `end_date`: day ≤ 15 = `first` (payday 15th), day > 15 = `second` (payday 30th/31st). Cutoff pattern: payday 15th covers ~30th prev month → 13th; payday 30th/31st covers 14th → 29th.
 - `PayrollCutoff` → belongs to `Branch`; has many `PayrollEntry`; status: `draft` → `processing` → `finalized`
-- `PayrollEntry` → has many `PayrollDeduction`; stores computed: basic_pay, overtime_pay, late_deduction, undertime_deduction, gross_pay, total_deductions, net_pay
+- `Holiday` → date (unique), name, type (`regular` | `special_non_working` | `special_working`); managed via calendar UI at `/holidays`
+- `PayrollEntry` → has many `PayrollDeduction`; stores computed: basic_pay, overtime_pay, holiday_pay, late_deduction, undertime_deduction, gross_pay, total_deductions, net_pay
 - `TimemarkLog` → audit trail of DaysCamera API fetch operations per employee
 
 Employees have `salary_type` (daily/monthly), `employee_code` (unique), and `timemark_id` (nullable, unique when set, maps to timemark device). Non-branch employees (drivers, area managers, etc.) are assigned to the **Head Office** branch.
@@ -52,6 +53,16 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 - **Monthly** employees: basic pay = monthly_rate / 2 (semi-monthly); no absence deductions
 - Overtime multipliers: **1.25x** regular days, **1.30x** rest days
 - Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items on each entry
+
+**Philippine Holiday Pay Rules (DOLE)** — applied per `Holiday` records in the cutoff period:
+
+| Holiday Type | Not Worked | Worked | OT Multiplier |
+|---|---|---|---|
+| `regular` | Daily: +100% daily rate added to basic pay; Monthly: no extra | +100% premium → `holiday_pay` | 2.60× hourly |
+| `special_non_working` | No pay (no work no pay) | +30% premium → `holiday_pay` | 1.69× hourly |
+| `special_working` | No pay | Normal rate (no premium) | 1.25×/1.30× |
+
+For monthly employees the premium is calculated using `monthly_rate / 22` as the daily equivalent.
 
 ### Attendance Integration (`app/Jobs/FetchAttendanceJob.php`)
 
@@ -77,6 +88,7 @@ Queue uses database driver. `composer run dev` starts the listener automatically
 - `payroll/cutoffs.*` — CRUD + show; nested: `payroll/cutoffs/{cutoff}/entries` (index, show, pdf); `POST payroll/cutoffs/{cutoff}/generate` triggers computation
 - `dtr` — index/show with filtering by employee, branch, date range, cutoff
 - `timemark/fetch` (POST) — dispatches `FetchAttendanceJob`; `timemark/logs` — fetch history
+- `holidays` — calendar UI (GET index, POST store, PUT update, DELETE destroy); no nested resource
 
 ### Frontend
 
