@@ -84,12 +84,14 @@ Blade templates in `resources/views/` organized by feature. Alpine.js handles in
 
 ### Railway Deployment
 
-Config files: `nixpacks.toml` (build) and `railway.json` (deploy). Key behaviours:
+Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (runtime entrypoint). Key behaviours:
 - `bootstrap/cache` and `storage/` dirs are gitignored, so `nixpacks.toml` creates them with `mkdir -p` before `composer install` (required for Laravel's `package:discover` post-install hook)
-- Build phase: installs deps, runs `npm run build`, caches Laravel config/routes/views
-- Start command: `php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT`
+- Build phase: installs deps, runs `npm run build`, caches routes and views only — **config cache is NOT done at build time** (DB env vars are not available then); `php artisan config:cache` runs inside `start.sh` at container startup
+- Production server: **nginx + PHP-FPM** via `start.sh` (replaces `php artisan serve` which is single-threaded). `start.sh` writes nginx and php-fpm configs to `/tmp` at startup, substituting `$PORT`
+- `nixpacks.toml` includes `nginx` in `nixPkgs`; all nginx fastcgi params are inlined in `start.sh` (no external `fastcgi_params` file needed)
+- Migration ordering: migrations with identical timestamps sort alphabetically — `payroll_deductions` must run after `payroll_entries` (FK dependency), so its timestamp was bumped to `142153`
 - Queue worker runs as a **separate Railway service** from the same repo with start command: `php artisan queue:listen --tries=1 --timeout=0`
-- Required env vars on Railway: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` (reference Railway MySQL service vars), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`
+- Required env vars on Railway: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` (use public proxy host/port from MySQL service Settings → Networking, not the internal `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`
 
 ### Database & Seeding
 
