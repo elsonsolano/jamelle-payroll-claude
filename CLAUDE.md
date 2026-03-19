@@ -70,7 +70,7 @@ Queue uses database driver. `composer run dev` starts the listener automatically
 
 ### Routes Structure
 
-All routes in `routes/web.php`, protected by `auth` middleware:
+`/` redirects to login. All routes in `routes/web.php`, protected by `auth` middleware:
 
 - `branches.*` — CRUD
 - `employees.*` — CRUD + show; nested: `employees/{employee}/schedules`, `employees/{employee}/deductions` (with `toggle` action)
@@ -91,7 +91,10 @@ Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (
 - `nixpacks.toml` includes `nginx` in `nixPkgs`; all nginx fastcgi params are inlined in `start.sh` (no external `fastcgi_params` file needed)
 - Migration ordering: migrations with identical timestamps sort alphabetically — `payroll_deductions` must run after `payroll_entries` (FK dependency), so its timestamp was bumped to `142153`
 - Queue worker runs as a **separate Railway service** from the same repo with start command: `php artisan queue:listen --tries=1 --timeout=0`
-- Required env vars on Railway: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` (use public proxy host/port from MySQL service Settings → Networking, not the internal `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`
+- `AdminUserSeeder` runs on every deploy (inside `start.sh` after migrate); it is idempotent via `firstOrCreate`
+- `bootstrap/app.php` sets `trustProxies(at: '*')` so Railway's HTTPS-terminating load balancer is trusted — without this, Laravel generates `http://` asset URLs causing mixed content errors
+- `public/hot` is gitignored — never commit it; if present it makes Laravel use the Vite dev server URL in production instead of built assets
+- Required env vars on Railway: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://your-domain.up.railway.app`, `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` (use public proxy host/port from MySQL service Settings → Networking, not the internal `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`
 
 ### Database & Seeding
 
