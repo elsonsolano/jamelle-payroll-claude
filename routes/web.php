@@ -11,7 +11,7 @@ use App\Http\Controllers\TimemarkController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 // Simple health check for Railway — no DB or session required
