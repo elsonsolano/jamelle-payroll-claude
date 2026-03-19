@@ -9,3 +9,4 @@ storage/framework/views/
 bootstrap/cache/
 public/build/
 *.sqlite
+/public/hot
