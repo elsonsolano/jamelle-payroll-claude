@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('payroll_deductions');
         Schema::create('payroll_deductions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payroll_entry_id')->constrained()->onDelete('cascade');
