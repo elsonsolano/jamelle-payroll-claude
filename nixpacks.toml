@@ -16,7 +16,8 @@ nixPkgs = [
     "php83Extensions.tokenizer",
     "php83Extensions.xml",
     "php83Extensions.zip",
-    "nodejs_20"
+    "nodejs_20",
+    "nginx"
 ]
 
 [phases.install]
@@ -37,4 +38,4 @@ cmds = [
 [start]
 # config:cache runs at startup so Railway's DB env vars are available when it executes.
 # php artisan serve binds to Railway's dynamic $PORT.
-cmd = "php artisan config:cache; php artisan storage:link --force; php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=$PORT"
+cmd = "bash start.sh"
