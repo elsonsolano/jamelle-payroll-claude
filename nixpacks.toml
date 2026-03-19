@@ -1,0 +1,23 @@
+[phases.setup]
+# Let nixpacks auto-detect PHP 8.3 from composer.json.
+# Explicitly add Node.js for the Vite frontend build.
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+    "composer install --no-dev --optimize-autoloader --no-interaction",
+    "npm ci"
+]
+
+[phases.build]
+cmds = [
+    "npm run build",
+    "php artisan config:cache",
+    "php artisan route:cache",
+    "php artisan view:cache"
+]
+
+[start]
+# Run migrations then start the server.
+# php artisan serve binds to Railway's dynamic $PORT.
+cmd = "php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
