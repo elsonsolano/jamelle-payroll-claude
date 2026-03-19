@@ -6,6 +6,7 @@ php artisan config:cache
 php artisan view:cache
 php artisan storage:link --force
 php artisan migrate --force
+php artisan db:seed --class=AdminUserSeeder --force
 
 echo "==> Writing PHP-FPM config..."
 # PHP-FPM cannot run workers as root; use nobody
