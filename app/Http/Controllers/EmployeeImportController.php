@@ -33,10 +33,14 @@ class EmployeeImportController extends Controller
             'file' => 'required|file|mimes:xlsx,xls|max:5120',
         ]);
 
-        $path        = $request->file('file')->getRealPath();
-        $spreadsheet = IOFactory::load($path);
-        $sheet       = $spreadsheet->getSheet(0);
-        $rows        = $sheet->toArray(null, true, true, false); // 0-indexed
+        try {
+            $path        = $request->file('file')->getRealPath();
+            $spreadsheet = IOFactory::load($path);
+            $sheet       = $spreadsheet->getSheet(0);
+            $rows        = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Could not read file: ' . $e->getMessage());
+        }
 
         $branches = Branch::all()->keyBy('name');
 
