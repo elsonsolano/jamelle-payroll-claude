@@ -103,6 +103,31 @@
         </div>
     </div>
 
+    {{-- Government IDs --}}
+    <div class="grid grid-cols-3 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">SSS No.</label>
+            <input type="text" name="sss_no" value="{{ old('sss_no', $employee->sss_no ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="xx-xxxxxxx-x">
+            @error('sss_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">PhilHealth No.</label>
+            <input type="text" name="phic_no" value="{{ old('phic_no', $employee->phic_no ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="xx-xxxxxxxxx-x">
+            @error('phic_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pag-IBIG No.</label>
+            <input type="text" name="pagibig_no" value="{{ old('pagibig_no', $employee->pagibig_no ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="xxxx-xxxx-xxxx">
+            @error('pagibig_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+    </div>
+
     {{-- Active --}}
     <div class="flex items-center gap-3 pt-1">
         <input type="hidden" name="active" value="0">

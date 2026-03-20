@@ -70,6 +70,18 @@
                         <span class="text-gray-400 font-normal">/ {{ $employee->salary_type === 'daily' ? 'day' : 'month' }}</span>
                     </dd>
                 </div>
+                <div>
+                    <dt class="text-gray-500">SSS No.</dt>
+                    <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->sss_no ?: '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">PhilHealth No.</dt>
+                    <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->phic_no ?: '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Pag-IBIG No.</dt>
+                    <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->pagibig_no ?: '—' }}</dd>
+                </div>
             </dl>
         </div>
 

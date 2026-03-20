@@ -60,6 +60,9 @@ class EmployeeController extends Controller
             'hired_date'    => 'nullable|date',
             'position'      => 'nullable|string|max:255',
             'active'        => 'boolean',
+            'sss_no'        => 'nullable|string|max:50',
+            'phic_no'       => 'nullable|string|max:50',
+            'pagibig_no'    => 'nullable|string|max:50',
         ]);
 
         $validated['active'] = $request->boolean('active', true);
@@ -95,6 +98,9 @@ class EmployeeController extends Controller
             'hired_date'    => 'nullable|date',
             'position'      => 'nullable|string|max:255',
             'active'        => 'boolean',
+            'sss_no'        => 'nullable|string|max:50',
+            'phic_no'       => 'nullable|string|max:50',
+            'pagibig_no'    => 'nullable|string|max:50',
         ]);
 
         $validated['active'] = $request->boolean('active');
