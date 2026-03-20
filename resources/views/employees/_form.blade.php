@@ -62,12 +62,22 @@
         </div>
     </div>
 
+    {{-- Email --}}
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+        <input type="email" name="email" value="{{ old('email', $employee->email ?? '') }}"
+               class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+               placeholder="employee@example.com">
+        <p class="mt-1 text-xs text-gray-500">Used for staff portal login.</p>
+        @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+    </div>
+
     {{-- Timemark ID --}}
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Timemark ID <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Timemark ID</label>
         <input type="text" name="timemark_id" value="{{ old('timemark_id', $employee->timemark_id ?? '') }}"
                class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
-               placeholder="Device user ID from Timemark" required>
+               placeholder="Device user ID from Timemark (optional)">
         <p class="mt-1 text-xs text-gray-500">The unique user ID assigned to this employee on the Timemark biometric device.</p>
         @error('timemark_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>

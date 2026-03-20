@@ -12,6 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->alias([
+            'admin'            => \App\Http\Middleware\RequireAdmin::class,
+            'staff'            => \App\Http\Middleware\RequireStaff::class,
+            'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
+            'signature.set'    => \App\Http\Middleware\EnsureSignatureSet::class,
+        ]);
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsurePasswordChanged::class,
+            \App\Http\Middleware\EnsureSignatureSet::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

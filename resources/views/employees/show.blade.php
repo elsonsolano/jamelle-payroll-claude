@@ -103,6 +103,69 @@
             </div>
         </div>
 
+        {{-- Staff Login Account --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Staff Login Account</h3>
+
+            @if($employee->user)
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                        {{ strtoupper(substr($employee->user->name, 0, 1)) }}
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{ $employee->user->email }}</p>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            @if($employee->user->can_approve_ot)
+                                <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Can Approve OT</span>
+                            @endif
+                            @if($employee->user->must_change_password)
+                                <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Password change required</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <form method="POST" action="{{ route('employees.account.update', $employee) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="can_approve_ot" value="{{ $employee->user->can_approve_ot ? '0' : '1' }}">
+                        <button type="submit"
+                                class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                            {{ $employee->user->can_approve_ot ? 'Remove OT Approver' : 'Make OT Approver' }}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('employees.account.reset-password', $employee) }}">
+                        @csrf
+                        <button type="submit"
+                                onclick="return confirm('Reset this employee\'s password?')"
+                                class="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
+                            Reset Password
+                        </button>
+                    </form>
+                </div>
+            @else
+                <p class="text-sm text-gray-400 mb-4">No login account yet. Create one to allow this employee to log in.</p>
+                <form method="POST" action="{{ route('employees.account.create', $employee) }}" class="space-y-3">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Email Address</label>
+                        <input type="email" name="email"
+                               value="{{ old('email', $employee->email) }}"
+                               placeholder="employee@example.com"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" name="can_approve_ot" value="1" class="rounded border-gray-300 text-indigo-600">
+                        Can approve overtime
+                    </label>
+                    <button type="submit"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                        Create Account
+                    </button>
+                </form>
+            @endif
+        </div>
+
         {{-- Fetch Attendance --}}
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ open: false }">
             <div class="px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer select-none"

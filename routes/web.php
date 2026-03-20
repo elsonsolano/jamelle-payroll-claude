@@ -1,87 +1,83 @@
 <?php
 
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\DtrController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeScheduleController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollCutoffController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\SetupSignatureController;
 use App\Http\Controllers\TimemarkController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('login');
+Route::get("/", function () { return redirect()->route("login"); });
+Route::get("/health", function () { return response()->json(["status" => "ok"]); });
+
+Route::middleware("auth")->group(function () {
+    Route::get("/change-password", [ChangePasswordController::class, "show"])->name("password.change");
+    Route::post("/change-password", [ChangePasswordController::class, "update"])->name("password.change.update");
+    Route::get("/setup-signature", [SetupSignatureController::class, "show"])->name("signature.setup");
+    Route::post("/setup-signature", [SetupSignatureController::class, "store"])->name("signature.setup.store");
 });
 
-// Simple health check for Railway — no DB or session required
-Route::get('/health', function () {
-    return response()->json(['status' => 'ok']);
+Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(function () {
+    Route::get("/dashboard", [\App\Http\Controllers\Staff\DashboardController::class, "index"])->name("dashboard");
+    Route::get("/dtr", [\App\Http\Controllers\Staff\DtrController::class, "index"])->name("dtr.index");
+    Route::get("/dtr/create", [\App\Http\Controllers\Staff\DtrController::class, "create"])->name("dtr.create");
+    Route::post("/dtr", [\App\Http\Controllers\Staff\DtrController::class, "store"])->name("dtr.store");
+    Route::get("/dtr/{dtr}/edit", [\App\Http\Controllers\Staff\DtrController::class, "edit"])->name("dtr.edit");
+    Route::put("/dtr/{dtr}", [\App\Http\Controllers\Staff\DtrController::class, "update"])->name("dtr.update");
+    Route::get("/ot-approvals", [\App\Http\Controllers\Staff\OtApprovalController::class, "index"])->name("ot-approvals.index");
+    Route::post("/ot-approvals/{dtr}/approve", [\App\Http\Controllers\Staff\OtApprovalController::class, "approve"])->name("ot-approvals.approve");
+    Route::post("/ot-approvals/{dtr}/reject", [\App\Http\Controllers\Staff\OtApprovalController::class, "reject"])->name("ot-approvals.reject");
+    Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
+    Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
 });
 
-Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    // Profile
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Branches
-    Route::resource('branches', BranchController::class);
-
-    // Employees
-    Route::resource('employees', EmployeeController::class);
-
-    // Employee Schedules & Deductions (nested under employee)
-    Route::prefix('employees/{employee}')->name('employees.')->group(function () {
-        Route::get('schedules', [EmployeeScheduleController::class, 'index'])->name('schedules.index');
-        Route::post('schedules', [EmployeeScheduleController::class, 'store'])->name('schedules.store');
-        Route::put('schedules/{schedule}', [EmployeeScheduleController::class, 'update'])->name('schedules.update');
-        Route::delete('schedules/{schedule}', [EmployeeScheduleController::class, 'destroy'])->name('schedules.destroy');
-
-        Route::get('deductions', [\App\Http\Controllers\EmployeeStandingDeductionController::class, 'index'])->name('deductions.index');
-        Route::post('deductions', [\App\Http\Controllers\EmployeeStandingDeductionController::class, 'store'])->name('deductions.store');
-        Route::put('deductions/{deduction}', [\App\Http\Controllers\EmployeeStandingDeductionController::class, 'update'])->name('deductions.update');
-        Route::patch('deductions/{deduction}/toggle', [\App\Http\Controllers\EmployeeStandingDeductionController::class, 'toggle'])->name('deductions.toggle');
-        Route::delete('deductions/{deduction}', [\App\Http\Controllers\EmployeeStandingDeductionController::class, 'destroy'])->name('deductions.destroy');
+Route::middleware(["auth", "admin"])->group(function () {
+    Route::get("/dashboard", [\App\Http\Controllers\DashboardController::class, "index"])->middleware("verified")->name("dashboard");
+    Route::get("/profile", [ProfileController::class, "edit"])->name("profile.edit");
+    Route::patch("/profile", [ProfileController::class, "update"])->name("profile.update");
+    Route::delete("/profile", [ProfileController::class, "destroy"])->name("profile.destroy");
+    Route::resource("branches", BranchController::class);
+    Route::resource("employees", EmployeeController::class);
+    Route::prefix("employees/{employee}")->name("employees.")->group(function () {
+        Route::post("account", [EmployeeController::class, "createAccount"])->name("account.create");
+        Route::patch("account", [EmployeeController::class, "updateAccount"])->name("account.update");
+        Route::post("account/reset-password", [EmployeeController::class, "resetPassword"])->name("account.reset-password");
+        Route::get("schedules", [EmployeeScheduleController::class, "index"])->name("schedules.index");
+        Route::post("schedules", [EmployeeScheduleController::class, "store"])->name("schedules.store");
+        Route::put("schedules/{schedule}", [EmployeeScheduleController::class, "update"])->name("schedules.update");
+        Route::delete("schedules/{schedule}", [EmployeeScheduleController::class, "destroy"])->name("schedules.destroy");
+        Route::get("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "index"])->name("deductions.index");
+        Route::post("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "store"])->name("deductions.store");
+        Route::put("deductions/{deduction}", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "update"])->name("deductions.update");
+        Route::patch("deductions/{deduction}/toggle", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "toggle"])->name("deductions.toggle");
+        Route::delete("deductions/{deduction}", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "destroy"])->name("deductions.destroy");
     });
-
-    // Payroll Cutoffs
-    Route::resource('payroll/cutoffs', PayrollCutoffController::class)->names([
-        'index'   => 'payroll.cutoffs.index',
-        'create'  => 'payroll.cutoffs.create',
-        'store'   => 'payroll.cutoffs.store',
-        'show'    => 'payroll.cutoffs.show',
-        'edit'    => 'payroll.cutoffs.edit',
-        'update'  => 'payroll.cutoffs.update',
-        'destroy' => 'payroll.cutoffs.destroy',
+    Route::resource("payroll/cutoffs", PayrollCutoffController::class)->names([
+        "index" => "payroll.cutoffs.index", "create" => "payroll.cutoffs.create",
+        "store" => "payroll.cutoffs.store", "show" => "payroll.cutoffs.show",
+        "edit" => "payroll.cutoffs.edit", "update" => "payroll.cutoffs.update",
+        "destroy" => "payroll.cutoffs.destroy",
     ]);
-
-    // Payroll Entries (nested under cutoff)
-    Route::prefix('payroll/cutoffs/{cutoff}')->name('payroll.cutoffs.')->group(function () {
-        Route::get('entries', [PayrollEntryController::class, 'index'])->name('entries.index');
-        Route::get('entries/{entry}', [PayrollEntryController::class, 'show'])->name('entries.show');
-        Route::get('entries/{entry}/pdf', [PayrollEntryController::class, 'pdf'])->name('entries.pdf');
-        Route::post('generate', [PayrollEntryController::class, 'generate'])->name('generate');
+    Route::prefix("payroll/cutoffs/{cutoff}")->name("payroll.cutoffs.")->group(function () {
+        Route::get("entries", [PayrollEntryController::class, "index"])->name("entries.index");
+        Route::get("entries/{entry}", [PayrollEntryController::class, "show"])->name("entries.show");
+        Route::get("entries/{entry}/pdf", [PayrollEntryController::class, "pdf"])->name("entries.pdf");
+        Route::post("generate", [PayrollEntryController::class, "generate"])->name("generate");
     });
-
-    // DTR
-    Route::get('dtr', [DtrController::class, 'index'])->name('dtr.index');
-    Route::get('dtr/{dtr}', [DtrController::class, 'show'])->name('dtr.show');
-
-    // Timemark
-    Route::post('timemark/fetch', [TimemarkController::class, 'fetch'])->name('timemark.fetch');
-    Route::get('timemark/logs', [TimemarkController::class, 'index'])->name('timemark.logs');
-
-    // Holidays
-    Route::get('holidays', [HolidayController::class, 'index'])->name('holidays.index');
-    Route::post('holidays', [HolidayController::class, 'store'])->name('holidays.store');
-    Route::put('holidays/{holiday}', [HolidayController::class, 'update'])->name('holidays.update');
-    Route::delete('holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
+    Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");
+    Route::get("dtr/{dtr}", [DtrController::class, "show"])->name("dtr.show");
+    Route::post("timemark/fetch", [TimemarkController::class, "fetch"])->name("timemark.fetch");
+    Route::get("timemark/logs", [TimemarkController::class, "index"])->name("timemark.logs");
+    Route::get("holidays", [HolidayController::class, "index"])->name("holidays.index");
+    Route::post("holidays", [HolidayController::class, "store"])->name("holidays.store");
+    Route::put("holidays/{holiday}", [HolidayController::class, "update"])->name("holidays.update");
+    Route::delete("holidays/{holiday}", [HolidayController::class, "destroy"])->name("holidays.destroy");
 });
 
-require __DIR__.'/auth.php';
+require __DIR__."/auth.php";

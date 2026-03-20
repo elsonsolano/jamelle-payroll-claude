@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -49,9 +51,10 @@ class EmployeeController extends Controller
         $validated = $request->validate([
             'first_name'    => 'required|string|max:255',
             'last_name'     => 'required|string|max:255',
+            'email'         => 'nullable|email|max:255|unique:employees,email',
             'employee_code' => 'required|string|max:50|unique:employees,employee_code',
             'branch_id'     => 'required|exists:branches,id',
-            'timemark_id'   => 'required|string|max:100|unique:employees,timemark_id',
+            'timemark_id'   => 'nullable|string|max:100|unique:employees,timemark_id',
             'salary_type'   => 'required|in:daily,monthly',
             'rate'          => 'required|numeric|min:0',
             'hired_date'    => 'nullable|date',
@@ -68,7 +71,7 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee): View
     {
-        $employee->load('branch', 'employeeStandingDeductions');
+        $employee->load('branch', 'employeeStandingDeductions', 'user');
         return view('employees.show', compact('employee'));
     }
 
@@ -83,9 +86,10 @@ class EmployeeController extends Controller
         $validated = $request->validate([
             'first_name'    => 'required|string|max:255',
             'last_name'     => 'required|string|max:255',
+            'email'         => 'nullable|email|max:255|unique:employees,email,' . $employee->id,
             'employee_code' => 'required|string|max:50|unique:employees,employee_code,' . $employee->id,
             'branch_id'     => 'required|exists:branches,id',
-            'timemark_id'   => 'required|string|max:100|unique:employees,timemark_id,' . $employee->id,
+            'timemark_id'   => 'nullable|string|max:100|unique:employees,timemark_id,' . $employee->id,
             'salary_type'   => 'required|in:daily,monthly',
             'rate'          => 'required|numeric|min:0',
             'hired_date'    => 'nullable|date',
@@ -104,5 +108,62 @@ class EmployeeController extends Controller
     {
         $employee->delete();
         return redirect()->route('employees.index')->with('success', 'Employee deleted successfully.');
+    }
+
+    // --- Staff account management ---
+
+    public function createAccount(Request $request, Employee $employee): RedirectResponse
+    {
+        if ($employee->user) {
+            return back()->with('error', 'This employee already has a login account.');
+        }
+
+        $request->validate([
+            'email'          => 'required|email|unique:users,email',
+            'can_approve_ot' => 'boolean',
+        ]);
+
+        User::create([
+            'name'                 => $employee->full_name,
+            'email'                => $request->email,
+            'password'             => Hash::make('password'),
+            'role'                 => 'staff',
+            'employee_id'          => $employee->id,
+            'can_approve_ot'       => $request->boolean('can_approve_ot'),
+            'must_change_password' => true,
+        ]);
+
+        return back()->with('success', 'Account created. Default password is: password');
+    }
+
+    public function updateAccount(Request $request, Employee $employee): RedirectResponse
+    {
+        if (!$employee->user) {
+            return back()->with('error', 'No account found for this employee.');
+        }
+
+        $request->validate([
+            'can_approve_ot' => 'boolean',
+        ]);
+
+        $employee->user->update([
+            'can_approve_ot' => $request->boolean('can_approve_ot'),
+        ]);
+
+        return back()->with('success', 'Account updated.');
+    }
+
+    public function resetPassword(Employee $employee): RedirectResponse
+    {
+        if (!$employee->user) {
+            return back()->with('error', 'No account found for this employee.');
+        }
+
+        $employee->user->update([
+            'password'             => Hash::make('password'),
+            'must_change_password' => true,
+        ]);
+
+        return back()->with('success', 'Password has been reset to: password');
     }
 }

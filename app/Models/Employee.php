@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
     protected $fillable = [
         'first_name',
         'last_name',
+        'email',
         'employee_code',
         'branch_id',
         'timemark_id',
@@ -22,9 +24,9 @@ class Employee extends Model
     ];
 
     protected $casts = [
-        'active' => 'boolean',
+        'active'     => 'boolean',
         'hired_date' => 'date',
-        'rate' => 'decimal:2',
+        'rate'       => 'decimal:2',
     ];
 
     public function getFullNameAttribute(): string
@@ -35,6 +37,11 @@ class Employee extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
     }
 
     public function dtrs(): HasMany
