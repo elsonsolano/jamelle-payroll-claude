@@ -43,6 +43,8 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::patch("/profile", [ProfileController::class, "update"])->name("profile.update");
     Route::delete("/profile", [ProfileController::class, "destroy"])->name("profile.destroy");
     Route::resource("branches", BranchController::class);
+    Route::get("employees/import/template", [\App\Http\Controllers\EmployeeImportController::class, "template"])->name("employees.import.template");
+    Route::post("employees/import", [\App\Http\Controllers\EmployeeImportController::class, "import"])->name("employees.import");
     Route::resource("employees", EmployeeController::class);
     Route::prefix("employees/{employee}")->name("employees.")->group(function () {
         Route::post("account", [EmployeeController::class, "createAccount"])->name("account.create");

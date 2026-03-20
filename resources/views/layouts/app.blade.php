@@ -128,6 +128,11 @@
                     {{ session('error') }}
                 </div>
             @endif
+            @if(session('warning'))
+                <div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm">
+                    {{ session('warning') }}
+                </div>
+            @endif
 
             {{ $slot }}
         </main>

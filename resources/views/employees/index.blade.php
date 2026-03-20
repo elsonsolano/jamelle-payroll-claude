@@ -2,6 +2,59 @@
     <x-slot name="title">Employees</x-slot>
 
     <x-slot name="actions">
+        {{-- Import --}}
+        <div x-data="{ open: false }">
+            <button @click="open = true"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M8 12l4 4m0 0l4-4m-4 4V4"/>
+                </svg>
+                Import Excel
+            </button>
+
+            {{-- Modal --}}
+            <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Import Employees</h2>
+
+                    <p class="text-sm text-gray-600">
+                        Upload an Excel file (.xlsx) to bulk-import or update employees.
+                        Existing employees (matched by EE #) will be updated.
+                    </p>
+
+                    <a href="{{ route('employees.import.template') }}"
+                       class="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M8 8l4-4m0 0l4 4m-4-4v12"/>
+                        </svg>
+                        Download Template
+                    </a>
+
+                    <form method="POST" action="{{ route('employees.import') }}" enctype="multipart/form-data" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Excel File</label>
+                            <input type="file" name="file" accept=".xlsx,.xls" required
+                                   class="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-sm file:font-medium file:bg-gray-50 hover:file:bg-gray-100">
+                            @error('file')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-1">
+                            <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                                Import
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <a href="{{ route('employees.create') }}"
            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,6 +106,9 @@
                     <th class="px-5 py-3 font-semibold text-gray-600">Branch</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Position</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Salary</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">SSS No.</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">PhilHealth No.</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">Pag-IBIG No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Status</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
@@ -78,6 +134,9 @@
                             <div class="text-gray-800 font-medium">₱{{ number_format($employee->rate, 2) }}</div>
                             <div class="text-xs text-gray-400">{{ ucfirst($employee->salary_type) }} rate</div>
                         </td>
+                        <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->sss_no ?: '—' }}</td>
+                        <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->phic_no ?: '—' }}</td>
+                        <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->pagibig_no ?: '—' }}</td>
                         <td class="px-5 py-3">
                             @if($employee->active)
                                 <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
@@ -105,7 +164,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-10 text-center text-gray-400">
+                        <td colspan="10" class="px-5 py-10 text-center text-gray-400">
                             No employees found.
                             @if(!request()->hasAny(['search','branch_id','status']))
                                 <a href="{{ route('employees.create') }}" class="text-indigo-600 hover:underline">Add one</a>.
