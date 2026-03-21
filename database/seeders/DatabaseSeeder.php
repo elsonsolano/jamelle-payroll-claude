@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             PayrollCutoffSeeder::class,
             EmployeeSeeder::class,
+            HolidaySeeder::class,
         ]);
     }
 }
