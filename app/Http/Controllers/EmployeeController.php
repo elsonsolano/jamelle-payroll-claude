@@ -60,9 +60,13 @@ class EmployeeController extends Controller
             'hired_date'    => 'nullable|date',
             'position'      => 'nullable|string|max:255',
             'active'        => 'boolean',
-            'sss_no'        => 'nullable|string|max:50',
-            'phic_no'       => 'nullable|string|max:50',
-            'pagibig_no'    => 'nullable|string|max:50',
+            'sss_no'                         => 'nullable|string|max:50',
+            'phic_no'                        => 'nullable|string|max:50',
+            'pagibig_no'                     => 'nullable|string|max:50',
+            'contact_number'                 => 'nullable|string|max:50',
+            'emergency_contact_name'         => 'nullable|string|max:255',
+            'emergency_contact_relationship' => 'nullable|string|max:100',
+            'emergency_contact_number'       => 'nullable|string|max:50',
         ]);
 
         $validated['active'] = $request->boolean('active', true);
@@ -98,9 +102,13 @@ class EmployeeController extends Controller
             'hired_date'    => 'nullable|date',
             'position'      => 'nullable|string|max:255',
             'active'        => 'boolean',
-            'sss_no'        => 'nullable|string|max:50',
-            'phic_no'       => 'nullable|string|max:50',
-            'pagibig_no'    => 'nullable|string|max:50',
+            'sss_no'                         => 'nullable|string|max:50',
+            'phic_no'                        => 'nullable|string|max:50',
+            'pagibig_no'                     => 'nullable|string|max:50',
+            'contact_number'                 => 'nullable|string|max:50',
+            'emergency_contact_name'         => 'nullable|string|max:255',
+            'emergency_contact_relationship' => 'nullable|string|max:100',
+            'emergency_contact_number'       => 'nullable|string|max:50',
         ]);
 
         $validated['active'] = $request->boolean('active');

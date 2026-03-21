@@ -103,6 +103,40 @@
         </div>
     </div>
 
+    {{-- Contact Number --}}
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+        <input type="text" name="contact_number" value="{{ old('contact_number', $employee->contact_number ?? '') }}"
+               class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+               placeholder="e.g. 09XX-XXX-XXXX">
+        @error('contact_number')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+    </div>
+
+    {{-- Emergency Contact --}}
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Person</label>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <input type="text" name="emergency_contact_name" value="{{ old('emergency_contact_name', $employee->emergency_contact_name ?? '') }}"
+                       class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="Full name">
+                @error('emergency_contact_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div>
+                <input type="text" name="emergency_contact_relationship" value="{{ old('emergency_contact_relationship', $employee->emergency_contact_relationship ?? '') }}"
+                       class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="Relationship (e.g. Spouse, Parent)">
+                @error('emergency_contact_relationship')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+        </div>
+        <div class="mt-2">
+            <input type="text" name="emergency_contact_number" value="{{ old('emergency_contact_number', $employee->emergency_contact_number ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="Contact number">
+            @error('emergency_contact_number')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+    </div>
+
     {{-- Government IDs --}}
     <div class="grid grid-cols-3 gap-4">
         <div>

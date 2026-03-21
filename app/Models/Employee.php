@@ -24,6 +24,10 @@ class Employee extends Model
         'sss_no',
         'phic_no',
         'pagibig_no',
+        'contact_number',
+        'emergency_contact_name',
+        'emergency_contact_relationship',
+        'emergency_contact_number',
     ];
 
     protected $casts = [

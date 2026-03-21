@@ -28,8 +28,8 @@ class DtrComputationService
         $restDays = $schedule?->rest_days ?? ['Sunday'];
         $isRestDay = in_array($dayName, $restDays);
 
-        $workStart = $schedule?->work_start_time ?? $employee->branch->work_start_time ?? '08:00';
-        $workEnd   = $schedule?->work_end_time   ?? $employee->branch->work_end_time   ?? '17:00';
+        $workStart = $schedule?->work_start_time;
+        $workEnd   = $schedule?->work_end_time;
 
         // Compute total_hours: time_in → time_out minus break (am_out → pm_in)
         $totalHours = 0;
@@ -53,7 +53,7 @@ class DtrComputationService
 
         // Late mins: how many minutes after work_start did they clock in
         $lateMins = 0;
-        if ($timeIn && !$isRestDay) {
+        if ($timeIn && !$isRestDay && $workStart) {
             $scheduledIn = Carbon::createFromTimeString($workStart);
             $actualIn    = Carbon::createFromTimeString($timeIn);
             if ($actualIn->gt($scheduledIn)) {
@@ -63,7 +63,7 @@ class DtrComputationService
 
         // Undertime mins: how many minutes before work_end did they clock out
         $undertimeMins = 0;
-        if ($timeOut && !$isRestDay) {
+        if ($timeOut && !$isRestDay && $workEnd) {
             $scheduledOut = Carbon::createFromTimeString($workEnd);
             $actualOut    = Carbon::createFromTimeString($timeOut);
             if ($actualOut->lt($scheduledOut)) {

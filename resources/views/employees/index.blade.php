@@ -102,7 +102,6 @@
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-200 text-left">
                     <th class="px-5 py-3 font-semibold text-gray-600">Employee</th>
-                    <th class="px-5 py-3 font-semibold text-gray-600">Code</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Branch</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Position</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Salary</th>
@@ -123,11 +122,10 @@
                                 </div>
                                 <div>
                                     <p class="font-medium text-gray-900">{{ $employee->full_name }}</p>
-                                    <p class="text-xs text-gray-400">ID: {{ $employee->timemark_id }}</p>
+                                    <p class="text-xs text-gray-400">{{ $employee->employee_code }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-5 py-3 text-gray-600 font-mono text-xs">{{ $employee->employee_code }}</td>
                         <td class="px-5 py-3 text-gray-600">{{ $employee->branch->name }}</td>
                         <td class="px-5 py-3 text-gray-500">{{ $employee->position ?? '—' }}</td>
                         <td class="px-5 py-3">

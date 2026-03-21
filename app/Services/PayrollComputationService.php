@@ -7,15 +7,38 @@ use App\Models\Holiday;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollDeduction;
 use App\Models\PayrollEntry;
+use App\Services\DtrComputationService;
 
 class PayrollComputationService
 {
     public function computeEntry(PayrollCutoff $cutoff, Employee $employee): PayrollEntry
     {
-        // Get all DTRs for this employee within the cutoff date range
+        // Get all DTRs for this employee within the cutoff date range,
+        // and recompute late/undertime/is_rest_day from the current schedule first
         $dtrs = $employee->dtrs()
             ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
             ->get();
+
+        $dtrService = new DtrComputationService();
+        foreach ($dtrs as $dtr) {
+            if (! $dtr->time_in) {
+                continue;
+            }
+            $computed = $dtrService->compute(
+                $employee,
+                $dtr->date->toDateString(),
+                $dtr->time_in,
+                $dtr->am_out,
+                $dtr->pm_in,
+                $dtr->time_out,
+                $dtr->overtime_hours,
+            );
+            $dtr->late_mins      = $computed['late_mins'];
+            $dtr->undertime_mins = $computed['undertime_mins'];
+            $dtr->is_rest_day    = $computed['is_rest_day'];
+            $dtr->total_hours    = $computed['total_hours'];
+            $dtr->save();
+        }
 
         // Load holidays in this cutoff period, keyed by date string (Y-m-d)
         $holidays = Holiday::whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
@@ -25,8 +48,6 @@ class PayrollComputationService
         $rate             = (float) $employee->rate;
         $basicPay         = 0;
         $holidayPay       = 0;
-        $lateDed          = 0;
-        $undertimeDed     = 0;
         $overtimePay      = 0;
         $workingDays      = 0;
         $totalHoursWorked = 0;
@@ -44,27 +65,22 @@ class PayrollComputationService
                 }
 
                 $workingDays++;
-                $totalHoursWorked += (float) $dtr->total_hours;
+                $hours    = (float) $dtr->total_hours;
+                $totalHoursWorked += $hours;
 
                 $holiday = $holidays->get($dtr->date->toDateString());
 
-                // Late & undertime deductions apply on all days including holidays
-                $lateDed      += ($dtr->late_mins / 60) * $hourlyRate;
-                $undertimeDed += ($dtr->undertime_mins / 60) * $hourlyRate;
+                // Basic pay based on actual hours worked — reduced hours naturally mean less pay
+                $basicPay += $hours * $hourlyRate;
 
                 if ($holiday?->type === 'regular') {
-                    // Worked on a Regular Holiday: 200% daily rate
-                    // Basic pay covers the 1st 100% (counted via workingDays * dailyRate below)
-                    // Holiday pay covers the extra 100%
-                    $holidayPay  += $dailyRate;
-                    // OT: 200% base × 130% = 260% of regular hourly rate
+                    // Worked on a Regular Holiday: additional 100% premium on hours worked
+                    $holidayPay  += $hours * $hourlyRate;
                     $overtimePay += (float) $dtr->overtime_hours * ($hourlyRate * 2.6);
 
                 } elseif ($holiday?->type === 'special_non_working') {
-                    // Worked on a Special Non-Working Day: 130% daily rate
-                    // Basic pay covers 100%, holiday pay covers the extra 30%
-                    $holidayPay  += $dailyRate * 0.30;
-                    // OT: 130% base × 130% = 169% of regular hourly rate
+                    // Worked on a Special Non-Working Day: additional 30% premium on hours worked
+                    $holidayPay  += $hours * $hourlyRate * 0.30;
                     $overtimePay += (float) $dtr->overtime_hours * ($hourlyRate * 1.69);
 
                 } else {
@@ -74,19 +90,15 @@ class PayrollComputationService
                 }
             }
 
-            // Basic pay = days worked × daily rate
-            $basicPay = $workingDays * $dailyRate;
-
             // Regular holidays NOT worked: daily employee still gets 100% daily rate
-            // (Does not apply if holiday falls on a rest day — checked via existing DTR with is_rest_day)
+            // (Does not apply if holiday falls on a rest day)
             foreach ($holidays as $holiday) {
                 if ($holiday->type !== 'regular') {
                     continue;
                 }
                 $dateStr = $holiday->date->toDateString();
                 if (! in_array($dateStr, $workedDates)) {
-                    // Check if we have a rest-day DTR for this date
-                    $dtrOnDay = $dtrs->first(fn($d) => $d->date->toDateString() === $dateStr);
+                    $dtrOnDay  = $dtrs->first(fn($d) => $d->date->toDateString() === $dateStr);
                     $isRestDay = $dtrOnDay?->is_rest_day ?? false;
                     if (! $isRestDay) {
                         $basicPay += $dailyRate;
@@ -139,8 +151,8 @@ class PayrollComputationService
             'basic_pay'           => round($basicPay, 2),
             'overtime_pay'        => round($overtimePay, 2),
             'holiday_pay'         => round($holidayPay, 2),
-            'late_deduction'      => round($lateDed, 2),
-            'undertime_deduction' => round($undertimeDed, 2),
+            'late_deduction'      => 0,
+            'undertime_deduction' => 0,
             'gross_pay'           => round($grossPay, 2),
             'working_days'        => $workingDays,
             'total_hours_worked'  => round($totalHoursWorked, 2),
@@ -162,7 +174,7 @@ class PayrollComputationService
         // Remove existing payroll deductions to avoid duplicates
         $entry->payrollDeductions()->delete();
 
-        $totalDeductionAmount = $lateDed + $undertimeDed;
+        $totalDeductionAmount = 0;
 
         foreach ($standingDeductions as $sd) {
             PayrollDeduction::create([

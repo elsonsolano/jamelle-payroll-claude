@@ -13,7 +13,7 @@ class DtrController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = Dtr::with('employee.branch');
+        $query = Dtr::with('employee.branch')->whereHas('employee');
 
         if ($request->filled('employee_id')) {
             $query->where('employee_id', $request->employee_id);

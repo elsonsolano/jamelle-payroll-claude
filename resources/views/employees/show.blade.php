@@ -82,7 +82,34 @@
                     <dt class="text-gray-500">Pag-IBIG No.</dt>
                     <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->pagibig_no ?: '—' }}</dd>
                 </div>
+                <div>
+                    <dt class="text-gray-500">Contact Number</dt>
+                    <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->contact_number ?: '—' }}</dd>
+                </div>
             </dl>
+        </div>
+
+        {{-- Emergency Contact --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Emergency Contact</h3>
+            @if($employee->emergency_contact_name)
+                <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                    <div>
+                        <dt class="text-gray-500">Name</dt>
+                        <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->emergency_contact_name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Relationship</dt>
+                        <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->emergency_contact_relationship ?: '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Contact Number</dt>
+                        <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->emergency_contact_number ?: '—' }}</dd>
+                    </div>
+                </dl>
+            @else
+                <p class="text-sm text-gray-400">No emergency contact set.</p>
+            @endif
         </div>
 
         {{-- Standing Deductions --}}
@@ -178,55 +205,6 @@
             @endif
         </div>
 
-        {{-- Fetch Attendance --}}
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ open: false }">
-            <div class="px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer select-none"
-                 @click="open = !open">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                    </div>
-                    <span class="font-semibold text-gray-800">Fetch Attendance</span>
-                </div>
-                <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </div>
-
-            <div x-show="open" x-cloak class="border-t border-gray-100 p-5">
-                <form method="POST" action="{{ route('timemark.fetch') }}">
-                    @csrf
-                    <input type="hidden" name="fetch_type" value="employee">
-                    <input type="hidden" name="employee_id" value="{{ $employee->id }}">
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
-                            <input type="date" name="date_from"
-                                   value="{{ old('date_from', now()->startOfMonth()->format('Y-m-d')) }}"
-                                   class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
-                            <input type="date" name="date_to"
-                                   value="{{ old('date_to', now()->format('Y-m-d')) }}"
-                                   class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <button type="submit"
-                                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
-                            Fetch
-                        </button>
-                        <span class="text-xs text-gray-400">Job will be queued and processed in the background.</span>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         {{-- Quick Links --}}
         <div class="flex flex-wrap gap-3">
             <a href="{{ route('dtr.index', ['employee_id' => $employee->id]) }}"
@@ -250,13 +228,7 @@
                 </svg>
                 Manage Deductions
             </a>
-            <a href="{{ route('timemark.logs', ['employee_id' => $employee->id]) }}"
-               class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium rounded-lg transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                </svg>
-                Fetch Logs
-            </a>
+            {{-- Fetch Logs button hidden (timemark not in use) --}}
         </div>
 
     </div>

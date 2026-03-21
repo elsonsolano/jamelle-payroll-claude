@@ -103,7 +103,7 @@ class EmployeeImportController extends Controller
                 $salaryType = 'monthly';
                 $rate       = $basicPay;
             } else {
-                $salaryType = 'monthly';
+                $salaryType = 'daily';
                 $rate       = 0;
             }
 
