@@ -38,6 +38,7 @@
 
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-200 text-left">
@@ -98,6 +99,8 @@
                 @endforelse
             </tbody>
         </table>
+
+        </div>
 
         @if($cutoffs->hasPages())
             <div class="px-5 py-4 border-t border-gray-100">{{ $cutoffs->links() }}</div>

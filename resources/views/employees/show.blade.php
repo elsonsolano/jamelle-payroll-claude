@@ -11,7 +11,7 @@
         </a>
     </x-slot>
 
-    <div class="max-w-3xl space-y-6">
+    <div class="max-w-3xl w-full space-y-6">
 
         {{-- Profile Card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6">
@@ -40,7 +40,7 @@
         {{-- Details Grid --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6">
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Employee Information</h3>
-            <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 <div>
                     <dt class="text-gray-500">Employee Code</dt>
                     <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->employee_code }}</dd>
@@ -93,7 +93,7 @@
         <div class="bg-white rounded-xl border border-gray-200 p-6">
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Emergency Contact</h3>
             @if($employee->emergency_contact_name)
-                <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <div>
                         <dt class="text-gray-500">Name</dt>
                         <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->emergency_contact_name }}</dd>

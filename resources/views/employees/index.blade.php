@@ -68,7 +68,7 @@
     <form method="GET" action="{{ route('employees.index') }}" class="flex flex-wrap gap-3 mb-5">
         <input type="text" name="search" value="{{ request('search') }}"
                placeholder="Search name, code, position…"
-               class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-64">
+               class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64">
 
         <select name="branch_id" class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
             <option value="">All Branches</option>
@@ -98,6 +98,7 @@
 
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-200 text-left">
@@ -172,6 +173,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
 
         @if($employees->hasPages())
             <div class="px-5 py-4 border-t border-gray-100">
