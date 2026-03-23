@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\DtrController;
@@ -42,6 +43,7 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::get("/profile", [ProfileController::class, "edit"])->name("profile.edit");
     Route::patch("/profile", [ProfileController::class, "update"])->name("profile.update");
     Route::delete("/profile", [ProfileController::class, "destroy"])->name("profile.destroy");
+    Route::resource("admin-users", AdminUserController::class)->except(['show']);
     Route::resource("branches", BranchController::class);
     Route::get("employees/import/template", [\App\Http\Controllers\EmployeeImportController::class, "template"])->name("employees.import.template");
     Route::post("employees/import", [\App\Http\Controllers\EmployeeImportController::class, "import"])->name("employees.import");
