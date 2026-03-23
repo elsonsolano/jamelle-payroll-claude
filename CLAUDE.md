@@ -150,6 +150,8 @@ The last two run globally (appended to web group) so they intercept after auth, 
 **Admin panel** (`auth` + `admin` middleware):
 - All existing admin routes: branches, employees, payroll cutoffs/entries, DTR (read-only view), holidays
 - `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
+- `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
+- `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`)
 
 ### Frontend
 
@@ -157,7 +159,7 @@ Two layouts:
 - `x-app-layout` (`AppLayout.php` → `layouts/app.blade.php`) — desktop sidebar layout for admin
 - `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav
 
-Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`.
+Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`. Excel import via `phpoffice/phpspreadsheet`.
 
 The timemark fetch button is hidden from the admin sidebar (commented out in `layouts/app.blade.php`) but the underlying code (`FetchAttendanceJob`, `TimemarkController`, `timemark.*` routes) is intact.
 
@@ -192,3 +194,7 @@ Seeders (run in order via `DatabaseSeeder`):
 - `AdminUserSeeder` — admin user (`admin@payroll.test`), runs on every deploy
 - `PayrollCutoffSeeder` — 6 semi-monthly cutoffs per branch going back ~3 months; idempotent via `firstOrCreate`
 - `EmployeeSeeder` — 36 real employees; management staff seeded with `rate = 0` (configure manually)
+
+### Testing
+
+Only scaffolded Laravel Breeze auth tests exist (`tests/Feature/Auth/`). There are no domain-specific tests for payroll, DTR, or OT computation yet. When adding tests, use `php artisan test --filter=TestClassName` to run a single test class.
