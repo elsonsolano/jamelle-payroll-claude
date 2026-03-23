@@ -71,9 +71,9 @@ class EmployeeController extends Controller
 
         $validated['active'] = $request->boolean('active', true);
 
-        Employee::create($validated);
+        $employee = Employee::create($validated);
 
-        return redirect()->route('employees.index')->with('success', 'Employee created successfully.');
+        return redirect()->route('employees.show', $employee)->with('success', 'Employee created successfully.');
     }
 
     public function show(Employee $employee): View
