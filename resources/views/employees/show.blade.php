@@ -60,6 +60,12 @@
                     </dd>
                 </div>
                 <div>
+                    <dt class="text-gray-500">Birthday</dt>
+                    <dd class="font-medium text-gray-900 mt-0.5">
+                        {{ $employee->birthday ? $employee->birthday->format('F d, Y') : '—' }}
+                    </dd>
+                </div>
+                <div>
                     <dt class="text-gray-500">Salary Type</dt>
                     <dd class="font-medium text-gray-900 mt-0.5">{{ ucfirst($employee->salary_type) }} Rate</dd>
                 </div>

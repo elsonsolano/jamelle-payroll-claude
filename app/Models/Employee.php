@@ -20,6 +20,7 @@ class Employee extends Model
         'rate',
         'active',
         'hired_date',
+        'birthday',
         'position',
         'sss_no',
         'phic_no',
@@ -34,6 +35,7 @@ class Employee extends Model
     protected $casts = [
         'active'     => 'boolean',
         'hired_date' => 'date',
+        'birthday'   => 'date',
         'rate'       => 'decimal:2',
     ];
 

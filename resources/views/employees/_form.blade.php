@@ -60,6 +60,13 @@
                    class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
             @error('hired_date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
         </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
+            <input type="date" name="birthday"
+                   value="{{ old('birthday', isset($employee->birthday) ? $employee->birthday->format('Y-m-d') : '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            @error('birthday')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
     </div>
 
     {{-- Email --}}
