@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-semibold text-gray-700">All DTR Records</h2>
         <a href="{{ route('staff.dtr.create') }}"
-           class="bg-indigo-600 text-white text-xs font-semibold px-3 py-2 rounded-xl">
+           class="bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-xl">
             + New DTR
         </a>
     </div>
@@ -40,7 +40,7 @@
                         @endif
                     @endif
                     <a href="{{ route('staff.dtr.edit', $dtr) }}"
-                       class="text-xs text-indigo-600 font-medium mt-1">Edit</a>
+                       class="text-xs text-green-600 font-medium mt-1">Edit</a>
                 </div>
             </div>
         </div>

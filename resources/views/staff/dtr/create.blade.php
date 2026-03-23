@@ -9,7 +9,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <input type="date" name="date" value="{{ old('date', date('Y-m-d')) }}"
                        max="{{ date('Y-m-d') }}"
-                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 @error('date') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -17,25 +17,25 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Time In</label>
                     <input type="time" name="time_in" value="{{ old('time_in') }}"
-                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500">
                     @error('time_in') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Start Break</label>
                     <input type="time" name="am_out" value="{{ old('am_out') }}"
-                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500">
                     @error('am_out') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">End Break</label>
                     <input type="time" name="pm_in" value="{{ old('pm_in') }}"
-                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500">
                     @error('pm_in') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Time Out</label>
                     <input type="time" name="time_out" value="{{ old('time_out') }}"
-                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500">
                     @error('time_out') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
             </div>
@@ -45,7 +45,7 @@
                 <label class="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" name="has_ot" value="1" x-model="hasOt"
                            @if(old('has_ot')) checked @endif
-                           class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                           class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
                     <span class="text-sm font-medium text-amber-800">I have overtime</span>
                 </label>
 
@@ -68,7 +68,7 @@
                 Cancel
             </a>
             <button type="submit"
-                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition">
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl text-sm transition">
                 Submit DTR
             </button>
         </div>

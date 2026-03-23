@@ -5,7 +5,7 @@
         @if(Auth::user()->unreadNotifications()->count() > 0)
         <form method="POST" action="{{ route('staff.notifications.mark-read') }}">
             @csrf
-            <button type="submit" class="text-xs text-indigo-600 font-medium">Mark all read</button>
+            <button type="submit" class="text-xs text-green-600 font-medium">Mark all read</button>
         </form>
         @endif
     </div>
@@ -13,7 +13,7 @@
     <div class="space-y-2">
         @forelse($notifications as $n)
         @php $data = $n->data; @endphp
-        <div class="bg-white rounded-xl border {{ $n->read_at ? 'border-gray-100' : 'border-indigo-200 bg-indigo-50' }} p-4 shadow-sm">
+        <div class="bg-white rounded-xl border {{ $n->read_at ? 'border-gray-100' : 'border-green-200 bg-green-50' }} p-4 shadow-sm">
             <div class="flex items-start gap-3">
                 <div class="mt-0.5">
                     @if(($data['type'] ?? '') === 'ot_approved')
@@ -38,7 +38,7 @@
                     <p class="text-xs text-gray-400 mt-1">{{ $n->created_at->diffForHumans() }}</p>
                 </div>
                 @if(!$n->read_at)
-                    <div class="w-2 h-2 rounded-full bg-indigo-500 mt-1 flex-shrink-0"></div>
+                    <div class="w-2 h-2 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                 @endif
             </div>
         </div>

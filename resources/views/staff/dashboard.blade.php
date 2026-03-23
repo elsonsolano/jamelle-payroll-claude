@@ -1,10 +1,10 @@
 <x-staff-layout title="Dashboard">
 
     {{-- Welcome card --}}
-    <div class="bg-indigo-600 text-white rounded-2xl p-4 mb-4">
-        <p class="text-sm text-indigo-200">Welcome back,</p>
+    <div class="bg-green-600 text-white rounded-2xl p-4 mb-4">
+        <p class="text-sm text-green-200">Welcome back,</p>
         <h2 class="text-xl font-bold">{{ Auth::user()->employee->first_name }}</h2>
-        <p class="text-xs text-indigo-300 mt-0.5">{{ Auth::user()->employee->position }}</p>
+        <p class="text-xs text-green-300 mt-0.5">{{ Auth::user()->employee->position }}</p>
     </div>
 
     {{-- Quick stats --}}
@@ -15,7 +15,7 @@
         </div>
         <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
             <p class="text-xs text-gray-500 mb-1">Unread Notifications</p>
-            <p class="text-2xl font-bold text-indigo-500">{{ $unreadCount }}</p>
+            <p class="text-2xl font-bold text-green-500">{{ $unreadCount }}</p>
         </div>
         @if($pendingApprovalCount > 0)
         <div class="col-span-2 bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm">
@@ -30,7 +30,7 @@
 
     {{-- Log DTR button --}}
     <a href="{{ route('staff.dtr.create') }}"
-       class="block w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center font-semibold py-4 rounded-2xl shadow mb-4 transition text-sm">
+       class="block w-full bg-green-600 hover:bg-green-700 text-white text-center font-semibold py-4 rounded-2xl shadow mb-4 transition text-sm">
         + Log Today's DTR
     </a>
 
@@ -57,7 +57,7 @@
                         OT {{ ucfirst($dtr->ot_status) }}
                     </span>
                 @endif
-                <a href="{{ route('staff.dtr.edit', $dtr) }}" class="text-gray-400 hover:text-indigo-600">
+                <a href="{{ route('staff.dtr.edit', $dtr) }}" class="text-gray-400 hover:text-green-600">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
@@ -70,7 +70,7 @@
     </div>
 
     @if($recentDtrs->count() > 0)
-    <a href="{{ route('staff.dtr.index') }}" class="block text-center text-indigo-600 text-sm mt-3 font-medium">View All DTRs</a>
+    <a href="{{ route('staff.dtr.index') }}" class="block text-center text-green-600 text-sm mt-3 font-medium">View All DTRs</a>
     @endif
 
 </x-staff-layout>
