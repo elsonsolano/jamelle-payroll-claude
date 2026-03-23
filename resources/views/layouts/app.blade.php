@@ -19,14 +19,14 @@
 
     {{-- Sidebar --}}
     <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-           class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white flex flex-col transition-transform duration-200 ease-in-out
+           class="fixed inset-y-0 left-0 z-30 w-64 bg-white text-gray-900 flex flex-col transition-transform duration-200 ease-in-out border-r-2 border-green-500
                   lg:relative lg:translate-x-0 lg:flex lg:flex-shrink-0">
 
         {{-- Logo --}}
-        <div class="h-16 flex items-center px-6 border-b border-gray-700 flex-shrink-0">
-            <span class="text-lg font-bold tracking-wide text-white">Payroll System</span>
+        <div class="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
+            <img src="{{ asset('images/logo.png') }}" alt="Jamelle 1122 Corporation" class="h-14 w-auto">
             {{-- Close button (mobile only) --}}
-            <button @click="sidebarOpen = false" class="ml-auto text-gray-400 hover:text-white lg:hidden">
+            <button @click="sidebarOpen = false" class="ml-auto text-gray-400 hover:text-gray-700 lg:hidden">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -44,7 +44,7 @@
             </x-sidebar-link>
 
             <div class="pt-3 pb-1 px-3">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</p>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Organization</p>
             </div>
 
             <x-sidebar-link :href="route('branches.index')" :active="request()->routeIs('branches.*')" @click="sidebarOpen = false">
@@ -62,7 +62,7 @@
             </x-sidebar-link>
 
             <div class="pt-3 pb-1 px-3">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Attendance</p>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Attendance</p>
             </div>
 
             <x-sidebar-link :href="route('dtr.index')" :active="request()->routeIs('dtr.*')" @click="sidebarOpen = false">
@@ -75,7 +75,7 @@
             {{-- Timemark hidden: attendance is now manually entered by staff --}}
 
             <div class="pt-3 pb-1 px-3">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payroll</p>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payroll</p>
             </div>
 
             <x-sidebar-link :href="route('payroll.cutoffs.index')" :active="request()->routeIs('payroll.*')" @click="sidebarOpen = false">
@@ -95,18 +95,18 @@
         </nav>
 
         {{-- User --}}
-        <div class="border-t border-gray-700 p-4 flex-shrink-0">
+        <div class="border-t border-gray-200 p-4 flex-shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-sm font-semibold text-white flex-shrink-0">
                     {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">{{ Auth::user()->name }}</p>
-                    <p class="text-xs text-gray-400 truncate">{{ Auth::user()->email }}</p>
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ Auth::user()->name }}</p>
+                    <p class="text-xs text-gray-500 truncate">{{ Auth::user()->email }}</p>
                 </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" title="Logout" class="text-gray-400 hover:text-white transition">
+                    <button type="submit" title="Logout" class="text-gray-400 hover:text-gray-700 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     </button>
                 </form>
