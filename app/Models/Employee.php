@@ -24,6 +24,7 @@ class Employee extends Model
         'sss_no',
         'phic_no',
         'pagibig_no',
+        'tin_no',
         'contact_number',
         'emergency_contact_name',
         'emergency_contact_relationship',

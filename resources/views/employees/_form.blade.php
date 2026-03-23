@@ -138,7 +138,7 @@
     </div>
 
     {{-- Government IDs --}}
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">SSS No.</label>
             <input type="text" name="sss_no" value="{{ old('sss_no', $employee->sss_no ?? '') }}"
@@ -159,6 +159,13 @@
                    class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
                    placeholder="xxxx-xxxx-xxxx">
             @error('pagibig_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">TIN No.</label>
+            <input type="text" name="tin_no" value="{{ old('tin_no', $employee->tin_no ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="xxx-xxx-xxx-xxx">
+            @error('tin_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
         </div>
     </div>
 

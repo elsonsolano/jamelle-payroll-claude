@@ -109,6 +109,7 @@
                     <th class="px-5 py-3 font-semibold text-gray-600">SSS No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">PhilHealth No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Pag-IBIG No.</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">TIN No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Status</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
@@ -136,6 +137,7 @@
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->sss_no ?: '—' }}</td>
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->phic_no ?: '—' }}</td>
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->pagibig_no ?: '—' }}</td>
+                        <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->tin_no ?: '—' }}</td>
                         <td class="px-5 py-3">
                             @if($employee->active)
                                 <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
