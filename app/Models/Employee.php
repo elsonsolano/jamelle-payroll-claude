@@ -12,6 +12,7 @@ class Employee extends Model
     protected $fillable = [
         'first_name',
         'last_name',
+        'nickname',
         'email',
         'employee_code',
         'branch_id',
@@ -77,6 +78,11 @@ class Employee extends Model
     public function employeeAllowances(): HasMany
     {
         return $this->hasMany(EmployeeAllowance::class);
+    }
+
+    public function dailySchedules(): HasMany
+    {
+        return $this->hasMany(DailySchedule::class);
     }
 
     public function timemarkLogs(): HasMany

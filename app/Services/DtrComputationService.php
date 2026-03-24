@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Branch;
+use App\Models\DailySchedule;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
 use Carbon\Carbon;
@@ -19,17 +20,27 @@ class DtrComputationService
         $carbon = Carbon::parse($date);
         $dayName = $carbon->format('l'); // e.g., "Monday"
 
-        // Resolve schedule for this date
-        $schedule = $employee->employeeSchedules()
-            ->where('week_start_date', '<=', $date)
-            ->orderByDesc('week_start_date')
+        // Check date-specific DailySchedule first (takes priority over weekly schedule)
+        $dailySchedule = DailySchedule::where('employee_id', $employee->id)
+            ->where('date', $date)
             ->first();
 
-        $restDays = $schedule?->rest_days ?? ['Sunday'];
-        $isRestDay = in_array($dayName, $restDays);
+        if ($dailySchedule) {
+            $isRestDay = $dailySchedule->is_day_off;
+            $workStart = $dailySchedule->work_start_time;
+            $workEnd   = $dailySchedule->work_end_time;
+        } else {
+            // Fall back to weekly EmployeeSchedule
+            $schedule = $employee->employeeSchedules()
+                ->where('week_start_date', '<=', $date)
+                ->orderByDesc('week_start_date')
+                ->first();
 
-        $workStart = $schedule?->work_start_time;
-        $workEnd   = $schedule?->work_end_time;
+            $restDays  = $schedule?->rest_days ?? ['Sunday'];
+            $isRestDay = in_array($dayName, $restDays);
+            $workStart = $schedule?->work_start_time;
+            $workEnd   = $schedule?->work_end_time;
+        }
 
         // Compute total_hours: time_in → time_out minus break (am_out → pm_in)
         $totalHours = 0;

@@ -36,7 +36,7 @@ npm run build
 
 There is a single `users` table with a `role` column (`admin` | `staff`):
 
-- **Admin** — full access to the admin panel (branches, employees, payroll, DTR view, holidays)
+- **Admin** — full access to the admin panel (branches, employees, payroll, DTR view, holidays, schedules)
 - **Staff** — access only to the staff portal (`/staff/*`); linked to an `Employee` record via `users.employee_id`
 
 Key `users` columns beyond the standard Laravel auth fields:
@@ -51,13 +51,18 @@ Staff accounts are created by the admin on the employee show page. Default passw
 ### Key Models & Relationships
 
 - `Branch` → has many `Employee`s, `PayrollCutoff`s; has `work_start_time`/`work_end_time` columns but these are **not used for DTR computation** — only informational
-- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `EmployeeStandingDeduction`, `PayrollEntry`; contact fields: `contact_number`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`; has `birthday` (date, nullable)
+- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `DailySchedule`, `EmployeeStandingDeduction`, `EmployeeAllowance`, `PayrollEntry`; has `nickname` (nullable) — short name used for matching names in schedule uploads (e.g. "Eddie", "AJ"); has `birthday` (date, nullable)
 - `User` → belongs to `Employee` (staff only); admin users have `employee_id = null`
-- `EmployeeSchedule` → weekly schedule per employee with `rest_days` (array) and optional custom work hours; the most recent schedule with `week_start_date <= date` is used for DTR computation
+- `EmployeeSchedule` → weekly repeating schedule per employee with `rest_days` (array) and optional custom work hours; used as fallback when no `DailySchedule` exists for a date
+- `DailySchedule` → date-specific schedule per employee (`date`, `work_start_time`, `work_end_time`, `is_day_off`, `assigned_branch_id`, `notes`); **takes priority over `EmployeeSchedule`** in DTR computation; unique on `(employee_id, date)`; belongs to `ScheduleUpload`
+- `ScheduleUpload` → tracks each schedule image import (branch, uploader, label, `ai_response` JSON, status: `pending`→`review`→`applied`)
 - `EmployeeStandingDeduction` → recurring deductions (SSS, PhilHealth, PagIBIG, loan, cash_advance, uniform, other); `active` flag; `cutoff_period` (`both` | `first` | `second`) controls which semi-monthly cutoff it applies to — determined by `end_date`: day ≤ 15 = `first` (payday 15th), day > 15 = `second` (payday 30th/31st). Cutoff pattern: payday 15th covers ~30th prev month → 13th; payday 30th/31st covers 14th → 29th.
+- `EmployeeAllowance` → per-employee daily allowance (`daily_amount`, `description`, `active`); applied as `daily_amount × working_days` during payroll computation
 - `PayrollCutoff` → belongs to `Branch`; has many `PayrollEntry`; status: `draft` → `processing` → `finalized`
 - `Holiday` → date (unique), name, type (`regular` | `special_non_working` | `special_working`); managed via calendar UI at `/holidays`
-- `PayrollEntry` → has many `PayrollDeduction`; stores computed: basic_pay, overtime_pay, holiday_pay, gross_pay, total_deductions, net_pay; `late_deduction` and `undertime_deduction` columns exist but are always 0 (kept for schema compatibility)
+- `PayrollEntry` → has many `PayrollDeduction`, `PayrollEntryRefund`, `PayrollEntryVariableDeduction`; stores computed: basic_pay, overtime_pay, holiday_pay, allowance_pay, gross_pay, total_deductions, net_pay; `late_deduction` and `undertime_deduction` columns exist but are always 0 (kept for schema compatibility)
+- `PayrollEntryRefund` → manual refunds added per payroll entry (`description`, `amount`); **preserved** when payroll is regenerated
+- `PayrollEntryVariableDeduction` → manual one-off deductions per payroll entry (`description`, `amount`); **wiped** when payroll is regenerated
 - `Dtr` → belongs to `Employee`; key extra columns: `source` (`device`|`manual`), `ot_status` (`none`|`pending`|`approved`|`rejected`), `ot_end_time`, `ot_approved_by` (FK to users), `ot_approved_at`, `ot_rejection_reason`
 - `TimemarkLog` → audit trail of DaysCamera API fetch operations (timemark feature is hidden from the UI but the code remains)
 
@@ -68,11 +73,13 @@ Employees have `salary_type` (daily/monthly), `employee_code` (unique), and `tim
 All manually entered DTRs go through `DtrComputationService::compute(Employee, date, time_in, am_out, pm_in, time_out, ?float $otHours)` which returns:
 - `total_hours` — time_in→time_out minus break (am_out→pm_in)
 - `overtime_hours` — directly from the `$otHours` input (staff enter hours, not end time)
-- `late_mins` — minutes after `work_start_time` from the employee's `EmployeeSchedule`; **0 if no schedule set**
-- `undertime_mins` — minutes before `work_end_time` from the employee's `EmployeeSchedule`; **0 if no schedule set**
-- `is_rest_day` — derived from the employee's schedule `rest_days` array (defaults to `['Sunday']` if no schedule)
+- `late_mins` — minutes after `work_start_time`; **0 if no schedule set**
+- `undertime_mins` — minutes before `work_end_time`; **0 if no schedule set**
+- `is_rest_day` — true if `DailySchedule.is_day_off`, or derived from `EmployeeSchedule.rest_days` (defaults to `['Sunday']`)
 
-**Important:** `Branch.work_start_time` / `Branch.work_end_time` are never used for late/undertime computation. Only an employee's own `EmployeeSchedule` determines their scheduled hours. If no schedule exists, `late_mins` and `undertime_mins` are always 0.
+**Schedule resolution order:** `DailySchedule` for the exact date is checked first; if none exists, falls back to the most recent `EmployeeSchedule` with `week_start_date <= date`.
+
+**Important:** `Branch.work_start_time` / `Branch.work_end_time` are never used for late/undertime computation.
 
 Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **End Break**.
 
@@ -89,7 +96,11 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 - **Daily** employees: `basic_pay = sum(min(dtr.total_hours, 8)) × hourly_rate` where `hourly_rate = daily_rate / 8`. Regular hours are capped at 8 per day — excess hours beyond 8 are only compensated if staff filed OT (via `overtime_hours`). Reduced hours from late arrival or early departure naturally produce lower pay — there are no separate late or undertime deductions.
 - **Monthly** employees: `basic_pay = monthly_rate / 2` (semi-monthly flat); no hour-based deductions.
 - Overtime multipliers: **1.25×** regular days, **1.30×** rest days
-- Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items on each entry.
+- `allowance_pay = sum(active EmployeeAllowance.daily_amount) × working_days`
+- `gross_pay = basic_pay + overtime_pay + holiday_pay + allowance_pay`
+- Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items.
+- `PayrollEntryVariableDeduction` records are wiped on regeneration; `PayrollEntryRefund` records are preserved.
+- `net_pay = gross_pay − total_deductions + total_refunds`
 
 **Philippine Holiday Pay Rules (DOLE)** — applied per `Holiday` records in the cutoff period:
 
@@ -102,6 +113,19 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 For monthly employees the premium is calculated using `monthly_rate / 22` as the daily equivalent.
 
 Payroll uses `dtr.overtime_hours` directly. If a DTR has `ot_status = pending`, overtime IS included in payroll but a flag is visible on the payroll entry — OT is not withheld pending approval.
+
+### Schedule Upload Flow (`app/Services/ScheduleParserService.php`)
+
+Admin imports a date-specific schedule via `/schedule-uploads`:
+1. Admin uploads schedule image to **claude.ai** (free) using the prompt shown on the import page
+2. Pastes the resulting JSON into the import form along with the selected branch
+3. `ScheduleParserService::matchEmployees()` matches names in the JSON against `Employee.nickname` (first) then `Employee.first_name` (fallback) for the selected branch
+4. Review screen shows all parsed rows; unmatched names (red) can be manually assigned via dropdown
+5. On apply, `DailySchedule` records are upserted (unique on `employee_id + date`)
+
+`DailySchedule.assigned_branch_id` — if a name has `branch_override` (e.g. `"ABR"`), `resolveBranch()` does a case-insensitive `LIKE` match against branch names to resolve the ID. This means the employee is working at another branch that day but their DTR is still filed under their home branch.
+
+`DailySchedule.notes` stores annotations like `"OT1HR"` — informational only, no auto-DTR creation.
 
 ### OT Approval Hierarchy
 
@@ -152,6 +176,8 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
 - `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
 - `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
+- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`)
+- Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
 
 Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
 
@@ -161,7 +187,7 @@ Two layouts:
 - `x-app-layout` (`AppLayout.php` → `layouts/app.blade.php`) — desktop sidebar layout for admin
 - `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav
 
-Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`. Excel import via `phpoffice/phpspreadsheet`.
+Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf` (uses DejaVu Sans; peso sign rendered as `PHP` prefix since DejaVu Sans UFM lacks the ₱ glyph). Excel import via `phpoffice/phpspreadsheet`.
 
 The timemark fetch button is hidden from the admin sidebar (commented out in `layouts/app.blade.php`) but the underlying code (`FetchAttendanceJob`, `TimemarkController`, `timemark.*` routes) is intact.
 
@@ -185,7 +211,7 @@ Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (
 - `AdminUserSeeder` runs on every deploy (inside `start.sh`); idempotent via `firstOrCreate`
 - `bootstrap/app.php` sets `trustProxies(at: '*')` for Railway's HTTPS load balancer
 - `public/hot` is gitignored — never commit it
-- Required env vars: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*` (use public proxy host/port, not `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`
+- Required env vars: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*` (use public proxy host/port, not `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`, `ANTHROPIC_API_KEY` (not currently used in production — schedule import uses manual JSON paste), `ANTHROPIC_VERIFY_SSL=true`
 
 ### Database & Seeding
 

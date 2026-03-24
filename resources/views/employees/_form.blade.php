@@ -18,6 +18,18 @@
         </div>
     </div>
 
+    {{-- Nickname --}}
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+            Schedule Nickname
+            <span class="text-xs font-normal text-gray-400 ml-1">— short name used in schedule uploads (e.g. "Eddie", "AJ")</span>
+        </label>
+        <input type="text" name="nickname" value="{{ old('nickname', $employee->nickname ?? '') }}"
+               class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+               placeholder="e.g. Eddie">
+        @error('nickname')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+    </div>
+
     {{-- Employee Code & Position --}}
     <div class="grid grid-cols-2 gap-4">
         <div>
