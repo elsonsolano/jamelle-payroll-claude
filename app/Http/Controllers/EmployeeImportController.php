@@ -111,6 +111,7 @@ class EmployeeImportController extends Controller
             $hiredDate = $this->parseDate($row[5] ?? '');
             $position  = trim((string) ($row[6] ?? '')) ?: null;
             $email     = trim((string) ($row[8] ?? '')) ?: null;
+            $tinNo     = trim((string) ($row[10] ?? '')) ?: null;
             $sssNo     = trim((string) ($row[11] ?? '')) ?: null;
             $phicNo    = trim((string) ($row[12] ?? '')) ?: null;
             $pagibigNo = trim((string) ($row[13] ?? '')) ?: null;
@@ -127,6 +128,7 @@ class EmployeeImportController extends Controller
             if ($position)  $data['position']   = $position;
             if ($hiredDate) $data['hired_date']  = $hiredDate;
             if ($email)     $data['email']       = $email;
+            if ($tinNo)     $data['tin_no']      = $tinNo;
             if ($sssNo)     $data['sss_no']      = $sssNo;
             if ($phicNo)    $data['phic_no']     = $phicNo;
             if ($pagibigNo) $data['pagibig_no']  = $pagibigNo;
