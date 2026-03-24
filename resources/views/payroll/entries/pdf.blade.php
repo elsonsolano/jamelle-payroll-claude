@@ -5,23 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payslip — {{ $entry->employee->full_name }}</title>
     <style>
-        @font-face {
-            font-family: 'NotoSans';
-            font-style: normal;
-            font-weight: normal;
-            src: url('{{ storage_path('fonts/NotoSans-Regular.ttf') }}') format('truetype');
-        }
-        @font-face {
-            font-family: 'NotoSans';
-            font-style: normal;
-            font-weight: bold;
-            src: url('{{ storage_path('fonts/NotoSans-Bold.ttf') }}') format('truetype');
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'NotoSans', DejaVu Sans, sans-serif;
+            font-family: DejaVu Sans, sans-serif;
             font-size: 11px;
             color: #1a1a1a;
             padding: 32px;
@@ -208,7 +195,7 @@
         </tr>
         <tr>
             <td class="summary-label">Rate</td>
-            <td class="summary-value">₱{{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
+            <td class="summary-value">PHP {{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
             <td class="summary-label">Total Hours</td>
             <td class="summary-value">{{ number_format($entry->total_hours_worked, 2) }}h</td>
         </tr>
@@ -219,27 +206,27 @@
     <table>
         <tr>
             <td class="label">Basic Pay</td>
-            <td class="amount">₱{{ number_format($entry->basic_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->basic_pay, 2) }}</td>
         </tr>
         <tr>
             <td class="label">Overtime Pay</td>
-            <td class="amount">₱{{ number_format($entry->overtime_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->overtime_pay, 2) }}</td>
         </tr>
         @if($entry->holiday_pay > 0)
         <tr>
             <td class="label">Holiday Pay</td>
-            <td class="amount">₱{{ number_format($entry->holiday_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->holiday_pay, 2) }}</td>
         </tr>
         @endif
         @if($entry->allowance_pay > 0)
         <tr>
             <td class="label">Allowance ({{ $entry->working_days }} day(s) worked)</td>
-            <td class="amount">₱{{ number_format($entry->allowance_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->allowance_pay, 2) }}</td>
         </tr>
         @endif
         <tr class="subtotal">
             <td class="label">Gross Pay</td>
-            <td class="amount">₱{{ number_format($entry->gross_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->gross_pay, 2) }}</td>
         </tr>
     </table>
 
@@ -249,13 +236,13 @@
         @if($entry->late_deduction > 0)
         <tr>
             <td class="label">Late Deduction</td>
-            <td class="amount-red">- ₱{{ number_format($entry->late_deduction, 2) }}</td>
+            <td class="amount-red">- PHP {{ number_format($entry->late_deduction, 2) }}</td>
         </tr>
         @endif
         @if($entry->undertime_deduction > 0)
         <tr>
             <td class="label">Undertime Deduction</td>
-            <td class="amount-red">- ₱{{ number_format($entry->undertime_deduction, 2) }}</td>
+            <td class="amount-red">- PHP {{ number_format($entry->undertime_deduction, 2) }}</td>
         </tr>
         @endif
         @foreach($entry->payrollDeductions as $deduction)
@@ -264,13 +251,13 @@
                 {{ $deduction->type }}
                 @if($deduction->description) ({{ $deduction->description }}) @endif
             </td>
-            <td class="amount-red">- ₱{{ number_format($deduction->amount, 2) }}</td>
+            <td class="amount-red">- PHP {{ number_format($deduction->amount, 2) }}</td>
         </tr>
         @endforeach
         @foreach($entry->payrollVariableDeductions as $varDeduction)
         <tr>
             <td class="label">{{ $varDeduction->description }}</td>
-            <td class="amount-red">- ₱{{ number_format($varDeduction->amount, 2) }}</td>
+            <td class="amount-red">- PHP {{ number_format($varDeduction->amount, 2) }}</td>
         </tr>
         @endforeach
         @if($entry->total_deductions == 0)
@@ -280,7 +267,7 @@
         @endif
         <tr class="subtotal">
             <td class="label">Total Deductions</td>
-            <td class="amount-red">- ₱{{ number_format($entry->total_deductions, 2) }}</td>
+            <td class="amount-red">- PHP {{ number_format($entry->total_deductions, 2) }}</td>
         </tr>
     </table>
 
@@ -291,12 +278,12 @@
         @foreach($entry->payrollRefunds as $refund)
         <tr>
             <td class="label">{{ $refund->description }}</td>
-            <td class="amount" style="color:#059669;">+ ₱{{ number_format($refund->amount, 2) }}</td>
+            <td class="amount" style="color:#059669;">+ PHP {{ number_format($refund->amount, 2) }}</td>
         </tr>
         @endforeach
         <tr class="subtotal">
             <td class="label">Total Refunds</td>
-            <td class="amount" style="color:#059669;">+ ₱{{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</td>
+            <td class="amount" style="color:#059669;">+ PHP {{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</td>
         </tr>
     </table>
     @endif
@@ -305,7 +292,7 @@
     <table>
         <tr style="background:#4f46e5;">
             <td style="padding:10px; font-weight:bold; font-size:13px; color:white;">NET PAY</td>
-            <td style="padding:10px; text-align:right; font-weight:bold; font-size:18px; color:white;">₱{{ number_format($entry->net_pay, 2) }}</td>
+            <td style="padding:10px; text-align:right; font-weight:bold; font-size:18px; color:white;">PHP {{ number_format($entry->net_pay, 2) }}</td>
         </tr>
     </table>
 
