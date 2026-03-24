@@ -19,9 +19,10 @@
                            &nbsp; Break: {{ $dtr->am_out ? substr($dtr->am_out, 0, 5) : '—' }}</p>
                         <p>End Break: {{ $dtr->pm_in ? substr($dtr->pm_in, 0, 5) : '—' }}
                            &nbsp; Out: {{ $dtr->time_out ? substr($dtr->time_out, 0, 5) : '—' }}</p>
+                        @php $utMins = $dtr->total_hours > 0 ? max(0, (int)round((8 - $dtr->total_hours) * 60)) : 0; @endphp
                         <p>Total: {{ $dtr->total_hours }}h
                            &nbsp;·&nbsp; Late: {{ $dtr->late_mins }}m
-                           &nbsp;·&nbsp; UT: {{ $dtr->undertime_mins }}m</p>
+                           &nbsp;·&nbsp; <span class="{{ $utMins > 0 ? 'text-red-500 font-semibold' : '' }}">UT: {{ $utMins }}m</span></p>
                         @if($dtr->ot_status !== 'none')
                         <p>OT: {{ $dtr->overtime_hours }}h</p>
                         @endif

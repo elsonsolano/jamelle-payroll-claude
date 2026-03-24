@@ -68,19 +68,22 @@ class PayrollComputationService
                 $hours    = (float) $dtr->total_hours;
                 $totalHoursWorked += $hours;
 
+                // Cap billable regular hours at 8; excess hours only count if staff filed OT
+                $billableHours = min($hours, 8.0);
+
                 $holiday = $holidays->get($dtr->date->toDateString());
 
-                // Basic pay based on actual hours worked — reduced hours naturally mean less pay
-                $basicPay += $hours * $hourlyRate;
+                // Basic pay based on billable hours (max 8) — reduced hours naturally mean less pay
+                $basicPay += $billableHours * $hourlyRate;
 
                 if ($holiday?->type === 'regular') {
-                    // Worked on a Regular Holiday: additional 100% premium on hours worked
-                    $holidayPay  += $hours * $hourlyRate;
+                    // Worked on a Regular Holiday: additional 100% premium on billable hours
+                    $holidayPay  += $billableHours * $hourlyRate;
                     $overtimePay += (float) $dtr->overtime_hours * ($hourlyRate * 2.6);
 
                 } elseif ($holiday?->type === 'special_non_working') {
-                    // Worked on a Special Non-Working Day: additional 30% premium on hours worked
-                    $holidayPay  += $hours * $hourlyRate * 0.30;
+                    // Worked on a Special Non-Working Day: additional 30% premium on billable hours
+                    $holidayPay  += $billableHours * $hourlyRate * 0.30;
                     $overtimePay += (float) $dtr->overtime_hours * ($hourlyRate * 1.69);
 
                 } else {
@@ -139,7 +142,14 @@ class PayrollComputationService
             }
         }
 
-        $grossPay = $basicPay + $holidayPay + $overtimePay;
+        // Allowance: daily_amount × working_days for active allowances
+        $allowancePay = 0;
+        $activeAllowances = $employee->employeeAllowances()->where('active', true)->get();
+        foreach ($activeAllowances as $allowance) {
+            $allowancePay += (float) $allowance->daily_amount * $workingDays;
+        }
+
+        $grossPay = $basicPay + $holidayPay + $overtimePay + $allowancePay;
 
         // Get or create payroll entry
         $entry = PayrollEntry::firstOrNew([
@@ -151,6 +161,7 @@ class PayrollComputationService
             'basic_pay'           => round($basicPay, 2),
             'overtime_pay'        => round($overtimePay, 2),
             'holiday_pay'         => round($holidayPay, 2),
+            'allowance_pay'       => round($allowancePay, 2),
             'late_deduction'      => 0,
             'undertime_deduction' => 0,
             'gross_pay'           => round($grossPay, 2),
@@ -187,7 +198,11 @@ class PayrollComputationService
         }
 
         $totalDeductions = round($totalDeductionAmount, 2);
-        $netPay          = round($grossPay - $totalDeductions, 2);
+
+        // Preserve manually added refunds — do not delete them on regeneration
+        $totalRefunds = round((float) $entry->payrollRefunds()->sum('amount'), 2);
+
+        $netPay = round($grossPay - $totalDeductions + $totalRefunds, 2);
 
         $entry->update([
             'total_deductions' => $totalDeductions,

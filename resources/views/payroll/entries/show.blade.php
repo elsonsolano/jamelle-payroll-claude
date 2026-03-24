@@ -77,6 +77,16 @@
                         ₱{{ number_format($entry->holiday_pay, 2) }}
                     </span>
                 </div>
+                <div class="px-5 py-3 flex justify-between text-sm">
+                    <span class="text-gray-600">Allowance
+                        @if($entry->allowance_pay > 0)
+                            <span class="text-xs text-gray-400">({{ $entry->working_days }} day(s) worked)</span>
+                        @endif
+                    </span>
+                    <span class="font-medium {{ $entry->allowance_pay > 0 ? 'text-emerald-600' : 'text-gray-300' }}">
+                        ₱{{ number_format($entry->allowance_pay, 2) }}
+                    </span>
+                </div>
                 <div class="px-5 py-3 flex justify-between text-sm bg-gray-50">
                     <span class="font-semibold text-gray-700">Gross Pay</span>
                     <span class="font-bold text-gray-900">₱{{ number_format($entry->gross_pay, 2) }}</span>
@@ -120,6 +130,64 @@
                     <span class="font-semibold text-gray-700">Total Deductions</span>
                     <span class="font-bold text-red-500">- ₱{{ number_format($entry->total_deductions, 2) }}</span>
                 </div>
+            </div>
+        </div>
+
+        {{-- Refunds --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ showAddRefund: false }">
+            <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-700 text-sm uppercase tracking-wider">Refunds</h3>
+                <button @click="showAddRefund = !showAddRefund"
+                        class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">+ Add Refund</button>
+            </div>
+
+            {{-- Add Refund Form --}}
+            <div x-show="showAddRefund" x-cloak class="px-5 py-4 border-b border-gray-100 bg-indigo-50/40">
+                <form method="POST" action="{{ route('payroll.cutoffs.entries.refunds.store', [$cutoff, $entry]) }}"
+                      class="flex items-end gap-3">
+                    @csrf
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                        <input type="text" name="description" placeholder="e.g. SSS Over-deduction"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="w-36">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amount (₱)</label>
+                        <input type="number" name="amount" min="0.01" step="0.01" placeholder="0.00"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                        Add
+                    </button>
+                    <button type="button" @click="showAddRefund = false"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+                </form>
+            </div>
+
+            <div class="divide-y divide-gray-100">
+                @forelse($entry->payrollRefunds as $refund)
+                    <div class="px-5 py-3 flex justify-between items-center text-sm">
+                        <span class="text-gray-600">{{ $refund->description }}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="font-medium text-emerald-600">+ ₱{{ number_format($refund->amount, 2) }}</span>
+                            <form method="POST" action="{{ route('payroll.cutoffs.entries.refunds.destroy', [$cutoff, $entry, $refund]) }}"
+                                  onsubmit="return confirm('Remove this refund?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-xs text-red-500 hover:text-red-700">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-5 py-4 text-center text-sm text-gray-400">No refunds.</div>
+                @endforelse
+
+                @if($entry->payrollRefunds->isNotEmpty())
+                    <div class="px-5 py-3 flex justify-between text-sm bg-gray-50">
+                        <span class="font-semibold text-gray-700">Total Refunds</span>
+                        <span class="font-bold text-emerald-600">+ ₱{{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</span>
+                    </div>
+                @endif
             </div>
         </div>
 

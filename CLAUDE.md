@@ -51,7 +51,7 @@ Staff accounts are created by the admin on the employee show page. Default passw
 ### Key Models & Relationships
 
 - `Branch` → has many `Employee`s, `PayrollCutoff`s; has `work_start_time`/`work_end_time` columns but these are **not used for DTR computation** — only informational
-- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `EmployeeStandingDeduction`, `PayrollEntry`; contact fields: `contact_number`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`
+- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `EmployeeStandingDeduction`, `PayrollEntry`; contact fields: `contact_number`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`; has `birthday` (date, nullable)
 - `User` → belongs to `Employee` (staff only); admin users have `employee_id = null`
 - `EmployeeSchedule` → weekly schedule per employee with `rest_days` (array) and optional custom work hours; the most recent schedule with `week_start_date <= date` is used for DTR computation
 - `EmployeeStandingDeduction` → recurring deductions (SSS, PhilHealth, PagIBIG, loan, cash_advance, uniform, other); `active` flag; `cutoff_period` (`both` | `first` | `second`) controls which semi-monthly cutoff it applies to — determined by `end_date`: day ≤ 15 = `first` (payday 15th), day > 15 = `second` (payday 30th/31st). Cutoff pattern: payday 15th covers ~30th prev month → 13th; payday 30th/31st covers 14th → 29th.
@@ -76,7 +76,7 @@ All manually entered DTRs go through `DtrComputationService::compute(Employee, d
 
 Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **End Break**.
 
-`ot_end_time` is computed and stored (`time_out + ot_hours`) for display in the approval page, but staff input OT as a number of hours.
+`ot_end_time` is computed and stored (`time_out + ot_hours`) for display in the approval page, but staff input OT as a number of hours in **0.25 increments** (minimum 0.25 = 15 minutes).
 
 `DtrComputationService::getOtApprovers(Employee, User $submitter)` returns the collection of users who should be notified/can approve a given OT submission (see OT Approval Hierarchy below).
 
@@ -86,7 +86,7 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 
 **Before computing payroll, `computeEntry` re-runs `DtrComputationService` on every DTR in the period and saves the updated values.** This means regenerating payroll always picks up schedule changes automatically.
 
-- **Daily** employees: `basic_pay = sum(dtr.total_hours) × hourly_rate` where `hourly_rate = daily_rate / 8`. Reduced hours from late arrival or early departure naturally produce lower pay — there are no separate late or undertime deductions.
+- **Daily** employees: `basic_pay = sum(min(dtr.total_hours, 8)) × hourly_rate` where `hourly_rate = daily_rate / 8`. Regular hours are capped at 8 per day — excess hours beyond 8 are only compensated if staff filed OT (via `overtime_hours`). Reduced hours from late arrival or early departure naturally produce lower pay — there are no separate late or undertime deductions.
 - **Monthly** employees: `basic_pay = monthly_rate / 2` (semi-monthly flat); no hour-based deductions.
 - Overtime multipliers: **1.25×** regular days, **1.30×** rest days
 - Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items on each entry.
@@ -151,7 +151,9 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - All existing admin routes: branches, employees, payroll cutoffs/entries, DTR (read-only view), holidays
 - `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
 - `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
-- `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`)
+- `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
+
+Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
 
 ### Frontend
 

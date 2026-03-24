@@ -74,6 +74,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeStandingDeduction::class);
     }
 
+    public function employeeAllowances(): HasMany
+    {
+        return $this->hasMany(EmployeeAllowance::class);
+    }
+
     public function timemarkLogs(): HasMany
     {
         return $this->hasMany(TimemarkLog::class);

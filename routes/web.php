@@ -4,11 +4,13 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\DtrController;
+use App\Http\Controllers\EmployeeAllowanceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollCutoffController;
 use App\Http\Controllers\PayrollEntryController;
+use App\Http\Controllers\PayrollEntryRefundController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupSignatureController;
 use App\Http\Controllers\TimemarkController;
@@ -61,6 +63,11 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::put("deductions/{deduction}", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "update"])->name("deductions.update");
         Route::patch("deductions/{deduction}/toggle", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "toggle"])->name("deductions.toggle");
         Route::delete("deductions/{deduction}", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "destroy"])->name("deductions.destroy");
+        Route::get("allowances", [EmployeeAllowanceController::class, "index"])->name("allowances.index");
+        Route::post("allowances", [EmployeeAllowanceController::class, "store"])->name("allowances.store");
+        Route::put("allowances/{allowance}", [EmployeeAllowanceController::class, "update"])->name("allowances.update");
+        Route::patch("allowances/{allowance}/toggle", [EmployeeAllowanceController::class, "toggle"])->name("allowances.toggle");
+        Route::delete("allowances/{allowance}", [EmployeeAllowanceController::class, "destroy"])->name("allowances.destroy");
     });
     Route::resource("payroll/cutoffs", PayrollCutoffController::class)->names([
         "index" => "payroll.cutoffs.index", "create" => "payroll.cutoffs.create",
@@ -72,6 +79,8 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::get("entries", [PayrollEntryController::class, "index"])->name("entries.index");
         Route::get("entries/{entry}", [PayrollEntryController::class, "show"])->name("entries.show");
         Route::get("entries/{entry}/pdf", [PayrollEntryController::class, "pdf"])->name("entries.pdf");
+        Route::post("entries/{entry}/refunds", [PayrollEntryRefundController::class, "store"])->name("entries.refunds.store");
+        Route::delete("entries/{entry}/refunds/{refund}", [PayrollEntryRefundController::class, "destroy"])->name("entries.refunds.destroy");
         Route::post("generate", [PayrollEntryController::class, "generate"])->name("generate");
     });
     Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");

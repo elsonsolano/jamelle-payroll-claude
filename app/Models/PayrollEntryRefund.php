@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PayrollEntryRefund extends Model
+{
+    protected $fillable = [
+        'payroll_entry_id',
+        'description',
+        'amount',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
+    public function payrollEntry(): BelongsTo
+    {
+        return $this->belongsTo(PayrollEntry::class);
+    }
+}

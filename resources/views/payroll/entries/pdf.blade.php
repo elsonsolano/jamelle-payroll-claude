@@ -218,6 +218,12 @@
             <td class="amount">₱{{ number_format($entry->holiday_pay, 2) }}</td>
         </tr>
         @endif
+        @if($entry->allowance_pay > 0)
+        <tr>
+            <td class="label">Allowance ({{ $entry->working_days }} day(s) worked)</td>
+            <td class="amount">₱{{ number_format($entry->allowance_pay, 2) }}</td>
+        </tr>
+        @endif
         <tr class="subtotal">
             <td class="label">Gross Pay</td>
             <td class="amount">₱{{ number_format($entry->gross_pay, 2) }}</td>
@@ -258,6 +264,23 @@
             <td class="amount-red">- ₱{{ number_format($entry->total_deductions, 2) }}</td>
         </tr>
     </table>
+
+    {{-- Refunds --}}
+    @if($entry->payrollRefunds->isNotEmpty())
+    <div class="section-title">Refunds</div>
+    <table>
+        @foreach($entry->payrollRefunds as $refund)
+        <tr>
+            <td class="label">{{ $refund->description }}</td>
+            <td class="amount" style="color:#059669;">+ ₱{{ number_format($refund->amount, 2) }}</td>
+        </tr>
+        @endforeach
+        <tr class="subtotal">
+            <td class="label">Total Refunds</td>
+            <td class="amount" style="color:#059669;">+ ₱{{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</td>
+        </tr>
+    </table>
+    @endif
 
     {{-- Net Pay --}}
     <table>

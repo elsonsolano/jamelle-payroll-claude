@@ -38,7 +38,7 @@ class DtrController extends Controller
             'pm_in'    => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
-            'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
+            'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
         ]);
 
         $employee = Auth::user()->employee;
@@ -118,7 +118,7 @@ class DtrController extends Controller
             'pm_in'    => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
-            'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
+            'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
         ]);
 
         $employee = Auth::user()->employee;
@@ -145,6 +145,7 @@ class DtrController extends Controller
         }
 
         $dtr->update([
+            'date'                => $validated['date'],
             'time_in'             => $validated['time_in'] ?? null,
             'am_out'              => $validated['am_out'] ?? null,
             'pm_in'               => $validated['pm_in'] ?? null,

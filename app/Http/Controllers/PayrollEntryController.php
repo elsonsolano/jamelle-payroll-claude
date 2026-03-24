@@ -25,13 +25,13 @@ class PayrollEntryController extends Controller
 
     public function show(PayrollCutoff $cutoff, PayrollEntry $entry): View
     {
-        $entry->load('employee.branch', 'payrollDeductions');
+        $entry->load('employee.branch', 'payrollDeductions', 'payrollRefunds');
         return view('payroll.entries.show', compact('cutoff', 'entry'));
     }
 
     public function pdf(PayrollCutoff $cutoff, PayrollEntry $entry): \Illuminate\Http\Response
     {
-        $entry->load('employee.branch', 'payrollDeductions');
+        $entry->load('employee.branch', 'payrollDeductions', 'payrollRefunds');
 
         $pdf = Pdf::loadView('payroll.entries.pdf', compact('cutoff', 'entry'))
             ->setPaper('a4', 'portrait');

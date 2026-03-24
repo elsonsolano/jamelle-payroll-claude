@@ -21,10 +21,13 @@
                     <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending</span>
                 </div>
 
-                <div class="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
+                <div class="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 grid grid-cols-2 gap-x-3 gap-y-1">
                     <p><span class="font-medium">Date:</span> {{ $dtr->date->format('D, M d Y') }}</p>
-                    <p><span class="font-medium">Time Out:</span> {{ substr($dtr->time_out ?? '—', 0, 5) }}</p>
                     <p><span class="font-medium">OT Hours:</span> {{ $dtr->overtime_hours }}h</p>
+                    <p><span class="font-medium">Time In:</span> {{ substr($dtr->time_in ?? '—', 0, 5) }}</p>
+                    <p><span class="font-medium">Time Out:</span> {{ substr($dtr->time_out ?? '—', 0, 5) }}</p>
+                    <p><span class="font-medium">Start Break:</span> {{ substr($dtr->am_out ?? '—', 0, 5) }}</p>
+                    <p><span class="font-medium">End Break:</span> {{ substr($dtr->pm_in ?? '—', 0, 5) }}</p>
                 </div>
 
                 <div class="flex gap-2">
