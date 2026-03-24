@@ -5,10 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payslip — {{ $entry->employee->full_name }}</title>
     <style>
+        @font-face {
+            font-family: 'NotoSans';
+            font-style: normal;
+            font-weight: normal;
+            src: url('{{ storage_path('fonts/NotoSans-Regular.ttf') }}') format('truetype');
+        }
+        @font-face {
+            font-family: 'NotoSans';
+            font-style: normal;
+            font-weight: bold;
+            src: url('{{ storage_path('fonts/NotoSans-Bold.ttf') }}') format('truetype');
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: DejaVu Sans, sans-serif;
+            font-family: 'NotoSans', DejaVu Sans, sans-serif;
             font-size: 11px;
             color: #1a1a1a;
             padding: 32px;
