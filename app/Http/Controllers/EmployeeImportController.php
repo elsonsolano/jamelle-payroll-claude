@@ -110,6 +110,7 @@ class EmployeeImportController extends Controller
             // Date fields
             $hiredDate = $this->parseDate($row[5] ?? '');
             $position  = trim((string) ($row[6] ?? '')) ?: null;
+            $birthday  = $this->parseDate($row[7] ?? '');
             $email     = trim((string) ($row[8] ?? '')) ?: null;
             $tinNo     = trim((string) ($row[10] ?? '')) ?: null;
             $sssNo     = trim((string) ($row[11] ?? '')) ?: null;
@@ -126,6 +127,7 @@ class EmployeeImportController extends Controller
             ];
 
             if ($position)  $data['position']   = $position;
+            if ($birthday)  $data['birthday']   = $birthday;
             if ($hiredDate) $data['hired_date']  = $hiredDate;
             if ($email)     $data['email']       = $email;
             if ($tinNo)     $data['tin_no']      = $tinNo;
