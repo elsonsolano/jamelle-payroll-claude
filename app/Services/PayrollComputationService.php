@@ -182,8 +182,10 @@ class PayrollComputationService
             })
             ->get();
 
-        // Remove existing payroll deductions to avoid duplicates
+        // Remove existing payroll deductions and variable deductions (variable deductions
+        // are manually entered each run — wiped on regeneration per business rules)
         $entry->payrollDeductions()->delete();
+        $entry->payrollVariableDeductions()->delete();
 
         $totalDeductionAmount = 0;
 

@@ -254,6 +254,12 @@
             <td class="amount-red">- ₱{{ number_format($deduction->amount, 2) }}</td>
         </tr>
         @endforeach
+        @foreach($entry->payrollVariableDeductions as $varDeduction)
+        <tr>
+            <td class="label">{{ $varDeduction->description }}</td>
+            <td class="amount-red">- ₱{{ number_format($varDeduction->amount, 2) }}</td>
+        </tr>
+        @endforeach
         @if($entry->total_deductions == 0)
         <tr>
             <td colspan="2" style="text-align:center; color:#9ca3af;">No deductions.</td>

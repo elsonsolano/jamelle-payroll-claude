@@ -95,10 +95,38 @@
         </div>
 
         {{-- Deductions --}}
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ showAddVarDeduction: false }">
+            <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <h3 class="font-semibold text-gray-700 text-sm uppercase tracking-wider">Deductions</h3>
+                <button @click="showAddVarDeduction = !showAddVarDeduction"
+                        class="text-xs text-red-600 hover:text-red-800 font-medium">+ Add Deduction</button>
             </div>
+
+            {{-- Add Variable Deduction Form --}}
+            <div x-show="showAddVarDeduction" x-cloak class="px-5 py-4 border-b border-gray-100 bg-red-50/40">
+                <form method="POST" action="{{ route('payroll.cutoffs.entries.variable-deductions.store', [$cutoff, $entry]) }}"
+                      class="flex items-end gap-3">
+                    @csrf
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                        <input type="text" name="description" placeholder="e.g. SSS Adjustment, Uniform"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-400">
+                    </div>
+                    <div class="w-36">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amount (₱)</label>
+                        <input type="number" name="amount" min="0.01" step="0.01" placeholder="0.00"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-400">
+                    </div>
+                    <button type="submit"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition">
+                        Add
+                    </button>
+                    <button type="button" @click="showAddVarDeduction = false"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+                </form>
+                <p class="text-xs text-amber-600 mt-2">⚠ Variable deductions are wiped when payroll is regenerated.</p>
+            </div>
+
             <div class="divide-y divide-gray-100">
                 @if($entry->late_deduction > 0)
                     <div class="px-5 py-3 flex justify-between text-sm">
@@ -121,6 +149,22 @@
                             @endif
                         </span>
                         <span class="text-red-500">- ₱{{ number_format($deduction->amount, 2) }}</span>
+                    </div>
+                @endforeach
+                @foreach($entry->payrollVariableDeductions as $varDeduction)
+                    <div class="px-5 py-3 flex justify-between items-center text-sm">
+                        <span class="text-gray-600">
+                            {{ $varDeduction->description }}
+                            <span class="text-xs text-amber-600 ml-1">(variable)</span>
+                        </span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-red-500">- ₱{{ number_format($varDeduction->amount, 2) }}</span>
+                            <form method="POST" action="{{ route('payroll.cutoffs.entries.variable-deductions.destroy', [$cutoff, $entry, $varDeduction]) }}"
+                                  onsubmit="return confirm('Remove this deduction?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-xs text-red-400 hover:text-red-600">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
                 @if($entry->total_deductions == 0)

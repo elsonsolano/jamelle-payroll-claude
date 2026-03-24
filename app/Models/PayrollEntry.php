@@ -56,4 +56,9 @@ class PayrollEntry extends Model
     {
         return $this->hasMany(PayrollEntryRefund::class);
     }
+
+    public function payrollVariableDeductions(): HasMany
+    {
+        return $this->hasMany(PayrollEntryVariableDeduction::class);
+    }
 }

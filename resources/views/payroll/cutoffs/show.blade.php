@@ -12,7 +12,7 @@
 
             @if(in_array($cutoff->status, ['draft', 'finalized']))
                 <form method="POST" action="{{ route('payroll.cutoffs.generate', $cutoff) }}"
-                      onsubmit="return confirm('{{ $cutoff->status === 'finalized' ? 'This will regenerate payroll and overwrite existing entries. Continue?' : 'Generate payroll for all active employees in this branch?' }}')">
+                      onsubmit="return confirm('{{ $cutoff->status === 'finalized' ? 'This will regenerate payroll and overwrite existing entries. Any variable deductions added manually will be deleted and must be re-entered. Continue?' : 'Generate payroll for all active employees in this branch?' }}')">
                     @csrf
                     <button type="submit"
                             class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">

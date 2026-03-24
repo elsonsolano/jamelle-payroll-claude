@@ -11,6 +11,7 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollCutoffController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PayrollEntryRefundController;
+use App\Http\Controllers\PayrollEntryVariableDeductionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupSignatureController;
 use App\Http\Controllers\TimemarkController;
@@ -81,6 +82,8 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::get("entries/{entry}/pdf", [PayrollEntryController::class, "pdf"])->name("entries.pdf");
         Route::post("entries/{entry}/refunds", [PayrollEntryRefundController::class, "store"])->name("entries.refunds.store");
         Route::delete("entries/{entry}/refunds/{refund}", [PayrollEntryRefundController::class, "destroy"])->name("entries.refunds.destroy");
+        Route::post("entries/{entry}/variable-deductions", [PayrollEntryVariableDeductionController::class, "store"])->name("entries.variable-deductions.store");
+        Route::delete("entries/{entry}/variable-deductions/{variableDeduction}", [PayrollEntryVariableDeductionController::class, "destroy"])->name("entries.variable-deductions.destroy");
         Route::post("generate", [PayrollEntryController::class, "generate"])->name("generate");
     });
     Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");
