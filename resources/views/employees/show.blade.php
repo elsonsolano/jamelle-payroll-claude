@@ -46,6 +46,10 @@
                     <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->employee_code }}</dd>
                 </div>
                 <div>
+                    <dt class="text-gray-500">Schedule Nickname</dt>
+                    <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->nickname ?: '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-gray-500">Timemark ID</dt>
                     <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->timemark_id }}</dd>
                 </div>

@@ -133,10 +133,9 @@
         </div>
 
         {{-- Apply Form --}}
-        <form method="POST" action="{{ route('schedule-uploads.apply', $schedule) }}"
-              @submit.prevent="submitForm">
+        <form method="POST" action="{{ route('schedule-uploads.apply', $schedule) }}">
             @csrf
-            <input type="hidden" name="assignments" x-model="assignmentsJson">
+            <input type="hidden" name="assignments" :value="JSON.stringify(assignments)">
 
             <div class="flex items-center gap-4">
                 <button type="submit"
@@ -155,15 +154,9 @@
     function scheduleReview() {
         return {
             assignments: [],
-            assignmentsJson: '',
 
             init(data) {
                 this.assignments = data;
-            },
-
-            submitForm() {
-                this.assignmentsJson = JSON.stringify(this.assignments);
-                this.$nextTick(() => this.$el.querySelector('form').submit());
             },
         };
     }

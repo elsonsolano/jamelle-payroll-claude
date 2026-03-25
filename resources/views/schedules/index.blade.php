@@ -8,7 +8,7 @@
         </a>
     </x-slot>
 
-    <div class="max-w-3xl space-y-6" x-data="{ showAddForm: {{ $errors->any() ? 'true' : 'false' }}, editId: null }">
+    <div class="max-w-3xl space-y-6">
 
         {{-- Employee Card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
@@ -28,32 +28,182 @@
             </div>
         </div>
 
-        {{-- Add Schedule --}}
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <button @click="showAddForm = !showAddForm"
+
+        {{-- Add Daily Schedule --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ open: {{ $errors->hasAny(['date','work_start_time','work_end_time','assigned_branch_id']) ? 'true' : 'false' }}, isDayOff: false }">
+            <button @click="open = !open"
                     class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition">
-                <span class="font-semibold text-gray-800">Add Week Schedule</span>
-                <svg :class="showAddForm ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="font-semibold text-gray-800">Add Daily Schedule</span>
+                <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
 
-            <div x-show="showAddForm" x-cloak class="border-t border-gray-100 p-5">
-                <form method="POST" action="{{ route('employees.schedules.store', $employee) }}">
+            <div x-show="open" x-cloak class="border-t border-gray-100 p-5">
+                <form method="POST" action="{{ route('employees.daily-schedules.store', $employee) }}">
                     @csrf
-                    @include('schedules._form', ['schedule' => null])
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                            <input type="date" name="date" value="{{ old('date') }}"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 @error('date') border-red-300 @enderror" required>
+                            @error('date') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Branch Override</label>
+                            <select name="assigned_branch_id"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <option value="">— none (home branch) —</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" @selected(old('assigned_branch_id') == $branch->id)>
+                                        {{ $branch->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" name="is_day_off" value="1" x-model="isDayOff"
+                                       @checked(old('is_day_off'))
+                                       class="rounded border-gray-300 text-indigo-600">
+                                Day Off
+                            </label>
+                        </div>
+                        <div x-show="!isDayOff">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Work Start Time</label>
+                            <input type="time" name="work_start_time" value="{{ old('work_start_time') }}"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 @error('work_start_time') border-red-300 @enderror">
+                            @error('work_start_time') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                        <div x-show="!isDayOff">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Work End Time</label>
+                            <input type="time" name="work_end_time" value="{{ old('work_end_time') }}"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 @error('work_end_time') border-red-300 @enderror">
+                            @error('work_end_time') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
                     <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100">
                         <button type="submit"
                                 class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
-                            Save Schedule
+                            Save
                         </button>
-                        <button type="button" @click="showAddForm = false"
+                        <button type="button" @click="open = false"
                                 class="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
                             Cancel
                         </button>
                     </div>
                 </form>
             </div>
+        </div>
+
+        {{-- Daily Schedules (from uploads) --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ editDailyId: null }">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h2 class="font-semibold text-gray-800">Daily Schedules <span class="text-xs font-normal text-gray-400 ml-1">from schedule uploads</span></h2>
+            </div>
+
+            @forelse($dailySchedules as $daily)
+                <div class="border-b border-gray-100 last:border-0">
+                    {{-- View Row --}}
+                    <div x-show="editDailyId !== {{ $daily->id }}" class="px-5 py-3 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="text-center w-14">
+                                <p class="text-xs text-gray-400">{{ $daily->date->format('D') }}</p>
+                                <p class="font-semibold text-gray-900 text-sm">{{ $daily->date->format('M d') }}</p>
+                                <p class="text-xs text-gray-400">{{ $daily->date->format('Y') }}</p>
+                            </div>
+                            <div>
+                                @if($daily->is_day_off)
+                                    <span class="text-sm font-medium text-orange-600">Day Off</span>
+                                @else
+                                    <p class="text-sm font-medium text-gray-800">
+                                        {{ $daily->work_start_time ? \Carbon\Carbon::parse($daily->work_start_time)->format('g:i A') : '—' }}
+                                        –
+                                        {{ $daily->work_end_time ? \Carbon\Carbon::parse($daily->work_end_time)->format('g:i A') : '—' }}
+                                    </p>
+                                @endif
+                                @if($daily->notes)
+                                    <p class="text-xs text-amber-600 mt-0.5">{{ $daily->notes }}</p>
+                                @endif
+                                @if($daily->assignedBranch)
+                                    <p class="text-xs text-indigo-600 mt-0.5">Branch: {{ $daily->assignedBranch->name }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <button @click="editDailyId = {{ $daily->id }}"
+                                    class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                            <form method="POST" action="{{ route('employees.daily-schedules.destroy', [$employee, $daily]) }}"
+                                  onsubmit="return confirm('Delete this daily schedule?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {{-- Inline Edit Form --}}
+                    <div x-show="editDailyId === {{ $daily->id }}" x-cloak class="px-5 py-4 bg-indigo-50/50">
+                        <p class="text-sm font-semibold text-gray-700 mb-4">Edit Daily Schedule</p>
+                        <form method="POST" action="{{ route('employees.daily-schedules.update', [$employee, $daily]) }}" x-data="{ isDayOff: {{ $daily->is_day_off ? 'true' : 'false' }} }">
+                            @csrf @method('PUT')
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                                    <input type="date" name="date" value="{{ $daily->date->format('Y-m-d') }}"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Branch Override</label>
+                                    <select name="assigned_branch_id"
+                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">— none (home branch) —</option>
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->id }}" @selected($daily->assigned_branch_id === $branch->id)>
+                                                {{ $branch->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                                        <input type="checkbox" name="is_day_off" value="1"
+                                               x-model="isDayOff"
+                                               @checked($daily->is_day_off)
+                                               class="rounded border-gray-300 text-indigo-600">
+                                        Day Off
+                                    </label>
+                                </div>
+                                <div x-show="!isDayOff">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Work Start Time</label>
+                                    <input type="time" name="work_start_time"
+                                           value="{{ $daily->work_start_time ? \Carbon\Carbon::parse($daily->work_start_time)->format('H:i') : '' }}"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div x-show="!isDayOff">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Work End Time</label>
+                                    <input type="time" name="work_end_time"
+                                           value="{{ $daily->work_end_time ? \Carbon\Carbon::parse($daily->work_end_time)->format('H:i') : '' }}"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-200">
+                                <button type="submit"
+                                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                                    Update
+                                </button>
+                                <button type="button" @click="editDailyId = null"
+                                        class="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <div class="px-5 py-6 text-center text-sm text-gray-400">
+                    No daily schedules from uploads yet.
+                </div>
+            @endforelse
         </div>
 
         {{-- Schedule History --}}

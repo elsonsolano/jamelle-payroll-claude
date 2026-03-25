@@ -87,12 +87,24 @@ class ScheduleUploadController extends Controller
         }
 
         // Resolve branch overrides once
-        $branchCache = [];
+        $branchCache     = [];
+        $unmatchedNames  = collect($schedule->ai_response['unmatched_names'] ?? []);
+        $nicknamesSaved  = []; // track employee IDs already updated
 
         foreach ($assignments as $row) {
             $employeeId = (int) ($row['employee_id'] ?? 0);
             if (! $employeeId) {
                 continue; // skip unresolved employees
+            }
+
+            // Auto-save nickname when admin manually assigned an unmatched name
+            $name = trim($row['name'] ?? '');
+            if ($name && $unmatchedNames->contains($name) && ! in_array($employeeId, $nicknamesSaved)) {
+                $employee = Employee::find($employeeId);
+                if ($employee && ! $employee->nickname) {
+                    $employee->update(['nickname' => $name]);
+                }
+                $nicknamesSaved[] = $employeeId;
             }
 
             $assignedBranchId = null;

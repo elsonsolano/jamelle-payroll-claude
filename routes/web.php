@@ -60,6 +60,9 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::post("schedules", [EmployeeScheduleController::class, "store"])->name("schedules.store");
         Route::put("schedules/{schedule}", [EmployeeScheduleController::class, "update"])->name("schedules.update");
         Route::delete("schedules/{schedule}", [EmployeeScheduleController::class, "destroy"])->name("schedules.destroy");
+        Route::post("daily-schedules", [EmployeeScheduleController::class, "storeDaily"])->name("daily-schedules.store");
+        Route::put("daily-schedules/{daily}", [EmployeeScheduleController::class, "updateDaily"])->name("daily-schedules.update");
+        Route::delete("daily-schedules/{daily}", [EmployeeScheduleController::class, "destroyDaily"])->name("daily-schedules.destroy");
         Route::get("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "index"])->name("deductions.index");
         Route::post("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "store"])->name("deductions.store");
         Route::put("deductions/{deduction}", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "update"])->name("deductions.update");

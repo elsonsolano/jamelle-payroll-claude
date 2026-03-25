@@ -53,8 +53,8 @@ Staff accounts are created by the admin on the employee show page. Default passw
 - `Branch` → has many `Employee`s, `PayrollCutoff`s; has `work_start_time`/`work_end_time` columns but these are **not used for DTR computation** — only informational
 - `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `DailySchedule`, `EmployeeStandingDeduction`, `EmployeeAllowance`, `PayrollEntry`; has `nickname` (nullable) — short name used for matching names in schedule uploads (e.g. "Eddie", "AJ"); has `birthday` (date, nullable)
 - `User` → belongs to `Employee` (staff only); admin users have `employee_id = null`
-- `EmployeeSchedule` → weekly repeating schedule per employee with `rest_days` (array) and optional custom work hours; used as fallback when no `DailySchedule` exists for a date
-- `DailySchedule` → date-specific schedule per employee (`date`, `work_start_time`, `work_end_time`, `is_day_off`, `assigned_branch_id`, `notes`); **takes priority over `EmployeeSchedule`** in DTR computation; unique on `(employee_id, date)`; belongs to `ScheduleUpload`
+- `EmployeeSchedule` → weekly repeating schedule per employee with `rest_days` (array) and optional custom work hours; used as fallback when no `DailySchedule` exists for a date; managed at `/employees/{employee}/schedules`
+- `DailySchedule` → date-specific schedule per employee (`date`, `work_start_time`, `work_end_time`, `is_day_off`, `assigned_branch_id`, `notes`); **takes priority over `EmployeeSchedule`** in DTR computation; unique on `(employee_id, date)`; belongs to `ScheduleUpload`; also visible and inline-editable on the `/employees/{employee}/schedules` page
 - `ScheduleUpload` → tracks each schedule image import (branch, uploader, label, `ai_response` JSON, status: `pending`→`review`→`applied`)
 - `EmployeeStandingDeduction` → recurring deductions (SSS, PhilHealth, PagIBIG, loan, cash_advance, uniform, other); `active` flag; `cutoff_period` (`both` | `first` | `second`) controls which semi-monthly cutoff it applies to — determined by `end_date`: day ≤ 15 = `first` (payday 15th), day > 15 = `second` (payday 30th/31st). Cutoff pattern: payday 15th covers ~30th prev month → 13th; payday 30th/31st covers 14th → 29th.
 - `EmployeeAllowance` → per-employee daily allowance (`daily_amount`, `description`, `active`); applied as `daily_amount × working_days` during payroll computation
@@ -121,7 +121,7 @@ Admin imports a date-specific schedule via `/schedule-uploads`:
 2. Pastes the resulting JSON into the import form along with the selected branch
 3. `ScheduleParserService::matchEmployees()` matches names in the JSON against `Employee.nickname` (first) then `Employee.first_name` (fallback) for the selected branch
 4. Review screen shows all parsed rows; unmatched names (red) can be manually assigned via dropdown
-5. On apply, `DailySchedule` records are upserted (unique on `employee_id + date`)
+5. On apply, `DailySchedule` records are upserted (unique on `employee_id + date`); if an unmatched name was manually assigned and the employee has no nickname yet, the schedule name is **automatically saved as `Employee.nickname`** for future auto-matching
 
 `DailySchedule.assigned_branch_id` — if a name has `branch_override` (e.g. `"ABR"`), `resolveBranch()` does a case-insensitive `LIKE` match against branch names to resolve the ID. This means the employee is working at another branch that day but their DTR is still filed under their home branch.
 
@@ -178,6 +178,7 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
 - `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`)
 - Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
+  - `employees/{employee}/daily-schedules/{daily}` — PUT (update) and DELETE for individual `DailySchedule` records; handled by `EmployeeScheduleController::updateDaily()` / `destroyDaily()` (same controller as weekly schedules)
 
 Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
 
