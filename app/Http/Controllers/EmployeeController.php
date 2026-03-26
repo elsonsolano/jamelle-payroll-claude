@@ -12,8 +12,27 @@ use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|\Illuminate\Http\RedirectResponse
     {
+        $filterKeys = ['search', 'branch_id', 'status'];
+        $hasFilters = $request->hasAny($filterKeys);
+
+        // "Clear" wipes the session and redirects to bare URL
+        if ($request->has('clear')) {
+            session()->forget('employee_filters');
+            return redirect()->route('employees.index');
+        }
+
+        // If filters are present in the request, save them to session
+        if ($hasFilters) {
+            session(['employee_filters' => $request->only($filterKeys)]);
+        }
+
+        // If no filters in URL but session has some, redirect to restore them
+        if (!$hasFilters && session()->has('employee_filters')) {
+            return redirect()->route('employees.index', session('employee_filters'));
+        }
+
         $query = Employee::with('branch');
 
         if ($request->filled('search')) {

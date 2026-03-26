@@ -89,7 +89,7 @@
         </button>
 
         @if(request()->hasAny(['search','branch_id','status']))
-            <a href="{{ route('employees.index') }}"
+            <a href="{{ route('employees.index', ['clear' => 1]) }}"
                class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 transition">
                 Clear
             </a>
