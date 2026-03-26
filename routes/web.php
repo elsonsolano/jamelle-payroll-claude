@@ -117,8 +117,10 @@ Route::middleware(["auth", "admin"])->group(function () {
     })->name("utilities.truncate-schedules");
 
     Route::post("utilities/truncate-schedules", function () {
-        \App\Models\DailySchedule::truncate();
-        \App\Models\ScheduleUpload::truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        \Illuminate\Support\Facades\DB::table('daily_schedules')->delete();
+        \Illuminate\Support\Facades\DB::table('schedule_uploads')->delete();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1');
         return redirect()->route('schedule-uploads.index')
             ->with('success', 'All schedule uploads and daily schedules have been deleted.');
     });
