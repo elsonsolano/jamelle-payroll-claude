@@ -92,7 +92,9 @@
                     <tbody class="divide-y divide-gray-100">
                         <template x-for="(row, idx) in assignments" :key="idx">
                             <tr :class="rowClass(row)">
-                                <td class="px-4 py-2.5 text-gray-700 text-xs" x-text="row.date"></td>
+                                <td class="py-2.5 text-gray-700 text-xs"
+                                    :class="!row.employee_id && !approved[row.name] ? 'pl-3 border-l-4 border-red-500' : 'px-4'"
+                                    x-text="row.date"></td>
                                 <td class="px-4 py-2.5 text-gray-500 text-xs font-medium" x-text="row.day"></td>
                                 <td class="px-4 py-2.5">
                                     <span class="text-xs font-medium" :class="row.employee_id ? 'text-gray-800' : 'text-red-600'" x-text="row.name"></span>
@@ -188,8 +190,8 @@
             },
 
             rowClass(row) {
-                if (this.approved[row.name])      return 'bg-green-50 hover:bg-green-100';
-                if (!row.employee_id)             return 'bg-red-50 hover:bg-red-100';
+                if (this.approved[row.name]) return 'bg-green-50 hover:bg-green-100';
+                if (!row.employee_id)        return 'bg-red-100 hover:bg-red-150';
                 return 'hover:bg-gray-50';
             },
 
