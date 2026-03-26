@@ -152,7 +152,8 @@
         </div>
 
         {{-- Apply Form --}}
-        <form method="POST" action="{{ route('schedule-uploads.apply', $schedule) }}">
+        <form method="POST" action="{{ route('schedule-uploads.apply', $schedule) }}"
+              @submit.prevent="confirmApply($el)">
             @csrf
             <input type="hidden" name="assignments" :value="JSON.stringify(assignments)">
 
@@ -201,6 +202,17 @@
                 this.assignments.forEach(a => {
                     if (a.name === row.name) a.employee_id = row.employee_id;
                 });
+            },
+
+            confirmApply(form) {
+                const skipped = this.assignments.filter(a => !a.employee_id).length;
+                if (skipped > 0) {
+                    const ok = confirm(
+                        `There are still ${skipped} unmatched entr${skipped === 1 ? 'y' : 'ies'} that will be skipped.\n\nAre you sure you want to apply this schedule?`
+                    );
+                    if (!ok) return;
+                }
+                form.submit();
             },
 
             async approve(row) {
