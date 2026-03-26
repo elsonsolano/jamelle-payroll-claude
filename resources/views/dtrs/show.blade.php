@@ -43,8 +43,8 @@
             <div class="grid grid-cols-2 gap-4">
                 @foreach([
                     ['label' => 'Time In',  'value' => $dtr->time_in,  'color' => 'green'],
-                    ['label' => 'AM Out',   'value' => $dtr->am_out,   'color' => 'gray'],
-                    ['label' => 'PM In',    'value' => $dtr->pm_in,    'color' => 'gray'],
+                    ['label' => 'Start Break', 'value' => $dtr->am_out,   'color' => 'gray'],
+                    ['label' => 'End Break',   'value' => $dtr->pm_in,    'color' => 'gray'],
                     ['label' => 'Time Out', 'value' => $dtr->time_out, 'color' => 'red'],
                 ] as $punch)
                     <div class="bg-gray-50 rounded-lg p-4 text-center">

@@ -77,8 +77,8 @@
                         <th class="px-4 py-3 font-semibold text-gray-600">Employee</th>
                         <th class="px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Time In</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">AM Out</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">PM In</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">Start Break</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">End Break</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Time Out</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Hours</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT</th>
