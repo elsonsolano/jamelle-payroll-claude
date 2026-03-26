@@ -189,6 +189,8 @@
                         </label>
                         <input type="time" name="time" x-model="time" required
                                class="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <p x-show="time" x-cloak class="text-sm font-semibold text-indigo-600 mt-1.5 text-center"
+                           x-text="time ? new Date('1970-01-01T' + time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''"></p>
                     </div>
 
                     {{-- OT section — only shown for Time Out --}}
