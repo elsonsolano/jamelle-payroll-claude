@@ -46,11 +46,15 @@
                 </div>
                 <div>
                     <p class="text-xs text-gray-400">Days Worked</p>
-                    <p class="font-medium text-gray-800">{{ $entry->working_days }} days</p>
+                    <p class="font-medium text-gray-800">{{ number_format($entry->working_days, 2) }} days</p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-400">Total Hours</p>
+                    <p class="text-xs text-gray-400">Regular Hours</p>
                     <p class="font-medium text-gray-800">{{ number_format($entry->total_hours_worked, 2) }}h</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400">Overtime Hours</p>
+                    <p class="font-medium {{ $entry->total_overtime_hours > 0 ? 'text-indigo-600' : 'text-gray-800' }}">{{ number_format($entry->total_overtime_hours, 2) }}h</p>
                 </div>
             </div>
         </div>

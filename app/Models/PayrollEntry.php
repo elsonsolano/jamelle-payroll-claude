@@ -22,6 +22,7 @@ class PayrollEntry extends Model
         'net_pay',
         'working_days',
         'total_hours_worked',
+        'total_overtime_hours',
     ];
 
     protected $casts = [

@@ -191,7 +191,7 @@
             <td class="summary-label">Salary Type</td>
             <td class="summary-value">{{ ucfirst($entry->employee->salary_type) }} Rate</td>
             <td class="summary-label">Days Worked</td>
-            <td class="summary-value">{{ $entry->working_days }} day(s)</td>
+            <td class="summary-value">{{ number_format($entry->working_days, 2) }} day(s)</td>
         </tr>
         <tr>
             <td class="summary-label">Rate</td>
@@ -220,7 +220,7 @@
         @endif
         @if($entry->allowance_pay > 0)
         <tr>
-            <td class="label">Allowance ({{ $entry->working_days }} day(s) worked)</td>
+            <td class="label">Allowance ({{ number_format($entry->working_days, 2) }} day(s) worked)</td>
             <td class="amount">PHP {{ number_format($entry->allowance_pay, 2) }}</td>
         </tr>
         @endif

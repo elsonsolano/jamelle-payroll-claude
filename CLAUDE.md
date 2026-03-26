@@ -60,9 +60,9 @@ Staff accounts are created by the admin on the employee show page. Default passw
 - `EmployeeAllowance` → per-employee daily allowance (`daily_amount`, `description`, `active`); applied as `daily_amount × working_days` during payroll computation
 - `PayrollCutoff` → belongs to `Branch`; has many `PayrollEntry`; status: `draft` → `processing` → `finalized`
 - `Holiday` → date (unique), name, type (`regular` | `special_non_working` | `special_working`); managed via calendar UI at `/holidays`
-- `PayrollEntry` → has many `PayrollDeduction`, `PayrollEntryRefund`, `PayrollEntryVariableDeduction`; stores computed: basic_pay, overtime_pay, holiday_pay, allowance_pay, gross_pay, total_deductions, net_pay; `late_deduction` and `undertime_deduction` columns exist but are always 0 (kept for schema compatibility)
+- `PayrollEntry` → has many `PayrollDeduction`, `PayrollEntryRefund`, `PayrollEntryVariableDeduction`; stores computed pay figures (basic_pay, overtime_pay, holiday_pay, allowance_pay, gross_pay, total_deductions, net_pay) plus summary columns: `working_days` (decimal 8,4 — truncated to 2dp), `total_hours_worked` (capped at 8h/day), `total_overtime_hours`; `late_deduction` and `undertime_deduction` columns exist but are always 0 (kept for schema compatibility)
 - `PayrollEntryRefund` → manual refunds added per payroll entry (`description`, `amount`); **preserved** when payroll is regenerated
-- `PayrollEntryVariableDeduction` → manual one-off deductions per payroll entry (`description`, `amount`); **wiped** when payroll is regenerated
+- `PayrollEntryVariableDeduction` → manual one-off deductions per payroll entry (`description`, `amount`); **preserved** when payroll is regenerated
 - `Dtr` → belongs to `Employee`; key extra columns: `source` (`device`|`manual`), `ot_status` (`none`|`pending`|`approved`|`rejected`), `ot_end_time`, `ot_approved_by` (FK to users), `ot_approved_at`, `ot_rejection_reason`
 - `TimemarkLog` → audit trail of DaysCamera API fetch operations (timemark feature is hidden from the UI but the code remains)
 
@@ -93,13 +93,13 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 
 **Before computing payroll, `computeEntry` re-runs `DtrComputationService` on every DTR in the period and saves the updated values.** This means regenerating payroll always picks up schedule changes automatically.
 
-- **Daily** employees: `basic_pay = sum(min(dtr.total_hours, 8)) × hourly_rate` where `hourly_rate = daily_rate / 8`. Regular hours are capped at 8 per day — excess hours beyond 8 are only compensated if staff filed OT (via `overtime_hours`). Reduced hours from late arrival or early departure naturally produce lower pay — there are no separate late or undertime deductions.
-- **Monthly** employees: `basic_pay = monthly_rate / 2` (semi-monthly flat); no hour-based deductions.
-- Overtime multipliers: **1.25×** regular days, **1.30×** rest days
+- **Daily** employees: billable hours per DTR are capped at 8. `working_days = floor(sum(billableHours) / 8 × 100) / 100` (truncated to 2 decimal places, matching Excel). `basic_pay = working_days × daily_rate`. Unworked regular holidays add a full `daily_rate` to `basic_pay` on top. `total_hours_worked` and `total_overtime_hours` are stored separately; both are capped/summed from DTR values. Reduced hours from late arrival or early departure naturally produce fewer working_days and lower pay — there are no separate late or undertime deductions.
+- **Monthly** employees: `basic_pay = monthly_rate / 2` (semi-monthly flat); no hour-based deductions. `working_days` = count of DTRs with `time_in`.
+- Overtime multipliers: **1.30×** both regular and rest days (internal rule; DOLE standard is 1.25× regular but company uses 1.30× across the board)
 - `allowance_pay = sum(active EmployeeAllowance.daily_amount) × working_days`
 - `gross_pay = basic_pay + overtime_pay + holiday_pay + allowance_pay`
 - Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items.
-- `PayrollEntryVariableDeduction` records are wiped on regeneration; `PayrollEntryRefund` records are preserved.
+- On **first generation**, active `EmployeeStandingDeduction` records are auto-copied as `PayrollDeduction` line items. On **regeneration**, all existing `PayrollDeduction`, `PayrollEntryVariableDeduction`, and `PayrollEntryRefund` records are preserved — only the pay figures (basic, overtime, holiday, allowance, gross, net) are recalculated.
 - `net_pay = gross_pay − total_deductions + total_refunds`
 
 **Philippine Holiday Pay Rules (DOLE)** — applied per `Holiday` records in the cutoff period:
@@ -210,7 +210,7 @@ Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (
 - Migration ordering: `payroll_deductions` timestamp bumped to `142153` so it runs after `payroll_entries` (FK dependency)
 - Queue worker runs as a **separate Railway service** with start command: `php artisan queue:listen --tries=1 --timeout=0`
 - `AdminUserSeeder` runs on every deploy (inside `start.sh`); idempotent via `firstOrCreate`
-- `bootstrap/app.php` sets `trustProxies(at: '*')` for Railway's HTTPS load balancer
+- `bootstrap/app.php` sets `trustProxies(at: '*')` only when `APP_ENV=production` — calling it unconditionally causes a Symfony `IpUtils::checkIp4` crash on local (no REMOTE_ADDR)
 - `public/hot` is gitignored — never commit it
 - Required env vars: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*` (use public proxy host/port, not `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`, `ANTHROPIC_API_KEY` (not currently used in production — schedule import uses manual JSON paste), `ANTHROPIC_VERIFY_SSL=true`
 
