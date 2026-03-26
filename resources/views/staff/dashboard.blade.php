@@ -61,7 +61,7 @@
     @endphp
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '' }">
+         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '' }">
 
         {{-- Card Header --}}
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
@@ -124,7 +124,7 @@
 
                     @if($isNext)
                         <button type="button"
-                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; open = true"
+                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; open = true"
                                 class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                 style="background-color:{{ $color }}">
                             Tap to Log
@@ -182,12 +182,31 @@
                     <input type="hidden" name="date" value="{{ $today->format('Y-m-d') }}">
                     <input type="hidden" name="event" :value="event">
 
-                    <div class="mb-5">
+                    <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Time <span class="text-gray-400 font-normal">(from your timemark)</span>
                         </label>
                         <input type="time" name="time" x-model="time" required
                                class="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    {{-- OT section — only shown for Time Out --}}
+                    <div x-show="event === 'time_out'" x-cloak class="mb-5">
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="has_ot" value="1" x-model="hasOt"
+                                       class="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400">
+                                <span class="text-sm font-medium text-amber-800">I have overtime</span>
+                            </label>
+                            <div x-show="hasOt" x-cloak class="mt-3">
+                                <label class="block text-sm font-medium text-amber-800 mb-1">Overtime Hours</label>
+                                <input type="number" name="ot_hours" x-model="otHours"
+                                       min="0.25" max="24" step="0.25"
+                                       placeholder="e.g. 2, 1.5, or 0.75"
+                                       class="w-full border border-amber-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 bg-white">
+                                <p class="text-xs text-amber-600 mt-1">Your overtime will be sent for approval.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex gap-3">
