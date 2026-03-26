@@ -61,7 +61,7 @@
     @endphp
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '' }">
+         x-data="{ open: false, event: '', label: '', hour: '', minute: '', ampm: 'AM', hasOt: false, otHours: '', otError: '', timeError: '' }">
 
         {{-- Card Header --}}
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
@@ -124,7 +124,7 @@
 
                     @if($isNext)
                         <button type="button"
-                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; open = true"
+                                @click="event = '{{ $field }}'; label = '{{ $label }}'; hour = ''; minute = ''; ampm = 'AM'; hasOt = false; otHours = ''; otError = ''; timeError = ''; open = true"
                                 class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                 style="background-color:{{ $color }}">
                             Tap to Log
@@ -178,19 +178,58 @@
                 <h3 class="text-lg font-bold text-gray-900 mb-4" x-text="label"></h3>
 
                 <form method="POST" action="{{ route('staff.dtr.log-event') }}"
-                      @submit.prevent="if (hasOt && !otHours) { otError = 'Please enter your overtime hours.' } else { otError = ''; $el.submit() }">
+                      @submit.prevent="
+                        if (!hour || !minute) {
+                          timeError = 'Please select a time.';
+                        } else if (hasOt && !otHours) {
+                          timeError = ''; otError = 'Please enter your overtime hours.';
+                        } else {
+                          timeError = ''; otError = ''; $el.submit();
+                        }
+                      ">
                     @csrf
                     <input type="hidden" name="date" value="{{ $today->format('Y-m-d') }}">
                     <input type="hidden" name="event" :value="event">
+                    {{-- Compute 24-hour HH:MM value from the 12-hour selects --}}
+                    <input type="hidden" name="time" :value="
+                        (hour && minute) ? (() => {
+                            let h = parseInt(hour);
+                            if (ampm === 'PM' && h !== 12) h += 12;
+                            if (ampm === 'AM' && h === 12) h = 0;
+                            return String(h).padStart(2, '0') + ':' + minute;
+                        })() : ''
+                    ">
 
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
                             Time <span class="text-gray-400 font-normal">(from your timemark)</span>
                         </label>
-                        <input type="time" name="time" x-model="time" required
-                               class="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <p x-show="time" x-cloak class="text-sm font-semibold text-indigo-600 mt-1.5 text-center"
-                           x-text="time ? new Date('1970-01-01T' + time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''"></p>
+                        <div class="flex items-center gap-2">
+                            {{-- Hour --}}
+                            <select x-model="hour" @change="timeError = ''"
+                                    class="flex-1 border border-gray-300 rounded-xl px-2 py-3 text-xl font-bold text-gray-800 text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="">--</option>
+                                @for($h = 1; $h <= 12; $h++)
+                                    <option value="{{ $h }}">{{ $h }}</option>
+                                @endfor
+                            </select>
+                            <span class="text-2xl font-bold text-gray-400">:</span>
+                            {{-- Minute --}}
+                            <select x-model="minute" @change="timeError = ''"
+                                    class="flex-1 border border-gray-300 rounded-xl px-2 py-3 text-xl font-bold text-gray-800 text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="">--</option>
+                                @for($m = 0; $m < 60; $m++)
+                                    <option value="{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+                                @endfor
+                            </select>
+                            {{-- AM/PM --}}
+                            <select x-model="ampm"
+                                    class="border border-gray-300 rounded-xl px-3 py-3 text-xl font-bold text-gray-800 text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option>AM</option>
+                                <option>PM</option>
+                            </select>
+                        </div>
+                        <p x-show="timeError" x-cloak class="text-xs text-red-600 font-medium mt-1.5" x-text="timeError"></p>
                     </div>
 
                     {{-- OT section — only shown for Time Out --}}
