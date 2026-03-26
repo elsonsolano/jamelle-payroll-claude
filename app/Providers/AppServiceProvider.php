@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Database\Schema\Builder;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -15,5 +16,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Builder::defaultStringLength(191);
+
+        if (env('APP_ENV') === 'production') {
+            URL::forceScheme('https');
+        }
     }
 }
