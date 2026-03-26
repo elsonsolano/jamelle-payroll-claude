@@ -14,11 +14,14 @@
             <div class="flex items-start justify-between">
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-gray-800">{{ $dtr->date->format('D, M d Y') }}</p>
+                    @php
+                        $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : '—';
+                    @endphp
                     <div class="text-xs text-gray-500 mt-1 space-y-0.5">
-                        <p>In: {{ $dtr->time_in ? substr($dtr->time_in, 0, 5) : '—' }}
-                           &nbsp; Break: {{ $dtr->am_out ? substr($dtr->am_out, 0, 5) : '—' }}</p>
-                        <p>End Break: {{ $dtr->pm_in ? substr($dtr->pm_in, 0, 5) : '—' }}
-                           &nbsp; Out: {{ $dtr->time_out ? substr($dtr->time_out, 0, 5) : '—' }}</p>
+                        <p>In: {{ $fmt12($dtr->time_in) }}
+                           &nbsp; Break: {{ $fmt12($dtr->am_out) }}</p>
+                        <p>End Break: {{ $fmt12($dtr->pm_in) }}
+                           &nbsp; Out: {{ $fmt12($dtr->time_out) }}</p>
                         @php $utMins = $dtr->total_hours > 0 ? max(0, (int)round((8 - $dtr->total_hours) * 60)) : 0; @endphp
                         <p>Total: {{ $dtr->total_hours }}h
                            &nbsp;·&nbsp; Late: {{ $dtr->late_mins }}m

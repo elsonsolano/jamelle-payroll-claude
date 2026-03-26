@@ -32,6 +32,9 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm text-gray-800">{{ $data['message'] ?? 'Notification' }}</p>
+                    @if(!empty($data['approver_name']))
+                        <p class="text-xs text-gray-500 mt-0.5">By: {{ $data['approver_name'] }}</p>
+                    @endif
                     @if(!empty($data['reason']))
                         <p class="text-xs text-red-500 mt-0.5">Reason: {{ $data['reason'] }}</p>
                     @endif

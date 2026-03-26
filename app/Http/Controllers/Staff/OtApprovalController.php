@@ -35,7 +35,7 @@ class OtApprovalController extends Controller
         // Notify the employee
         $staffUser = $dtr->employee->user;
         if ($staffUser) {
-            $staffUser->notify(new OtApproved($dtr));
+            $staffUser->notify(new OtApproved($dtr, Auth::user()->name));
         }
 
         return back()->with('success', "OT for {$dtr->employee->full_name} on {$dtr->date->format('M d, Y')} approved.");
@@ -57,7 +57,7 @@ class OtApprovalController extends Controller
 
         $staffUser = $dtr->employee->user;
         if ($staffUser) {
-            $staffUser->notify(new OtRejected($dtr));
+            $staffUser->notify(new OtRejected($dtr, Auth::user()->name));
         }
 
         return back()->with('success', "OT for {$dtr->employee->full_name} on {$dtr->date->format('M d, Y')} rejected.");

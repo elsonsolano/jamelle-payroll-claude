@@ -10,7 +10,7 @@ class OtApproved extends Notification
 {
     use Queueable;
 
-    public function __construct(public Dtr $dtr) {}
+    public function __construct(public Dtr $dtr, public string $approverName) {}
 
     public function via(object $notifiable): array
     {
@@ -20,10 +20,11 @@ class OtApproved extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'dtr_id'  => $this->dtr->id,
-            'date'    => $this->dtr->date->format('Y-m-d'),
-            'message' => "Your overtime request for {$this->dtr->date->format('M d, Y')} has been approved.",
-            'type'    => 'ot_approved',
+            'dtr_id'        => $this->dtr->id,
+            'date'          => $this->dtr->date->format('Y-m-d'),
+            'message'       => "Your overtime request for {$this->dtr->date->format('M d, Y')} has been approved.",
+            'approver_name' => $this->approverName,
+            'type'          => 'ot_approved',
         ];
     }
 }

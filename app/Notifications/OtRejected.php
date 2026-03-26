@@ -10,7 +10,7 @@ class OtRejected extends Notification
 {
     use Queueable;
 
-    public function __construct(public Dtr $dtr) {}
+    public function __construct(public Dtr $dtr, public string $approverName) {}
 
     public function via(object $notifiable): array
     {
@@ -20,11 +20,12 @@ class OtRejected extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'dtr_id'  => $this->dtr->id,
-            'date'    => $this->dtr->date->format('Y-m-d'),
-            'reason'  => $this->dtr->ot_rejection_reason,
-            'message' => "Your overtime request for {$this->dtr->date->format('M d, Y')} has been rejected.",
-            'type'    => 'ot_rejected',
+            'dtr_id'        => $this->dtr->id,
+            'date'          => $this->dtr->date->format('Y-m-d'),
+            'reason'        => $this->dtr->ot_rejection_reason,
+            'message'       => "Your overtime request for {$this->dtr->date->format('M d, Y')} has been rejected.",
+            'approver_name' => $this->approverName,
+            'type'          => 'ot_rejected',
         ];
     }
 }

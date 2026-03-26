@@ -14,6 +14,7 @@ class PayrollCutoff extends Model
         'start_date',
         'end_date',
         'status',
+        'void_reason',
     ];
 
     protected $casts = [

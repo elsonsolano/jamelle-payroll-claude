@@ -29,6 +29,7 @@
             <option value="draft"      @selected(request('status') === 'draft')>Draft</option>
             <option value="processing" @selected(request('status') === 'processing')>Processing</option>
             <option value="finalized"  @selected(request('status') === 'finalized')>Finalized</option>
+            <option value="voided"     @selected(request('status') === 'voided')>Voided</option>
         </select>
 
         @if(request()->hasAny(['branch_id','status']))
@@ -72,6 +73,7 @@
                                 'bg-gray-100 text-gray-600'   => $cutoff->status === 'draft',
                                 'bg-amber-100 text-amber-700' => $cutoff->status === 'processing',
                                 'bg-green-100 text-green-700' => $cutoff->status === 'finalized',
+                                'bg-red-100 text-red-700'     => $cutoff->status === 'voided',
                             ])>{{ ucfirst($cutoff->status) }}</span>
                         </td>
                         <td class="px-5 py-3 text-right">

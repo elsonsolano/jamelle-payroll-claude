@@ -82,12 +82,48 @@ class PayrollCutoffController extends Controller
             'name'       => 'required|string|max:255',
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
-            'status'     => 'required|in:draft,processing,finalized',
+            'status'     => 'required|in:draft,processing,finalized,voided',
         ]);
 
         $cutoff->update($validated);
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)->with('success', 'Cutoff updated successfully.');
+    }
+
+    public function void(Request $request, PayrollCutoff $cutoff): RedirectResponse
+    {
+        $request->validate([
+            'void_reason' => 'required|string|max:500',
+        ]);
+
+        if ($cutoff->status !== 'finalized') {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'Only finalized cutoffs can be voided.');
+        }
+
+        $cutoff->update([
+            'status'      => 'voided',
+            'void_reason' => $request->void_reason,
+        ]);
+
+        return redirect()->route('payroll.cutoffs.show', $cutoff)
+            ->with('success', 'Payroll cutoff has been voided.');
+    }
+
+    public function unvoid(PayrollCutoff $cutoff): RedirectResponse
+    {
+        if ($cutoff->status !== 'voided') {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'This cutoff is not voided.');
+        }
+
+        $cutoff->update([
+            'status'      => 'finalized',
+            'void_reason' => null,
+        ]);
+
+        return redirect()->route('payroll.cutoffs.show', $cutoff)
+            ->with('success', 'Payroll cutoff has been reinstated.');
     }
 
     public function destroy(PayrollCutoff $cutoff): RedirectResponse

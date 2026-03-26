@@ -43,6 +43,11 @@ class PayrollEntryController extends Controller
 
     public function generate(Request $request, PayrollCutoff $cutoff): RedirectResponse
     {
+        if ($cutoff->status === 'voided') {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'Cannot regenerate a voided payroll cutoff.');
+        }
+
         $cutoff->update(['status' => 'processing']);
 
         $employees = Employee::where('branch_id', $cutoff->branch_id)
