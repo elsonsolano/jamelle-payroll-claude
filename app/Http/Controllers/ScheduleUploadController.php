@@ -137,4 +137,23 @@ class ScheduleUploadController extends Controller
         return redirect()->route('schedule-uploads.index')
             ->with('success', "Schedule \"{$schedule->label}\" applied successfully.");
     }
+
+    public function assignName(Request $request, ScheduleUpload $schedule)
+    {
+        $validated = $request->validate([
+            'name'        => 'required|string',
+            'employee_id' => 'required|exists:employees,id',
+        ]);
+
+        $employee = Employee::find($validated['employee_id']);
+
+        if (! $employee->nickname) {
+            $employee->update(['nickname' => $validated['name']]);
+        }
+
+        return response()->json([
+            'employee_id'   => $employee->id,
+            'employee_name' => $employee->full_name,
+        ]);
+    }
 }

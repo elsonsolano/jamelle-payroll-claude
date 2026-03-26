@@ -102,6 +102,7 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::post("schedule-uploads", [ScheduleUploadController::class, "store"])->name("schedule-uploads.store");
     Route::get("schedule-uploads/{schedule}/review", [ScheduleUploadController::class, "review"])->name("schedule-uploads.review");
     Route::post("schedule-uploads/{schedule}/apply", [ScheduleUploadController::class, "apply"])->name("schedule-uploads.apply");
+    Route::post("schedule-uploads/{schedule}/assign-name", [ScheduleUploadController::class, "assignName"])->name("schedule-uploads.assign-name");
     Route::get("holidays", [HolidayController::class, "index"])->name("holidays.index");
     Route::post("holidays", [HolidayController::class, "store"])->name("holidays.store");
     Route::put("holidays/{holiday}", [HolidayController::class, "update"])->name("holidays.update");

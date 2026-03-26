@@ -32,7 +32,7 @@
         }
     @endphp
 
-    <div x-data="scheduleReview()" x-init="init({{ json_encode($flatAssignments) }})" class="space-y-5">
+    <div x-data="scheduleReview()" x-init="init({{ json_encode($flatAssignments) }}, {{ json_encode($unmatched) }})" class="space-y-5">
 
         {{-- Header card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5">
@@ -86,28 +86,35 @@
                             <th class="px-4 py-3 font-semibold text-gray-600 w-20">Day Off</th>
                             <th class="px-4 py-3 font-semibold text-gray-600 w-24">Branch Override</th>
                             <th class="px-4 py-3 font-semibold text-gray-600 w-20">Notes</th>
+                            <th class="px-4 py-3 w-24"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <template x-for="(row, idx) in assignments" :key="idx">
-                            <tr :class="row.employee_id ? 'hover:bg-gray-50' : 'bg-red-50 hover:bg-red-100'">
+                            <tr :class="rowClass(row)">
                                 <td class="px-4 py-2.5 text-gray-700 text-xs" x-text="row.date"></td>
                                 <td class="px-4 py-2.5 text-gray-500 text-xs font-medium" x-text="row.day"></td>
                                 <td class="px-4 py-2.5">
                                     <span class="text-xs font-medium" :class="row.employee_id ? 'text-gray-800' : 'text-red-600'" x-text="row.name"></span>
                                 </td>
                                 <td class="px-4 py-2.5">
-                                    <select :class="row.employee_id ? 'border-gray-200 text-gray-700' : 'border-red-300 text-red-700 bg-red-50'"
-                                            class="w-full border rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500"
-                                            x-model="row.employee_id">
-                                        <option value="">— skip this entry —</option>
-                                        @foreach($employees as $emp)
-                                            <option value="{{ $emp->id }}">
-                                                {{ $emp->first_name }} {{ $emp->last_name }}
-                                                @if($emp->nickname) ({{ $emp->nickname }}) @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <template x-if="!approved[row.name]">
+                                        <select :class="row.employee_id ? 'border-gray-200 text-gray-700' : 'border-red-300 text-red-700 bg-red-50'"
+                                                class="w-full border rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500"
+                                                x-model="row.employee_id"
+                                                @change="onSelectChange(row)">
+                                            <option value="">— skip this entry —</option>
+                                            @foreach($employees as $emp)
+                                                <option value="{{ $emp->id }}">
+                                                    {{ $emp->first_name }} {{ $emp->last_name }}
+                                                    @if($emp->nickname) ({{ $emp->nickname }}) @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </template>
+                                    <template x-if="approved[row.name]">
+                                        <span class="text-xs font-medium text-green-700" x-text="approvedLabel[row.name]"></span>
+                                    </template>
                                 </td>
                                 <td class="px-4 py-2.5 text-xs text-gray-600">
                                     <span x-show="!row.is_day_off" x-text="(row.work_start_time || '—') + ' – ' + (row.work_end_time || '—')"></span>
@@ -124,6 +131,16 @@
                                 <td class="px-4 py-2.5 text-xs">
                                     <span x-show="row.notes" x-text="row.notes" class="text-amber-600 font-medium"></span>
                                     <span x-show="!row.notes" class="text-gray-300">—</span>
+                                </td>
+                                <td class="px-4 py-2.5">
+                                    <template x-if="needsApproval(row)">
+                                        <button type="button"
+                                                @click="approve(row)"
+                                                :disabled="approving === row.name"
+                                                class="px-2.5 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition">
+                                            <span x-text="approving === row.name ? 'Saving…' : 'Approve'"></span>
+                                        </button>
+                                    </template>
                                 </td>
                             </tr>
                         </template>
@@ -153,10 +170,67 @@
     <script>
     function scheduleReview() {
         return {
-            assignments: [],
+            assignments:    [],
+            unmatchedNames: [],   // names that had no match from AI
+            approved:       {},   // name => true once approved
+            approvedLabel:  {},   // name => "First Last" for display
+            approving:      null, // name currently being saved
 
-            init(data) {
-                this.assignments = data;
+            init(data, unmatched) {
+                this.assignments    = data;
+                this.unmatchedNames = unmatched;
+            },
+
+            needsApproval(row) {
+                return this.unmatchedNames.includes(row.name)
+                    && !this.approved[row.name]
+                    && !!row.employee_id;
+            },
+
+            rowClass(row) {
+                if (this.approved[row.name])      return 'bg-green-50 hover:bg-green-100';
+                if (!row.employee_id)             return 'bg-red-50 hover:bg-red-100';
+                return 'hover:bg-gray-50';
+            },
+
+            // When a dropdown changes on an unmatched row, sync all rows with same name
+            onSelectChange(row) {
+                if (!this.unmatchedNames.includes(row.name)) return;
+                this.assignments.forEach(a => {
+                    if (a.name === row.name) a.employee_id = row.employee_id;
+                });
+            },
+
+            async approve(row) {
+                this.approving = row.name;
+                try {
+                    const res = await fetch('{{ route('schedule-uploads.assign-name', $schedule) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({
+                            name:        row.name,
+                            employee_id: row.employee_id,
+                        }),
+                    });
+
+                    if (!res.ok) throw new Error('Request failed');
+
+                    const json = await res.json();
+
+                    // Mark approved and sync all rows with this name
+                    this.approved[row.name]      = true;
+                    this.approvedLabel[row.name] = json.employee_name;
+                    this.assignments.forEach(a => {
+                        if (a.name === row.name) a.employee_id = json.employee_id;
+                    });
+                } catch (e) {
+                    alert('Could not save assignment. Please try again.');
+                } finally {
+                    this.approving = null;
+                }
             },
         };
     }
