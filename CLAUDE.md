@@ -26,6 +26,27 @@ php artisan test --filter=TestClassName
 npm run build
 ```
 
+## Pre-deploy Checklist
+
+Before every `git push`, simulate the Railway production environment locally to catch issues before they go live:
+
+```bash
+# 1. Cache config and routes (mirrors what Railway does at startup)
+php artisan config:cache && php artisan route:cache
+
+# 2. Reload the app in the browser and verify nothing is broken
+
+# 3. Restore normal local dev state
+php artisan config:clear && php artisan route:clear
+```
+
+**Why this matters:** Railway runs `config:cache` at container startup (`start.sh`). After that, `env()` calls in application code return `null` — only `config()` works. Any code that uses `env()` outside of `config/*.php` files will silently fail in production.
+
+**Rules to follow:**
+- Never use `env()` in application code (controllers, models, providers, middleware). Only use it inside `config/*.php` files.
+- Always use `config('app.env')`, `config('app.debug')`, etc. in application code.
+- Exception: `bootstrap/app.php` runs before the config service is available — use `getenv()` there, not `env()` or `config()`.
+
 ## Architecture
 
 **Stack:** Laravel 13 (PHP 8.3+), MySQL, Blade + Tailwind CSS + Alpine.js, Vite
