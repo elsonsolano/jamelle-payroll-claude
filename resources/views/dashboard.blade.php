@@ -109,6 +109,125 @@
     </div>
 
     {{-- Calendar --}}
+    <script>
+    function calendarWidget(data) {
+        return {
+            currentMonth: new Date().getMonth(),
+            currentYear:  new Date().getFullYear(),
+            selectedDay:  null,
+            holidays:     data.holidays,
+            birthdays:    data.birthdays,
+            anniversaries: data.anniversaries,
+
+            get monthName() {
+                return new Date(this.currentYear, this.currentMonth)
+                    .toLocaleString('en-US', { month: 'long' });
+            },
+            get shortMonthName() {
+                return new Date(this.currentYear, this.currentMonth)
+                    .toLocaleString('en-US', { month: 'short' });
+            },
+            get selectedDayLabel() {
+                if (!this.selectedDay) return '';
+                return new Date(this.selectedDay.year, this.selectedDay.month - 1, this.selectedDay.day)
+                    .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            },
+
+            prevMonth() {
+                if (this.currentMonth === 0) { this.currentMonth = 11; this.currentYear--; }
+                else this.currentMonth--;
+                this.selectedDay = null;
+            },
+            nextMonth() {
+                if (this.currentMonth === 11) { this.currentMonth = 0; this.currentYear++; }
+                else this.currentMonth++;
+                this.selectedDay = null;
+            },
+            goToToday() {
+                this.currentMonth = new Date().getMonth();
+                this.currentYear  = new Date().getFullYear();
+                this.selectedDay  = null;
+            },
+
+            get calendarDays() {
+                const firstDay    = new Date(this.currentYear, this.currentMonth, 1).getDay();
+                const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+                const daysInPrev  = new Date(this.currentYear, this.currentMonth, 0).getDate();
+                const days = [];
+
+                for (let i = firstDay - 1; i >= 0; i--) {
+                    const m = this.currentMonth === 0 ? 12 : this.currentMonth;
+                    const y = this.currentMonth === 0 ? this.currentYear - 1 : this.currentYear;
+                    days.push({ day: daysInPrev - i, month: m, year: y, currentMonth: false });
+                }
+                for (let d = 1; d <= daysInMonth; d++) {
+                    days.push({ day: d, month: this.currentMonth + 1, year: this.currentYear, currentMonth: true });
+                }
+                const remaining = 42 - days.length;
+                for (let d = 1; d <= remaining; d++) {
+                    const m = this.currentMonth === 11 ? 1 : this.currentMonth + 2;
+                    const y = this.currentMonth === 11 ? this.currentYear + 1 : this.currentYear;
+                    days.push({ day: d, month: m, year: y, currentMonth: false });
+                }
+                return days;
+            },
+
+            eventsForDay(dayObj) {
+                const m = dayObj.month, d = dayObj.day, y = dayObj.year;
+                const pad = n => String(n).padStart(2, '0');
+                const fullDate = `${y}-${pad(m)}-${pad(d)}`;
+                const events = [];
+                this.holidays.forEach(h => {
+                    if (h.date === fullDate) events.push({ ...h, eventType: 'holiday' });
+                });
+                this.birthdays.forEach(b => {
+                    if (b.month === m && b.day === d) events.push({ ...b, eventType: 'birthday' });
+                });
+                this.anniversaries.forEach(a => {
+                    if (a.month === m && a.day === d && a.hire_year < y)
+                        events.push({ ...a, eventType: 'anniversary', years: y - a.hire_year });
+                });
+                return events;
+            },
+
+            isToday(dayObj) {
+                const t = new Date();
+                return dayObj.day === t.getDate()
+                    && dayObj.month === t.getMonth() + 1
+                    && dayObj.year  === t.getFullYear();
+            },
+
+            selectDay(dayObj) {
+                const events = this.eventsForDay(dayObj);
+                if (!events.length) { this.selectedDay = null; return; }
+                this.selectedDay = { ...dayObj, events };
+            },
+
+            eventLabel(ev) {
+                if (ev.eventType === 'holiday') {
+                    return { regular: 'Regular Holiday', special_non_working: 'Special Non-Working Holiday', special_working: 'Special Working Day' }[ev.type] ?? ev.type;
+                }
+                if (ev.eventType === 'birthday') return 'Birthday';
+                if (ev.eventType === 'anniversary') {
+                    const s = ev.years === 1 ? '' : 's';
+                    return `${ev.years} year${s} with the company`;
+                }
+                return '';
+            },
+
+            get upcomingThisMonth() {
+                const m = this.currentMonth + 1, y = this.currentYear;
+                const daysInMonth = new Date(y, this.currentMonth + 1, 0).getDate();
+                const events = [];
+                for (let d = 1; d <= daysInMonth; d++) {
+                    this.eventsForDay({ day: d, month: m, year: y, currentMonth: true })
+                        .forEach(ev => events.push({ ...ev, day: d }));
+                }
+                return events.sort((a, b) => a.day - b.day);
+            },
+        };
+    }
+    </script>
     <div class="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden"
          x-data="calendarWidget({{ Js::from($calendarEvents) }})">
         <div class="flex flex-col lg:flex-row">
@@ -249,125 +368,3 @@
     </div>
 
 </x-app-layout>
-
-@push('scripts')
-<script>
-function calendarWidget(data) {
-    return {
-        currentMonth: new Date().getMonth(),
-        currentYear:  new Date().getFullYear(),
-        selectedDay:  null,
-        holidays:     data.holidays,
-        birthdays:    data.birthdays,
-        anniversaries: data.anniversaries,
-
-        get monthName() {
-            return new Date(this.currentYear, this.currentMonth)
-                .toLocaleString('en-US', { month: 'long' });
-        },
-        get shortMonthName() {
-            return new Date(this.currentYear, this.currentMonth)
-                .toLocaleString('en-US', { month: 'short' });
-        },
-        get selectedDayLabel() {
-            if (!this.selectedDay) return '';
-            return new Date(this.selectedDay.year, this.selectedDay.month - 1, this.selectedDay.day)
-                .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        },
-
-        prevMonth() {
-            if (this.currentMonth === 0) { this.currentMonth = 11; this.currentYear--; }
-            else this.currentMonth--;
-            this.selectedDay = null;
-        },
-        nextMonth() {
-            if (this.currentMonth === 11) { this.currentMonth = 0; this.currentYear++; }
-            else this.currentMonth++;
-            this.selectedDay = null;
-        },
-        goToToday() {
-            this.currentMonth = new Date().getMonth();
-            this.currentYear  = new Date().getFullYear();
-            this.selectedDay  = null;
-        },
-
-        get calendarDays() {
-            const firstDay      = new Date(this.currentYear, this.currentMonth, 1).getDay();
-            const daysInMonth   = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
-            const daysInPrev    = new Date(this.currentYear, this.currentMonth, 0).getDate();
-            const days = [];
-
-            for (let i = firstDay - 1; i >= 0; i--) {
-                const m = this.currentMonth === 0 ? 12 : this.currentMonth;
-                const y = this.currentMonth === 0 ? this.currentYear - 1 : this.currentYear;
-                days.push({ day: daysInPrev - i, month: m, year: y, currentMonth: false });
-            }
-            for (let d = 1; d <= daysInMonth; d++) {
-                days.push({ day: d, month: this.currentMonth + 1, year: this.currentYear, currentMonth: true });
-            }
-            const remaining = 42 - days.length;
-            for (let d = 1; d <= remaining; d++) {
-                const m = this.currentMonth === 11 ? 1 : this.currentMonth + 2;
-                const y = this.currentMonth === 11 ? this.currentYear + 1 : this.currentYear;
-                days.push({ day: d, month: m, year: y, currentMonth: false });
-            }
-            return days;
-        },
-
-        eventsForDay(dayObj) {
-            const m = dayObj.month, d = dayObj.day, y = dayObj.year;
-            const pad = n => String(n).padStart(2, '0');
-            const fullDate = `${y}-${pad(m)}-${pad(d)}`;
-            const events = [];
-            this.holidays.forEach(h => {
-                if (h.date === fullDate) events.push({ ...h, eventType: 'holiday' });
-            });
-            this.birthdays.forEach(b => {
-                if (b.month === m && b.day === d) events.push({ ...b, eventType: 'birthday' });
-            });
-            this.anniversaries.forEach(a => {
-                if (a.month === m && a.day === d && a.hire_year < y)
-                    events.push({ ...a, eventType: 'anniversary', years: y - a.hire_year });
-            });
-            return events;
-        },
-
-        isToday(dayObj) {
-            const t = new Date();
-            return dayObj.day === t.getDate()
-                && dayObj.month === t.getMonth() + 1
-                && dayObj.year  === t.getFullYear();
-        },
-
-        selectDay(dayObj) {
-            const events = this.eventsForDay(dayObj);
-            if (!events.length) { this.selectedDay = null; return; }
-            this.selectedDay = { ...dayObj, events };
-        },
-
-        eventLabel(ev) {
-            if (ev.eventType === 'holiday') {
-                return { regular: 'Regular Holiday', special_non_working: 'Special Non-Working Holiday', special_working: 'Special Working Day' }[ev.type] ?? ev.type;
-            }
-            if (ev.eventType === 'birthday') return 'Birthday';
-            if (ev.eventType === 'anniversary') {
-                const s = ev.years === 1 ? '' : 's';
-                return `${ev.years} year${s} with the company`;
-            }
-            return '';
-        },
-
-        get upcomingThisMonth() {
-            const m = this.currentMonth + 1, y = this.currentYear;
-            const daysInMonth = new Date(y, this.currentMonth + 1, 0).getDate();
-            const events = [];
-            for (let d = 1; d <= daysInMonth; d++) {
-                this.eventsForDay({ day: d, month: m, year: y, currentMonth: true })
-                    .forEach(ev => events.push({ ...ev, day: d }));
-            }
-            return events.sort((a, b) => a.day - b.day);
-        },
-    };
-}
-</script>
-@endpush
