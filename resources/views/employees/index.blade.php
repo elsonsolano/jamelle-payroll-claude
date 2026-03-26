@@ -116,7 +116,8 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse($employees as $employee)
-                    <tr class="hover:bg-gray-50 transition">
+                    <tr class="hover:bg-indigo-50 cursor-pointer transition"
+                        onclick="window.location='{{ route('employees.show', $employee) }}'">
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
@@ -149,10 +150,8 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="px-5 py-3 text-right" onclick="event.stopPropagation()">
                             <div class="inline-flex items-center gap-3">
-                                <a href="{{ route('employees.show', $employee) }}"
-                                   class="text-sm text-gray-500 hover:text-gray-800 font-medium">View</a>
                                 <a href="{{ route('employees.edit', $employee) }}"
                                    class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</a>
                                 <form method="POST" action="{{ route('employees.destroy', $employee) }}"
