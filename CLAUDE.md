@@ -72,14 +72,14 @@ Staff accounts are created by the admin on the employee show page. Default passw
 ### Key Models & Relationships
 
 - `Branch` → has many `Employee`s, `PayrollCutoff`s; has `work_start_time`/`work_end_time` columns but these are **not used for DTR computation** — only informational
-- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `DailySchedule`, `EmployeeStandingDeduction`, `EmployeeAllowance`, `PayrollEntry`; has `nickname` (nullable) — short name used for matching names in schedule uploads (e.g. "Eddie", "AJ"); has `birthday` (date, nullable)
+- `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `DailySchedule`, `EmployeeStandingDeduction`, `EmployeeAllowance`, `PayrollEntry`; has `nickname` (nullable) — short name used for matching names in schedule uploads (e.g. "Eddie", "AJ"); has `birthday` (date, nullable); has `hired_date` (date, nullable) — column is named `hired_date`, not `date_hired`
 - `User` → belongs to `Employee` (staff only); admin users have `employee_id = null`
 - `EmployeeSchedule` → weekly repeating schedule per employee with `rest_days` (array) and optional custom work hours; used as fallback when no `DailySchedule` exists for a date; managed at `/employees/{employee}/schedules`
 - `DailySchedule` → date-specific schedule per employee (`date`, `work_start_time`, `work_end_time`, `is_day_off`, `assigned_branch_id`, `notes`); **takes priority over `EmployeeSchedule`** in DTR computation; unique on `(employee_id, date)`; belongs to `ScheduleUpload`; also visible and inline-editable on the `/employees/{employee}/schedules` page
 - `ScheduleUpload` → tracks each schedule image import (branch, uploader, label, `ai_response` JSON, status: `pending`→`review`→`applied`)
 - `EmployeeStandingDeduction` → recurring deductions (SSS, PhilHealth, PagIBIG, loan, cash_advance, uniform, other); `active` flag; `cutoff_period` (`both` | `first` | `second`) controls which semi-monthly cutoff it applies to — determined by `end_date`: day ≤ 15 = `first` (payday 15th), day > 15 = `second` (payday 30th/31st). Cutoff pattern: payday 15th covers ~30th prev month → 13th; payday 30th/31st covers 14th → 29th.
 - `EmployeeAllowance` → per-employee daily allowance (`daily_amount`, `description`, `active`); applied as `daily_amount × working_days` during payroll computation
-- `PayrollCutoff` → belongs to `Branch`; has many `PayrollEntry`; status: `draft` → `processing` → `finalized`
+- `PayrollCutoff` → belongs to `Branch`; has many `PayrollEntry`; status: `draft` → `processing` → `finalized` → `voided`; `void_reason` (nullable text) stores the reason when voided. Voided cutoffs show a red banner on their show page and cannot have payroll regenerated, but **DTRs within a voided cutoff's date range become editable again** (only `finalized` status blocks DTR editing)
 - `Holiday` → date (unique), name, type (`regular` | `special_non_working` | `special_working`); managed via calendar UI at `/holidays`
 - `PayrollEntry` → has many `PayrollDeduction`, `PayrollEntryRefund`, `PayrollEntryVariableDeduction`; stores computed pay figures (basic_pay, overtime_pay, holiday_pay, allowance_pay, gross_pay, total_deductions, net_pay) plus summary columns: `working_days` (decimal 8,4 — truncated to 2dp), `total_hours_worked` (capped at 8h/day), `total_overtime_hours`; `late_deduction` and `undertime_deduction` columns exist but are always 0 (kept for schema compatibility)
 - `PayrollEntryRefund` → manual refunds added per payroll entry (`description`, `amount`); **preserved** when payroll is regenerated
@@ -162,8 +162,8 @@ Rejection resets `overtime_hours = 0` on the DTR. Staff can re-submit OT after r
 
 Uses Laravel's database notification channel (`notifications` table). Three notification classes in `app/Notifications/`:
 - `OtSubmitted` — sent to approvers when staff submits OT
-- `OtApproved` — sent to the staff member when their OT is approved
-- `OtRejected` — sent to the staff member when their OT is rejected (includes rejection reason)
+- `OtApproved` — sent to the staff member when their OT is approved (includes `approver_name`)
+- `OtRejected` — sent to the staff member when their OT is rejected (includes rejection reason and `approver_name`)
 
 Unread count is shown in the staff portal top bar bell icon.
 
@@ -187,17 +187,21 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `GET/POST /setup-signature` — signature canvas onboarding
 
 **Staff portal** (`auth` + `staff` middleware, prefix `/staff`, name prefix `staff.`):
-- `staff.dashboard` — home with recent DTRs and stats
-- `staff.dtr.*` — index, create, store, edit, update (edit blocked if DTR is in a finalized payroll)
+- `staff.dashboard` — home with Today's DTR card (event-by-event logging) and recent DTRs
+- `staff.dtr.*` — index, create, store, edit, update (edit blocked if DTR is in a **finalized** payroll; voided cutoffs do not block)
+- `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update today's DTR; handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
 - `staff.ot-approvals.*` — index, approve, reject (access not middleware-gated, enforced inside controller)
 - `staff.notifications.*` — index, mark-read
 
 **Admin panel** (`auth` + `admin` middleware):
 - All existing admin routes: branches, employees, payroll cutoffs/entries, DTR (read-only view), holidays
+- `POST payroll/cutoffs/{cutoff}/void` (`payroll.cutoffs.void`) — marks a finalized cutoff as voided; requires `void_reason`
+- `POST payroll/cutoffs/{cutoff}/unvoid` (`payroll.cutoffs.unvoid`) — restores a voided cutoff to finalized
 - `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
 - `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
 - `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
-- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`)
+- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`); review page has per-row trash-icon delete (`assignments.splice(idx, 1)`) and dropdown syncing (changing one row's employee syncs all rows with the same name)
+- `GET/POST utilities/truncate-schedules` — admin-only utility that deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE` (not `TRUNCATE` — see MySQL note below)
 - Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
   - `employees/{employee}/daily-schedules/{daily}` — PUT (update) and DELETE for individual `DailySchedule` records; handled by `EmployeeScheduleController::updateDaily()` / `destroyDaily()` (same controller as weekly schedules)
 
@@ -206,8 +210,14 @@ Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=La
 ### Frontend
 
 Two layouts:
-- `x-app-layout` (`AppLayout.php` → `layouts/app.blade.php`) — desktop sidebar layout for admin
-- `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav
+- `x-app-layout` (`AppLayout.php` → `layouts/app.blade.php`) — desktop sidebar layout for admin; includes "Powered by Futuristech.ph" footer
+- `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav (no footer — intentionally omitted to avoid conflict with the bottom nav)
+
+**Staff dashboard Today's DTR card:** Shows 4 event rows (Time In, Start Break, End Break, Time Out) with timemark color coding (green/amber/orange/blue). Each row is either logged (checkmark), next-to-log (colored dot + "Tap to Log" button), or locked (gray). Tapping opens an Alpine.js bottom sheet with a native `<input type="time">` and a 12-hour preview rendered below it via `toLocaleTimeString`. Time Out row includes an optional OT section. `<input type="time">` always renders in 24-hour format on Android/Brave regardless of locale — the 12-hour preview below the input is the workaround.
+
+**Employee index filter persistence:** `EmployeeController` saves the last-used branch/status/search filters to `session('employee_filters')` and restores them on a bare index visit. Append `?clear=1` to reset.
+
+**Alpine.js + Vite timing:** Vite loads Alpine as a deferred ES module (`type="module"`). This means `@push('scripts')` / `@stack('scripts')` content executes **after** Alpine has already initialized and evaluated all `x-data` attributes — so any Alpine component function defined via `@push` will be undefined when Alpine looks for it. **Always define Alpine component functions in a `<script>` tag placed directly before the `x-data` element** in the Blade template, not in a pushed stack.
 
 Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf` (uses DejaVu Sans; peso sign rendered as `PHP` prefix since DejaVu Sans UFM lacks the ₱ glyph). Excel import via `phpoffice/phpspreadsheet`.
 
@@ -238,6 +248,14 @@ Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (
 ### Database & Seeding
 
 MySQL with database-backed sessions, cache, and notifications. All foreign keys cascade on delete.
+
+**MySQL `TRUNCATE` with FK constraints:** `TRUNCATE TABLE` fails in production even when truncating the child table first, because MySQL checks FK constraints before executing. Use `DELETE` with FK checks disabled instead:
+```php
+DB::statement('SET FOREIGN_KEY_CHECKS=0');
+DB::table('child_table')->delete();
+DB::table('parent_table')->delete();
+DB::statement('SET FOREIGN_KEY_CHECKS=1');
+```
 
 Seeders (run in order via `DatabaseSeeder`):
 - `BranchSeeder` — Head Office, Abreeza, SM Lanang, SM Ecoland, NCCC
