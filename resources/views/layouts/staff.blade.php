@@ -51,6 +51,10 @@
     {{-- Page content --}}
     <main class="flex-1 p-4 pb-24">
         {{ $slot }}
+
+        <p class="text-center text-xs text-gray-400 mt-8 mb-2">
+            Powered by <a href="https://www.instagram.com/futuristech.ph/" target="_blank" rel="noopener" class="hover:text-gray-600 transition">Futuristech.ph</a>
+        </p>
     </main>
 
     {{-- Bottom Navigation --}}
