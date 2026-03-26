@@ -61,7 +61,7 @@
     @endphp
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '' }">
+         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '' }">
 
         {{-- Card Header --}}
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
@@ -177,7 +177,8 @@
                 <p class="text-xs text-gray-400 mb-0.5">{{ $todayLabel }}</p>
                 <h3 class="text-lg font-bold text-gray-900 mb-4" x-text="label"></h3>
 
-                <form method="POST" action="{{ route('staff.dtr.log-event') }}">
+                <form method="POST" action="{{ route('staff.dtr.log-event') }}"
+                      @submit.prevent="if (hasOt && !otHours) { otError = 'Please enter your overtime hours.' } else { otError = ''; $el.submit() }">
                     @csrf
                     <input type="hidden" name="date" value="{{ $today->format('Y-m-d') }}">
                     <input type="hidden" name="event" :value="event">
@@ -203,7 +204,9 @@
                                 <input type="number" name="ot_hours" x-model="otHours"
                                        min="0.25" max="24" step="0.25"
                                        placeholder="e.g. 2, 1.5, or 0.75"
+                                       @input="otError = ''"
                                        class="w-full border border-amber-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 bg-white">
+                                <p x-show="otError" x-cloak class="text-xs text-red-600 font-medium mt-1" x-text="otError"></p>
                                 <p class="text-xs text-amber-600 mt-1">Your overtime will be sent for approval.</p>
                             </div>
                         </div>
