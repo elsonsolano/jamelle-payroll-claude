@@ -33,10 +33,10 @@
         $today      = today();
         $todayLabel = $today->format('D, M d Y');
         $events = [
-            'time_in'  => 'Clock In',
-            'am_out'   => 'Start Break',
-            'pm_in'    => 'End Break',
-            'time_out' => 'Clock Out',
+            'time_in'  => ['label' => 'Time In',     'color' => '#04AA48'],
+            'am_out'   => ['label' => 'Start Break',  'color' => '#E0A400'],
+            'pm_in'    => ['label' => 'End Break',    'color' => '#E26E17'],
+            'time_out' => ['label' => 'Time Out',     'color' => '#026DEF'],
         ];
         $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : null;
 
@@ -83,31 +83,30 @@
 
         {{-- Event Rows --}}
         <div class="px-4 pb-3 space-y-2">
-            @foreach($events as $field => $label)
+            @foreach($events as $field => $event)
                 @php
+                    $label      = $event['label'];
+                    $color      = $event['color'];
                     $loggedTime = $todayDtr?->{$field} ?? null;
                     $isLogged   = !is_null($loggedTime);
                     $isNext     = $nextEvent === $field;
-                    // Locked: not logged, not next, and either no DTR or a prior required field is missing
                     $isLocked   = !$isLogged && !$isNext;
                 @endphp
 
-                <div @class([
-                    'flex items-center justify-between rounded-xl px-3 py-2.5',
-                    'bg-green-50'  => $isLogged,
-                    'bg-indigo-50' => $isNext,
-                    'bg-gray-50'   => $isLocked,
-                ])>
+                <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                     style="{{ $isLocked ? 'background-color:#f9fafb' : 'background-color:' . $color . '18' }}">
                     <div class="flex items-center gap-2.5">
                         {{-- Status icon --}}
                         @if($isLogged)
-                            <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                            <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                 style="background-color:{{ $color }}">
                                 <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </div>
                         @elseif($isNext)
-                            <div class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                            <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                 style="background-color:{{ $color }}">
                                 <div class="w-2 h-2 rounded-full bg-white"></div>
                             </div>
                         @else
@@ -115,14 +114,10 @@
                         @endif
 
                         <div>
-                            <p @class([
-                                'text-sm font-medium',
-                                'text-green-700'  => $isLogged,
-                                'text-indigo-700' => $isNext,
-                                'text-gray-400'   => $isLocked,
-                            ])>{{ $label }}</p>
+                            <p class="text-sm font-medium {{ $isLocked ? 'text-gray-400' : '' }}"
+                               @if(!$isLocked) style="color:{{ $color }}" @endif>{{ $label }}</p>
                             @if($isLogged)
-                                <p class="text-xs text-green-600">{{ $fmt12($loggedTime) }}</p>
+                                <p class="text-xs" style="color:{{ $color }}">{{ $fmt12($loggedTime) }}</p>
                             @endif
                         </div>
                     </div>
@@ -130,7 +125,8 @@
                     @if($isNext)
                         <button type="button"
                                 @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; open = true"
-                                class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                                class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
+                                style="background-color:{{ $color }}">
                             Tap to Log
                         </button>
                     @endif
