@@ -98,6 +98,61 @@ class DtrController extends Controller
             ->with('success', 'DTR submitted successfully.' . ($hasOt ? ' Overtime request is pending approval.' : ''));
     }
 
+    public function logEvent(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'event' => 'required|in:time_in,am_out,pm_in,time_out',
+            'time'  => 'required|date_format:H:i',
+            'date'  => 'required|date|before_or_equal:today',
+        ]);
+
+        $employee = Auth::user()->employee;
+
+        $dtr = Dtr::firstOrNew([
+            'employee_id' => $employee->id,
+            'date'        => $validated['date'],
+        ]);
+
+        if ($dtr->exists) {
+            $this->ensureEditable($dtr);
+        } else {
+            $dtr->source    = 'manual';
+            $dtr->status    = 'Approved';
+            $dtr->ot_status = 'none';
+        }
+
+        $dtr->{$validated['event']} = $validated['time'];
+
+        // Preserve existing OT hours when recomputing
+        $existingOtHours = ($dtr->overtime_hours > 0) ? (float) $dtr->overtime_hours : null;
+
+        $computed = $this->computer->compute(
+            $employee,
+            $validated['date'],
+            $dtr->time_in,
+            $dtr->am_out,
+            $dtr->pm_in,
+            $dtr->time_out,
+            $existingOtHours,
+        );
+
+        foreach ($computed as $key => $value) {
+            $dtr->$key = $value;
+        }
+
+        $dtr->save();
+
+        $labels = [
+            'time_in'  => 'Clock In',
+            'am_out'   => 'Start Break',
+            'pm_in'    => 'End Break',
+            'time_out' => 'Clock Out',
+        ];
+
+        return redirect()->route('staff.dashboard')
+            ->with('success', $labels[$validated['event']] . ' logged at ' . date('g:i A', strtotime($validated['time'])) . '.');
+    }
+
     public function edit(Dtr $dtr): View
     {
         $this->authorizeOwner($dtr);

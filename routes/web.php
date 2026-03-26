@@ -32,6 +32,7 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/dashboard", [\App\Http\Controllers\Staff\DashboardController::class, "index"])->name("dashboard");
     Route::get("/dtr", [\App\Http\Controllers\Staff\DtrController::class, "index"])->name("dtr.index");
     Route::get("/dtr/create", [\App\Http\Controllers\Staff\DtrController::class, "create"])->name("dtr.create");
+    Route::post("/dtr/log-event", [\App\Http\Controllers\Staff\DtrController::class, "logEvent"])->name("dtr.log-event");
     Route::post("/dtr", [\App\Http\Controllers\Staff\DtrController::class, "store"])->name("dtr.store");
     Route::get("/dtr/{dtr}/edit", [\App\Http\Controllers\Staff\DtrController::class, "edit"])->name("dtr.edit");
     Route::put("/dtr/{dtr}", [\App\Http\Controllers\Staff\DtrController::class, "update"])->name("dtr.update");

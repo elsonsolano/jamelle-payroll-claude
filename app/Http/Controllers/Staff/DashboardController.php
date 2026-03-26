@@ -13,7 +13,12 @@ class DashboardController extends Controller
         $user     = Auth::user();
         $employee = $user->employee;
 
+        $todayDtr = $employee->dtrs()
+            ->whereDate('date', today())
+            ->first();
+
         $recentDtrs = $employee->dtrs()
+            ->whereDate('date', '<', today())
             ->orderByDesc('date')
             ->limit(7)
             ->get();
@@ -31,7 +36,7 @@ class DashboardController extends Controller
         }
 
         return view('staff.dashboard', compact(
-            'employee', 'recentDtrs', 'pendingOtCount', 'unreadCount', 'pendingApprovalCount'
+            'employee', 'todayDtr', 'recentDtrs', 'pendingOtCount', 'unreadCount', 'pendingApprovalCount'
         ));
     }
 
