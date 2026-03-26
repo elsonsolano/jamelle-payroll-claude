@@ -93,30 +93,25 @@
                         <template x-for="(row, idx) in assignments" :key="idx">
                             <tr :class="rowClass(row)">
                                 <td class="py-2.5 text-gray-700 text-xs"
-                                    :class="!row.employee_id && !approved[row.name] ? 'pl-3 border-l-4 border-red-500' : 'px-4'"
+                                    :class="!row.employee_id ? 'pl-3 border-l-4 border-red-500' : 'px-4'"
                                     x-text="row.date"></td>
                                 <td class="px-4 py-2.5 text-gray-500 text-xs font-medium" x-text="row.day"></td>
                                 <td class="px-4 py-2.5">
                                     <span class="text-xs font-medium" :class="row.employee_id ? 'text-gray-800' : 'text-red-600'" x-text="row.name"></span>
                                 </td>
                                 <td class="px-4 py-2.5">
-                                    <template x-if="!approved[row.name]">
-                                        <select :class="row.employee_id ? 'border-gray-200 text-gray-700' : 'border-red-300 text-red-700 bg-red-50'"
-                                                class="w-full border rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500"
-                                                x-model="row.employee_id"
-                                                @change="onSelectChange(row)">
-                                            <option value="">— skip this entry —</option>
-                                            @foreach($employees as $emp)
-                                                <option value="{{ $emp->id }}">
-                                                    {{ $emp->first_name }} {{ $emp->last_name }}
-                                                    @if($emp->nickname) ({{ $emp->nickname }}) @endif
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </template>
-                                    <template x-if="approved[row.name]">
-                                        <span class="text-xs font-medium text-green-700" x-text="approvedLabel[row.name]"></span>
-                                    </template>
+                                    <select :class="row.employee_id ? 'border-gray-200 text-gray-700' : 'border-red-300 text-red-700 bg-red-50'"
+                                            class="w-full border rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500"
+                                            x-model="row.employee_id"
+                                            @change="onSelectChange(row)">
+                                        <option value="">— skip this entry —</option>
+                                        @foreach($employees as $emp)
+                                            <option value="{{ $emp->id }}">
+                                                {{ $emp->first_name }} {{ $emp->last_name }}
+                                                @if($emp->nickname) ({{ $emp->nickname }}) @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </td>
                                 <td class="px-4 py-2.5 text-xs text-gray-600">
                                     <span x-show="!row.is_day_off" x-text="(row.work_start_time || '—') + ' – ' + (row.work_end_time || '—')"></span>
@@ -134,15 +129,13 @@
                                     <span x-show="row.notes" x-text="row.notes" class="text-amber-600 font-medium"></span>
                                     <span x-show="!row.notes" class="text-gray-300">—</span>
                                 </td>
-                                <td class="px-4 py-2.5">
-                                    <template x-if="needsApproval(row)">
-                                        <button type="button"
-                                                @click="approve(row)"
-                                                :disabled="approving === row.name"
-                                                class="px-2.5 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition">
-                                            <span x-text="approving === row.name ? 'Saving…' : 'Approve'"></span>
-                                        </button>
-                                    </template>
+                                <td class="px-4 py-2.5 text-center">
+                                    <button type="button" @click="assignments.splice(idx, 1)"
+                                            class="text-gray-300 hover:text-red-500 transition" title="Remove row">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                         </template>
@@ -174,29 +167,18 @@
     function scheduleReview() {
         return {
             assignments:    [],
-            unmatchedNames: [],   // names that had no match from AI
-            approved:       {},   // name => true once approved
-            approvedLabel:  {},   // name => "First Last" for display
-            approving:      null, // name currently being saved
+            unmatchedNames: [],
 
             init(data, unmatched) {
                 this.assignments    = data;
                 this.unmatchedNames = unmatched;
             },
 
-            needsApproval(row) {
-                return this.unmatchedNames.includes(row.name)
-                    && !this.approved[row.name]
-                    && !!row.employee_id;
-            },
-
             rowClass(row) {
-                if (this.approved[row.name]) return 'bg-green-50 hover:bg-green-100';
-                if (!row.employee_id)        return 'bg-red-100 hover:bg-red-150';
+                if (!row.employee_id) return 'bg-red-100 hover:bg-red-150';
                 return 'hover:bg-gray-50';
             },
 
-            // When any dropdown changes, sync all rows with the same name
             onSelectChange(row) {
                 this.assignments.forEach(a => {
                     if (a.name === row.name) a.employee_id = row.employee_id;
@@ -212,38 +194,6 @@
                     if (!ok) return;
                 }
                 form.submit();
-            },
-
-            async approve(row) {
-                this.approving = row.name;
-                try {
-                    const res = await fetch('{{ route('schedule-uploads.assign-name', $schedule) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        },
-                        body: JSON.stringify({
-                            name:        row.name,
-                            employee_id: row.employee_id,
-                        }),
-                    });
-
-                    if (!res.ok) throw new Error('Request failed');
-
-                    const json = await res.json();
-
-                    // Mark approved and sync all rows with this name
-                    this.approved[row.name]      = true;
-                    this.approvedLabel[row.name] = json.employee_name;
-                    this.assignments.forEach(a => {
-                        if (a.name === row.name) a.employee_id = json.employee_id;
-                    });
-                } catch (e) {
-                    alert('Could not save assignment. Please try again.');
-                } finally {
-                    this.approving = null;
-                }
             },
         };
     }
