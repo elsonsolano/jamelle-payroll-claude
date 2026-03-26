@@ -167,6 +167,13 @@
 
                 <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
 
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                    <p class="text-xs text-red-700 font-medium">Make sure the times you enter match exactly what is recorded in your timemark.</p>
+                </div>
+
                 <p class="text-xs text-gray-400 mb-0.5">{{ $todayLabel }}</p>
                 <h3 class="text-lg font-bold text-gray-900 mb-4" x-text="label"></h3>
 
