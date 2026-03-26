@@ -103,6 +103,26 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::get("schedule-uploads/{schedule}/review", [ScheduleUploadController::class, "review"])->name("schedule-uploads.review");
     Route::post("schedule-uploads/{schedule}/apply", [ScheduleUploadController::class, "apply"])->name("schedule-uploads.apply");
     Route::post("schedule-uploads/{schedule}/assign-name", [ScheduleUploadController::class, "assignName"])->name("schedule-uploads.assign-name");
+    Route::get("utilities/truncate-schedules", function () {
+        return response('
+            <form method="POST" style="font-family:sans-serif;padding:2rem;max-width:400px">
+                <input type="hidden" name="_token" value="' . csrf_token() . '">
+                <h2 style="margin-bottom:1rem">Truncate Schedule Data</h2>
+                <p style="margin-bottom:1.5rem;color:#555">This will permanently delete all rows in <strong>schedule_uploads</strong> and <strong>daily_schedules</strong>. This cannot be undone.</p>
+                <button type="submit" style="background:#dc2626;color:white;padding:.6rem 1.5rem;border:none;border-radius:6px;cursor:pointer;font-size:1rem">
+                    Yes, delete everything
+                </button>
+            </form>
+        ');
+    })->name("utilities.truncate-schedules");
+
+    Route::post("utilities/truncate-schedules", function () {
+        \App\Models\DailySchedule::truncate();
+        \App\Models\ScheduleUpload::truncate();
+        return redirect()->route('schedule-uploads.index')
+            ->with('success', 'All schedule uploads and daily schedules have been deleted.');
+    });
+
     Route::get("holidays", [HolidayController::class, "index"])->name("holidays.index");
     Route::post("holidays", [HolidayController::class, "store"])->name("holidays.store");
     Route::put("holidays/{holiday}", [HolidayController::class, "update"])->name("holidays.update");
