@@ -196,9 +196,8 @@
                 return 'hover:bg-gray-50';
             },
 
-            // When a dropdown changes on an unmatched row, sync all rows with same name
+            // When any dropdown changes, sync all rows with the same name
             onSelectChange(row) {
-                if (!this.unmatchedNames.includes(row.name)) return;
                 this.assignments.forEach(a => {
                     if (a.name === row.name) a.employee_id = row.employee_id;
                 });
