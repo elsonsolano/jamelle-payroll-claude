@@ -44,6 +44,7 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
     Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");
+    Route::get("/schedule", [\App\Http\Controllers\Staff\ScheduleController::class, "index"])->name("schedule");
 });
 
 Route::middleware(["auth", "admin"])->group(function () {

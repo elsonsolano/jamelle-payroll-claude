@@ -78,23 +78,27 @@
                 <span class="text-xs font-medium">Home</span>
             </a>
 
+            @php $pendingOtCount = Auth::user()->employee?->dtrs()->where('ot_status', 'pending')->count() ?? 0; @endphp
             <a href="{{ route('staff.dtr.index') }}"
-               class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.dtr.*') ? 'text-green-600' : 'text-gray-400' }}">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                </svg>
+               class="relative flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.dtr.*') ? 'text-green-600' : 'text-gray-400' }}">
+                <div class="relative">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    @if($pendingOtCount > 0)
+                        <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white"></span>
+                    @endif
+                </div>
                 <span class="text-xs font-medium">DTR</span>
             </a>
 
-            @if(Auth::user()->can_approve_ot)
-            <a href="{{ route('staff.ot-approvals.index') }}"
-               class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.ot-approvals.*') ? 'text-green-600' : 'text-gray-400' }}">
+            <a href="{{ route('staff.schedule') }}"
+               class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.schedule') ? 'text-green-600' : 'text-gray-400' }}">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <span class="text-xs font-medium">Approvals</span>
+                <span class="text-xs font-medium">Schedule</span>
             </a>
-            @endif
 
             <a href="{{ route('staff.profile') }}"
                class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.profile') ? 'text-green-600' : 'text-gray-400' }}">

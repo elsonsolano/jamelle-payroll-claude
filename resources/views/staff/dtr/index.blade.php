@@ -8,6 +8,21 @@
         </a>
     </div>
 
+    @php $pendingOtCount = Auth::user()->employee->dtrs()->where('ot_status', 'pending')->count(); @endphp
+    @if($pendingOtCount > 0)
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+        <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            <p class="text-sm font-semibold text-amber-800">
+                {{ $pendingOtCount }} pending OT {{ Str::plural('request', $pendingOtCount) }}
+            </p>
+            <p class="text-xs text-amber-600">Awaiting approval from your supervisor.</p>
+        </div>
+    </div>
+    @endif
+
     <div class="space-y-2">
         @forelse($dtrs as $dtr)
         <div class="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">

@@ -158,6 +158,8 @@ Three-tier hierarchy enforced in `DtrComputationService::getOtApprovers()` and `
 
 Rejection resets `overtime_hours = 0` on the DTR. Staff can re-submit OT after rejection by editing the DTR.
 
+Admins can also approve/reject OT directly from the admin `/dtr` page via `DtrController::approveOt()` / `rejectOt()` — these bypass the hierarchy and work on any pending DTR. Pending OT rows are highlighted amber on the index; a "Pending OT only" checkbox filter is available.
+
 ### In-App Notifications
 
 Uses Laravel's database notification channel (`notifications` table). Three notification classes in `app/Notifications/`:
@@ -167,14 +169,20 @@ Uses Laravel's database notification channel (`notifications` table). Three noti
 
 Unread count is shown in the staff portal top bar bell icon.
 
+### Admin Impersonation
+
+Admins can log in as any staff employee via `POST /employees/{employee}/impersonate` (`employees.impersonate`), handled by `ImpersonationController::impersonate()`. The original admin's user ID and return URL are stored in `session('impersonator_id')` and `session('impersonator_return_url')`. The staff layout shows an amber banner during impersonation with a "Return to Admin" button that posts to `POST /impersonation/exit` (`impersonation.exit`).
+
+`EnsurePasswordChanged` and `EnsureSignatureSet` both check `session()->has('impersonator_id')` and skip their forced redirects during impersonation so the admin sees the real staff portal without interruption.
+
 ### Middleware
 
 Registered in `bootstrap/app.php` as aliases and also appended to the `web` group:
 
 - `admin` (`RequireAdmin`) — 403 if not `role = admin`; applied to all admin panel routes
 - `staff` (`RequireStaff`) — 403 if not `role = staff`; applied to all `/staff/*` routes
-- `EnsurePasswordChanged` — redirects to `/change-password` if `must_change_password = true`; runs on every web request
-- `EnsureSignatureSet` — redirects to `/setup-signature` if staff user has no signature; runs on every web request
+- `EnsurePasswordChanged` — redirects to `/change-password` if `must_change_password = true`; skipped during impersonation
+- `EnsureSignatureSet` — redirects to `/setup-signature` if staff user has no signature; skipped during impersonation
 
 The last two run globally (appended to web group) so they intercept after auth, before any controller. Both check their respective exempt routes to avoid redirect loops.
 
@@ -187,11 +195,15 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `GET/POST /setup-signature` — signature canvas onboarding
 
 **Staff portal** (`auth` + `staff` middleware, prefix `/staff`, name prefix `staff.`):
-- `staff.dashboard` — home with Today's DTR card (event-by-event logging) and recent DTRs
+- `staff.dashboard` — home with Today's DTR card (event-by-event logging), recent DTRs, and daily quote of the day
 - `staff.dtr.*` — index, create, store, edit, update (edit blocked if DTR is in a **finalized** payroll; voided cutoffs do not block)
 - `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update today's DTR; handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
 - `staff.ot-approvals.*` — index, approve, reject (access not middleware-gated, enforced inside controller)
 - `staff.notifications.*` — index, mark-read
+- `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); also contains the Logout button (Logout was removed from the bottom nav)
+
+**Auth-only** (no role restriction, accessible during impersonation):
+- `POST /impersonation/exit` (`impersonation.exit`) — restores admin session, clears impersonation session keys
 
 **Admin panel** (`auth` + `admin` middleware):
 - All existing admin routes: branches, employees, payroll cutoffs/entries, DTR (read-only view), holidays
@@ -204,6 +216,8 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `GET/POST utilities/truncate-schedules` — admin-only utility that deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE` (not `TRUNCATE` — see MySQL note below)
 - Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
   - `employees/{employee}/daily-schedules/{daily}` — PUT (update) and DELETE for individual `DailySchedule` records; handled by `EmployeeScheduleController::updateDaily()` / `destroyDaily()` (same controller as weekly schedules)
+- `POST employees/{employee}/impersonate` (`employees.impersonate`) — log in as the employee's staff account; disabled/hidden if employee has no `User` record
+- `POST dtr/{dtr}/approve-ot` / `POST dtr/{dtr}/reject-ot` (`dtr.approve-ot` / `dtr.reject-ot`) — admin OT approval directly from the DTR index/show pages
 
 Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
 
@@ -214,6 +228,10 @@ Two layouts:
 - `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav (no footer — intentionally omitted to avoid conflict with the bottom nav)
 
 **Staff dashboard Today's DTR card:** Shows 4 event rows (Time In, Start Break, End Break, Time Out) with timemark color coding (green/amber/orange/blue). Each row is either logged (checkmark), next-to-log (colored dot + "Tap to Log" button), or locked (gray). Tapping opens an Alpine.js bottom sheet with a native `<input type="time">` and a 12-hour preview rendered below it via `toLocaleTimeString`. Time Out row includes an optional OT section. `<input type="time">` always renders in 24-hour format on Android/Brave regardless of locale — the 12-hour preview below the input is the workaround.
+
+**Staff dashboard daily quote:** `DashboardController::dailyQuote()` picks from a hardcoded array of 30 quotes using `today()->dayOfYear % count($quotes)` — same quote all day for all staff, changes each morning. Displayed as a green left-accent card above the quick stats.
+
+**Staff bottom nav:** Home, DTR, Approvals (conditional on `can_approve_ot`), Profile. Logout was moved off the nav and into the Profile page.
 
 **Employee index filter persistence:** `EmployeeController` saves the last-used branch/status/search filters to `session('employee_filters')` and restores them on a bare index visit. Append `?clear=1` to reset.
 

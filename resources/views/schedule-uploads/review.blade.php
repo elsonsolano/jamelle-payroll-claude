@@ -30,9 +30,14 @@
                 ];
             }
         }
+
+        // Build employee name map for grid display
+        $employeeNameMap = $employees->mapWithKeys(fn($e) => [
+            $e->id => trim($e->first_name . ' ' . $e->last_name)
+        ]);
     @endphp
 
-    <div x-data="scheduleReview()" x-init="init({{ json_encode($flatAssignments) }}, {{ json_encode($unmatched) }})" class="space-y-5">
+    <div x-data="scheduleReview()" x-init="init({{ json_encode($flatAssignments) }}, {{ json_encode($unmatched) }}, {{ json_encode($employeeNameMap) }})" class="space-y-5">
 
         {{-- Header card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5">
@@ -71,10 +76,36 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Parsed Assignments</h2>
-                <p class="text-xs text-gray-400">Review each row. Fix unmatched employees (shown in red).</p>
+                <div class="flex items-center gap-3">
+                    <p class="text-xs text-gray-400" x-show="viewMode === 'list'">Review each row. Fix unmatched employees (shown in red).</p>
+                    <p class="text-xs text-gray-400" x-show="viewMode === 'grid'" x-cloak>Read-only overview. Switch to List View to fix unmatched names.</p>
+
+                    {{-- View toggle --}}
+                    <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                        <button type="button"
+                                @click="viewMode = 'list'"
+                                :class="viewMode === 'list' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                                class="flex items-center gap-1.5 px-3 py-1.5 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                            </svg>
+                            List
+                        </button>
+                        <button type="button"
+                                @click="viewMode = 'grid'"
+                                :class="viewMode === 'grid' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                                class="flex items-center gap-1.5 px-3 py-1.5 border-l border-gray-200 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 3v18M14 3v18M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6z"/>
+                            </svg>
+                            Grid
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="overflow-x-auto">
+            {{-- LIST VIEW --}}
+            <div x-show="viewMode === 'list'" class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200 text-left">
@@ -142,6 +173,69 @@
                     </tbody>
                 </table>
             </div>
+
+            {{-- GRID VIEW --}}
+            <div x-show="viewMode === 'grid'" x-cloak class="overflow-x-auto">
+                <table class="text-xs border-collapse w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="sticky left-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-600 text-left border-r border-gray-200 min-w-40">
+                                Employee
+                            </th>
+                            <template x-for="date in uniqueDates" :key="date">
+                                <th class="px-3 py-3 font-semibold text-gray-600 text-center whitespace-nowrap min-w-24 border-l border-gray-100">
+                                    <p x-text="formatDateHeader(date)"></p>
+                                    <p class="text-gray-400 font-normal" x-text="formatDayHeader(date)"></p>
+                                </th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-for="person in uniqueNames" :key="person.name">
+                            <tr class="hover:bg-gray-50 transition">
+                                {{-- Employee name column --}}
+                                <td class="sticky left-0 z-10 bg-white px-4 py-2.5 border-r border-gray-200"
+                                    :class="!person.employee_id ? 'bg-red-50' : 'bg-white'">
+                                    <p class="font-medium" :class="person.employee_id ? 'text-gray-800' : 'text-red-600'"
+                                       x-text="person.employee_id ? (employeeNames[person.employee_id] || person.name) : person.name"></p>
+                                    <p x-show="person.employee_id" class="text-gray-400 mt-0.5" x-text="person.name"></p>
+                                    <span x-show="!person.employee_id"
+                                          class="inline-block mt-0.5 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
+                                        Unmatched
+                                    </span>
+                                </td>
+                                {{-- Date cells --}}
+                                <template x-for="date in uniqueDates" :key="date">
+                                    <td class="px-3 py-2.5 text-center border-l border-gray-100 align-middle">
+                                        <template x-if="getCell(person.name, date)">
+                                            <div>
+                                                <template x-if="getCell(person.name, date).is_day_off">
+                                                    <span class="inline-block bg-orange-100 text-orange-600 font-semibold px-2 py-0.5 rounded-md">OFF</span>
+                                                </template>
+                                                <template x-if="!getCell(person.name, date).is_day_off">
+                                                    <div>
+                                                        <p class="font-medium text-gray-700" x-text="getCell(person.name, date).work_start_time || '—'"></p>
+                                                        <p class="text-gray-400" x-text="getCell(person.name, date).work_end_time || '—'"></p>
+                                                        <p x-show="getCell(person.name, date).branch_override"
+                                                           class="text-indigo-500 font-medium mt-0.5"
+                                                           x-text="getCell(person.name, date).branch_override"></p>
+                                                        <p x-show="getCell(person.name, date).notes"
+                                                           class="text-amber-500 font-medium mt-0.5"
+                                                           x-text="getCell(person.name, date).notes"></p>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="!getCell(person.name, date)">
+                                            <span class="text-gray-300">—</span>
+                                        </template>
+                                    </td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{-- Apply Form --}}
@@ -168,10 +262,44 @@
         return {
             assignments:    [],
             unmatchedNames: [],
+            employeeNames:  {},
+            viewMode:       'list',
 
-            init(data, unmatched) {
+            init(data, unmatched, employeeNames) {
                 this.assignments    = data;
                 this.unmatchedNames = unmatched;
+                this.employeeNames  = employeeNames;
+            },
+
+            get uniqueDates() {
+                return [...new Set(this.assignments.map(a => a.date))].sort();
+            },
+
+            get uniqueNames() {
+                const seen = new Set();
+                const result = [];
+                for (const a of this.assignments) {
+                    if (seen.has(a.name)) continue;
+                    seen.add(a.name);
+                    // Find the latest employee_id for this name (reactive to dropdown changes)
+                    const match = this.assignments.find(x => x.name === a.name);
+                    result.push({ name: a.name, employee_id: match ? match.employee_id : null });
+                }
+                return result;
+            },
+
+            getCell(name, date) {
+                return this.assignments.find(a => a.name === name && a.date === date) || null;
+            },
+
+            formatDateHeader(date) {
+                const d = new Date(date + 'T00:00:00');
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            },
+
+            formatDayHeader(date) {
+                const d = new Date(date + 'T00:00:00');
+                return d.toLocaleDateString('en-US', { weekday: 'short' });
             },
 
             rowClass(row) {

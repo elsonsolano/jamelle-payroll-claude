@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\DailySchedule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -23,23 +24,54 @@ class DashboardController extends Controller
             ->limit(7)
             ->get();
 
-        $pendingOtCount = $employee->dtrs()
-            ->where('ot_status', 'pending')
-            ->count();
-
-        $unreadCount = $user->unreadNotifications()->count();
-
-        // If this user can approve OT, count pending approvals for their queue
+        // Only needed for approvers
         $pendingApprovalCount = 0;
         if ($user->can_approve_ot || $user->isAdmin()) {
             $pendingApprovalCount = $this->pendingApprovalCount($user, $employee);
         }
 
-        $quote = $this->dailyQuote();
+        $quote         = $this->dailyQuote();
+        $todaySchedule = $this->todaySchedule($employee);
 
         return view('staff.dashboard', compact(
-            'employee', 'todayDtr', 'recentDtrs', 'pendingOtCount', 'unreadCount', 'pendingApprovalCount', 'quote'
+            'employee', 'todayDtr', 'recentDtrs', 'pendingApprovalCount', 'quote', 'todaySchedule'
         ));
+    }
+
+    private function todaySchedule(\App\Models\Employee $employee): array
+    {
+        $today = today();
+
+        $daily = DailySchedule::where('employee_id', $employee->id)
+            ->where('date', $today->toDateString())
+            ->first();
+
+        if ($daily) {
+            return [
+                'is_day_off' => $daily->is_day_off,
+                'start'      => $daily->work_start_time,
+                'end'        => $daily->work_end_time,
+                'source'     => 'daily',
+            ];
+        }
+
+        $weekly = $employee->employeeSchedules()
+            ->where('week_start_date', '<=', $today->toDateString())
+            ->orderByDesc('week_start_date')
+            ->first();
+
+        if ($weekly) {
+            $restDays  = $weekly->rest_days ?? ['Sunday'];
+            $isRestDay = in_array($today->format('l'), $restDays);
+            return [
+                'is_day_off' => $isRestDay,
+                'start'      => $isRestDay ? null : $weekly->work_start_time,
+                'end'        => $isRestDay ? null : $weekly->work_end_time,
+                'source'     => 'weekly',
+            ];
+        }
+
+        return ['is_day_off' => null, 'start' => null, 'end' => null, 'source' => 'none'];
     }
 
     private function dailyQuote(): array

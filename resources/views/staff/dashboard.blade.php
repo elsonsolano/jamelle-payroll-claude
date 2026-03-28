@@ -8,32 +8,53 @@
     </div>
 
     {{-- Daily quote --}}
-    <div class="border-l-4 border-green-400 bg-green-50 rounded-r-2xl px-4 py-3 mb-6">
+    <div class="border-l-4 border-green-400 bg-green-50 rounded-r-2xl px-4 py-3 mb-4">
         <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Quote of the Day</p>
         <p class="text-sm text-gray-700 leading-snug italic">"{{ $quote['text'] }}"</p>
         <p class="text-xs text-gray-400 mt-1.5 font-medium">— {{ $quote['author'] }}</p>
     </div>
 
-    {{-- Quick stats --}}
-    <div class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <p class="text-xs text-gray-500 mb-1">Pending OT</p>
-            <p class="text-2xl font-bold text-amber-500">{{ $pendingOtCount }}</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <p class="text-xs text-gray-500 mb-1">Unread Notifications</p>
-            <p class="text-2xl font-bold text-green-500">{{ $unreadCount }}</p>
-        </div>
-        @if($pendingApprovalCount > 0)
-        <div class="col-span-2 bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm">
-            <p class="text-xs text-amber-700 mb-1">OT Approvals Waiting</p>
-            <div class="flex items-center justify-between">
-                <p class="text-2xl font-bold text-amber-600">{{ $pendingApprovalCount }}</p>
-                <a href="{{ route('staff.ot-approvals.index') }}" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">Review</a>
+    {{-- Today's schedule snippet --}}
+    <a href="{{ route('staff.schedule') }}"
+       class="block bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4 shadow-sm hover:border-green-200 transition">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">Today's Schedule</p>
+                    @if($todaySchedule['source'] === 'none')
+                        <p class="text-sm font-semibold text-gray-400">No schedule set</p>
+                    @elseif($todaySchedule['is_day_off'])
+                        <p class="text-sm font-semibold text-orange-500">Rest Day</p>
+                    @else
+                        <p class="text-sm font-semibold text-gray-800">
+                            {{ $todaySchedule['start'] ? \Carbon\Carbon::parse($todaySchedule['start'])->format('g:i A') : '—' }}
+                            –
+                            {{ $todaySchedule['end'] ? \Carbon\Carbon::parse($todaySchedule['end'])->format('g:i A') : '—' }}
+                        </p>
+                    @endif
+                </div>
             </div>
+            <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
         </div>
-        @endif
+    </a>
+
+    {{-- OT Approvals waiting (approvers only) --}}
+    @if($pendingApprovalCount > 0)
+    <div class="bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm mb-4">
+        <p class="text-xs text-amber-700 mb-1">OT Approvals Waiting</p>
+        <div class="flex items-center justify-between">
+            <p class="text-2xl font-bold text-amber-600">{{ $pendingApprovalCount }}</p>
+            <a href="{{ route('staff.ot-approvals.index') }}" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">Review</a>
+        </div>
     </div>
+    @endif
 
     {{-- Today's DTR Card --}}
     @php
