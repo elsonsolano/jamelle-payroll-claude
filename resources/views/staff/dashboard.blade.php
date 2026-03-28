@@ -9,7 +9,7 @@
 
     {{-- Daily quote --}}
     <div class="border-l-4 border-green-400 bg-green-50 rounded-r-2xl px-4 py-3 mb-4">
-        <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Quote of the Day</p>
+        <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Be Inspired</p>
         <p class="text-sm text-gray-700 leading-snug italic">"{{ $quote['text'] }}"</p>
         <p class="text-xs text-gray-400 mt-1.5 font-medium">— {{ $quote['author'] }}</p>
     </div>
