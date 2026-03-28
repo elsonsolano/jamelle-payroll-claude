@@ -195,12 +195,13 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `GET/POST /setup-signature` — signature canvas onboarding
 
 **Staff portal** (`auth` + `staff` middleware, prefix `/staff`, name prefix `staff.`):
-- `staff.dashboard` — home with Today's DTR card (event-by-event logging), recent DTRs, and daily quote of the day
-- `staff.dtr.*` — index, create, store, edit, update (edit blocked if DTR is in a **finalized** payroll; voided cutoffs do not block)
+- `staff.dashboard` — home with quote of the day, today's schedule snippet, OT approvals card (approvers only), Today's DTR card, recent DTRs
+- `staff.dtr.*` — index (shows pending OT amber banner + amber dot on nav icon), create, store, edit, update (edit blocked if DTR is in a **finalized** payroll; voided cutoffs do not block)
 - `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update today's DTR; handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
 - `staff.ot-approvals.*` — index, approve, reject (access not middleware-gated, enforced inside controller)
 - `staff.notifications.*` — index, mark-read
-- `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); also contains the Logout button (Logout was removed from the bottom nav)
+- `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); contains the Logout button (Logout was removed from the bottom nav)
+- `staff.schedule` — 6-week schedule grid + 30-day upcoming list; resolves `DailySchedule` first then falls back to `EmployeeSchedule` (same logic as DTR computation)
 
 **Auth-only** (no role restriction, accessible during impersonation):
 - `POST /impersonation/exit` (`impersonation.exit`) — restores admin session, clears impersonation session keys
@@ -212,7 +213,7 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
 - `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
 - `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
-- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`); review page has per-row trash-icon delete (`assignments.splice(idx, 1)`) and dropdown syncing (changing one row's employee syncs all rows with the same name)
+- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`); review page has per-row trash-icon delete (`assignments.splice(idx, 1)`), dropdown syncing (changing one row's employee syncs all rows with the same name), and a **List/Grid toggle** — grid view shows employees as rows and dates as columns (Alpine computed getters `uniqueDates`, `uniqueNames`, `getCell(name, date)`)
 - `GET/POST utilities/truncate-schedules` — admin-only utility that deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE` (not `TRUNCATE` — see MySQL note below)
 - Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
   - `employees/{employee}/daily-schedules/{daily}` — PUT (update) and DELETE for individual `DailySchedule` records; handled by `EmployeeScheduleController::updateDaily()` / `destroyDaily()` (same controller as weekly schedules)
@@ -229,9 +230,11 @@ Two layouts:
 
 **Staff dashboard Today's DTR card:** Shows 4 event rows (Time In, Start Break, End Break, Time Out) with timemark color coding (green/amber/orange/blue). Each row is either logged (checkmark), next-to-log (colored dot + "Tap to Log" button), or locked (gray). Tapping opens an Alpine.js bottom sheet with a native `<input type="time">` and a 12-hour preview rendered below it via `toLocaleTimeString`. Time Out row includes an optional OT section. `<input type="time">` always renders in 24-hour format on Android/Brave regardless of locale — the 12-hour preview below the input is the workaround.
 
-**Staff dashboard daily quote:** `DashboardController::dailyQuote()` picks from a hardcoded array of 30 quotes using `today()->dayOfYear % count($quotes)` — same quote all day for all staff, changes each morning. Displayed as a green left-accent card above the quick stats.
+**Staff dashboard order:** Quote of the Day → Today's Schedule snippet (tappable, links to `staff.schedule`) → OT Approvals Waiting card (approvers only) → Today's DTR card → Recent DTRs. Pending OT count and unread notifications were removed from the dashboard; pending OT is shown as an amber banner on the DTR index instead.
 
-**Staff bottom nav:** Home, DTR, Approvals (conditional on `can_approve_ot`), Profile. Logout was moved off the nav and into the Profile page.
+**Staff dashboard daily quote:** `DashboardController::dailyQuote()` picks from a hardcoded array of 30 quotes using `today()->dayOfYear % count($quotes)` — same quote all day for all staff, changes each morning.
+
+**Staff bottom nav:** Home, DTR, Schedule, Profile. Approvals tab removed (approvers use the dashboard card). DTR icon shows an amber dot when the employee has pending OT requests — computed inline in the layout via `Auth::user()->employee?->dtrs()->where('ot_status', 'pending')->count()`. Logout is inside the Profile page.
 
 **Employee index filter persistence:** `EmployeeController` saves the last-used branch/status/search filters to `session('employee_filters')` and restores them on a bare index visit. Append `?clear=1` to reset.
 
