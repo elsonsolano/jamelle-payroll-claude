@@ -7,6 +7,13 @@
         <p class="text-xs text-green-300 mt-0.5">{{ Auth::user()->employee->position }}</p>
     </div>
 
+    {{-- Daily quote --}}
+    <div class="border-l-4 border-green-400 bg-green-50 rounded-r-2xl px-4 py-3 mb-6">
+        <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Quote of the Day</p>
+        <p class="text-sm text-gray-700 leading-snug italic">"{{ $quote['text'] }}"</p>
+        <p class="text-xs text-gray-400 mt-1.5 font-medium">— {{ $quote['author'] }}</p>
+    </div>
+
     {{-- Quick stats --}}
     <div class="grid grid-cols-2 gap-3 mb-4">
         <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
