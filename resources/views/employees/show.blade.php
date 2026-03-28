@@ -195,6 +195,14 @@
                             Reset Password
                         </button>
                     </form>
+                    <form method="POST" action="{{ route('employees.impersonate', $employee) }}">
+                        @csrf
+                        <button type="submit"
+                                onclick="return confirm('Login as {{ addslashes($employee->full_name) }}?')"
+                                class="text-sm border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition">
+                            Login as Employee
+                        </button>
+                    </form>
                 </div>
             @else
                 <p class="text-sm text-gray-400 mb-4">No login account yet. Create one to allow this employee to log in.</p>

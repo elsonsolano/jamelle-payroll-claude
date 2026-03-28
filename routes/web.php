@@ -16,6 +16,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScheduleUploadController;
 use App\Http\Controllers\SetupSignatureController;
 use App\Http\Controllers\TimemarkController;
+use App\Http\Controllers\ImpersonationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get("/", function () { return redirect()->route("login"); });
@@ -26,6 +27,7 @@ Route::middleware("auth")->group(function () {
     Route::post("/change-password", [ChangePasswordController::class, "update"])->name("password.change.update");
     Route::get("/setup-signature", [SetupSignatureController::class, "show"])->name("signature.setup");
     Route::post("/setup-signature", [SetupSignatureController::class, "store"])->name("signature.setup.store");
+    Route::post("/impersonation/exit", [ImpersonationController::class, "exit"])->name("impersonation.exit");
 });
 
 Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(function () {
@@ -58,6 +60,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::post("account", [EmployeeController::class, "createAccount"])->name("account.create");
         Route::patch("account", [EmployeeController::class, "updateAccount"])->name("account.update");
         Route::post("account/reset-password", [EmployeeController::class, "resetPassword"])->name("account.reset-password");
+        Route::post("impersonate", [ImpersonationController::class, "impersonate"])->name("impersonate");
         Route::get("schedules", [EmployeeScheduleController::class, "index"])->name("schedules.index");
         Route::post("schedules", [EmployeeScheduleController::class, "store"])->name("schedules.store");
         Route::put("schedules/{schedule}", [EmployeeScheduleController::class, "update"])->name("schedules.update");

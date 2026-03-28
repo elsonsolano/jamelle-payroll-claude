@@ -12,7 +12,7 @@ class EnsureSignatureSet
     {
         $user = $request->user();
 
-        if ($user && $user->isStaff() && empty($user->signature)) {
+        if ($user && $user->isStaff() && empty($user->signature) && !session()->has('impersonator_id')) {
             if (!$request->routeIs('signature.setup', 'signature.setup.store', 'password.change', 'password.change.update', 'logout')) {
                 return redirect()->route('signature.setup');
             }

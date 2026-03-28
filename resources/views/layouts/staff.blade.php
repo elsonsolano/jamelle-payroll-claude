@@ -36,6 +36,19 @@
         </div>
     </header>
 
+    {{-- Impersonation banner --}}
+    @if(session()->has('impersonator_id'))
+        <div class="bg-amber-400 text-amber-900 px-4 py-2 flex items-center justify-between text-sm font-medium">
+            <span>Viewing as {{ Auth::user()->name }}</span>
+            <form method="POST" action="{{ route('impersonation.exit') }}">
+                @csrf
+                <button type="submit" class="underline font-semibold hover:text-amber-950">
+                    Return to Admin
+                </button>
+            </form>
+        </div>
+    @endif
+
     {{-- Flash messages --}}
     @if(session('success'))
         <div class="mx-4 mt-3 px-4 py-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">

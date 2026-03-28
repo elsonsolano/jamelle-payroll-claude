@@ -12,7 +12,7 @@ class EnsurePasswordChanged
     {
         $user = $request->user();
 
-        if ($user && $user->must_change_password) {
+        if ($user && $user->must_change_password && !session()->has('impersonator_id')) {
             if (!$request->routeIs('password.change', 'password.change.update', 'logout')) {
                 return redirect()->route('password.change');
             }
