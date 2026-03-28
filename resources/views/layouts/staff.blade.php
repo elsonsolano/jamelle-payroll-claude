@@ -83,15 +83,13 @@
             </a>
             @endif
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="flex flex-col items-center gap-0.5 px-4 py-1 text-gray-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    <span class="text-xs font-medium">Logout</span>
-                </button>
-            </form>
+            <a href="{{ route('staff.profile') }}"
+               class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.profile') ? 'text-green-600' : 'text-gray-400' }}">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <span class="text-xs font-medium">Profile</span>
+            </a>
 
         </div>
     </nav>

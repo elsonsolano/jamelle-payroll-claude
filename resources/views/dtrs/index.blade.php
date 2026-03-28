@@ -53,16 +53,54 @@
                        class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
             </div>
 
+            <div class="flex flex-col gap-1 justify-end">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" name="pending_ot" value="1"
+                           @checked(request()->boolean('pending_ot'))
+                           onchange="this.form.submit()"
+                           class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
+                    Pending OT only
+                </label>
+            </div>
+
             <button type="submit"
                     class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
                 Filter
             </button>
 
-            @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to']))
+            @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to','pending_ot']))
                 <a href="{{ route('dtr.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800">Clear</a>
             @endif
         </div>
     </form>
+
+    {{-- Reject modal (Alpine) --}}
+    <div x-data="{ open: false, action: '' }"
+         x-on:open-reject.window="open = true; action = $event.detail.action"
+         x-cloak>
+        <div x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6" @click.outside="open = false">
+                <h2 class="text-base font-semibold text-gray-800 mb-3">Reject OT Request</h2>
+                <form :action="action" method="POST">
+                    @csrf
+                    <label class="text-sm text-gray-600 block mb-1">Reason <span class="text-gray-400">(optional)</span></label>
+                    <textarea name="reason" rows="3"
+                              class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-red-400 focus:border-red-400"
+                              placeholder="Enter rejection reason…"></textarea>
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button type="button" @click="open = false"
+                                class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg">
+                            Reject
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -89,7 +127,10 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($dtrs as $dtr)
-                        <tr class="hover:bg-gray-50 transition">
+                        <tr @class([
+                            'hover:bg-gray-50 transition',
+                            'bg-amber-50 hover:bg-amber-100' => $dtr->ot_status === 'pending',
+                        ])>
                             <td class="px-4 py-3">
                                 <p class="font-medium text-gray-900">{{ $dtr->employee->full_name }}</p>
                                 <p class="text-xs text-gray-400">{{ $dtr->employee->branch->name }}</p>
@@ -118,7 +159,20 @@
                                 <span class="font-medium text-gray-800">{{ number_format($dtr->total_hours, 2) }}</span>
                             </td>
                             <td class="px-4 py-3 text-center">
-                                @if($dtr->overtime_hours > 0)
+                                @if($dtr->ot_status === 'pending')
+                                    <span class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        +{{ number_format($dtr->overtime_hours, 2) }}h
+                                    </span>
+                                @elseif($dtr->ot_status === 'approved' && $dtr->overtime_hours > 0)
+                                    <span class="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                        +{{ number_format($dtr->overtime_hours, 2) }}h
+                                    </span>
+                                @elseif($dtr->ot_status === 'rejected')
+                                    <span class="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full line-through">
+                                        rejected
+                                    </span>
+                                @elseif($dtr->overtime_hours > 0)
                                     <span class="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
                                         +{{ number_format($dtr->overtime_hours, 2) }}h
                                     </span>
@@ -144,8 +198,25 @@
                                 ])>{{ $dtr->status }}</span>
                             </td>
                             <td class="px-4 py-3">
-                                <a href="{{ route('dtr.show', $dtr) }}"
-                                   class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View</a>
+                                <div class="flex items-center gap-2 justify-end">
+                                    @if($dtr->ot_status === 'pending')
+                                        <form action="{{ route('dtr.approve-ot', $dtr) }}" method="POST">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="text-xs font-medium text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 px-2 py-1 rounded-lg transition"
+                                                    onclick="return confirm('Approve OT for {{ addslashes($dtr->employee->full_name) }}?')">
+                                                Approve
+                                            </button>
+                                        </form>
+                                        <button type="button"
+                                                class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition"
+                                                @click="$dispatch('open-reject', { action: '{{ route('dtr.reject-ot', $dtr) }}' })">
+                                            Reject
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('dtr.show', $dtr) }}"
+                                       class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View</a>
+                                </div>
                             </td>
                         </tr>
                     @empty

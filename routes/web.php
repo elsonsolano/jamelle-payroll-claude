@@ -41,6 +41,7 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::post("/ot-approvals/{dtr}/reject", [\App\Http\Controllers\Staff\OtApprovalController::class, "reject"])->name("ot-approvals.reject");
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
+    Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");
 });
 
 Route::middleware(["auth", "admin"])->group(function () {
@@ -95,6 +96,8 @@ Route::middleware(["auth", "admin"])->group(function () {
     });
     Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");
     Route::get("dtr/{dtr}", [DtrController::class, "show"])->name("dtr.show");
+    Route::post("dtr/{dtr}/approve-ot", [DtrController::class, "approveOt"])->name("dtr.approve-ot");
+    Route::post("dtr/{dtr}/reject-ot", [DtrController::class, "rejectOt"])->name("dtr.reject-ot");
     Route::post("timemark/fetch", [TimemarkController::class, "fetch"])->name("timemark.fetch");
     Route::get("timemark/logs", [TimemarkController::class, "index"])->name("timemark.logs");
     Route::get("schedule-uploads", [ScheduleUploadController::class, "index"])->name("schedule-uploads.index");
