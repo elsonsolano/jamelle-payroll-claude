@@ -36,8 +36,8 @@ class DtrComputationService
                 ->orderByDesc('week_start_date')
                 ->first();
 
-            $restDays  = $schedule?->rest_days ?? ['Sunday'];
-            $isRestDay = in_array($dayName, $restDays);
+            $restDays  = $schedule?->rest_days ?? [];
+            $isRestDay = $schedule !== null && in_array($dayName, $restDays);
             $workStart = $schedule?->work_start_time;
             $workEnd   = $schedule?->work_end_time;
         }
