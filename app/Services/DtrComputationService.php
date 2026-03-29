@@ -100,14 +100,21 @@ class DtrComputationService
         $isHeadOffice = strtolower(trim($branch->name)) === 'head office';
 
         if ($submitter->can_approve_ot && !$isHeadOffice) {
-            // Branch approver → escalate to Head Office approvers
+            // Branch approver → notify same-branch peers AND Head Office approvers
             $headOffice = Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
-            if (!$headOffice) {
-                return \App\Models\User::where('role', 'admin')->get();
-            }
-            return \App\Models\User::where('can_approve_ot', true)
-                ->whereHas('employee', fn($q) => $q->where('branch_id', $headOffice->id))
+
+            $peers = \App\Models\User::where('can_approve_ot', true)
+                ->where('id', '!=', $submitter->id)
+                ->whereHas('employee', fn($q) => $q->where('branch_id', $branch->id))
                 ->get();
+
+            $hoApprovers = $headOffice
+                ? \App\Models\User::where('can_approve_ot', true)
+                    ->whereHas('employee', fn($q) => $q->where('branch_id', $headOffice->id))
+                    ->get()
+                : \App\Models\User::where('role', 'admin')->get();
+
+            return $peers->merge($hoApprovers);
         }
 
         if ($submitter->can_approve_ot && $isHeadOffice) {

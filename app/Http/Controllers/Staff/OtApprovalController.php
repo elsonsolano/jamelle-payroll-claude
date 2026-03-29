@@ -87,10 +87,10 @@ class OtApprovalController extends Controller
                   ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
             });
         } elseif ($user->can_approve_ot && !$isHeadOffice) {
-            // Branch approver → approves regular staff in same branch
-            $query->whereHas('employee', function ($q) use ($branch) {
+            // Branch approver → approves all staff in same branch except themselves
+            $query->whereHas('employee', function ($q) use ($branch, $employee) {
                 $q->where('branch_id', $branch->id)
-                  ->whereHas('user', fn($u) => $u->where('can_approve_ot', false));
+                  ->where('id', '!=', $employee->id);
             });
         } else {
             // No approval rights — return empty

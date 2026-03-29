@@ -141,11 +141,11 @@ class DashboardController extends Controller
         }
 
         if ($user->can_approve_ot && !$isHeadOffice) {
-            // Branch approver → approves regular staff in same branch
+            // Branch approver → approves all staff in same branch except themselves
             return \App\Models\Dtr::where('ot_status', 'pending')
-                ->whereHas('employee', function ($q) use ($branch) {
+                ->whereHas('employee', function ($q) use ($branch, $employee) {
                     $q->where('branch_id', $branch->id)
-                      ->whereHas('user', fn($u) => $u->where('can_approve_ot', false));
+                      ->where('id', '!=', $employee->id);
                 })->count();
         }
 
