@@ -138,6 +138,14 @@ class ScheduleUploadController extends Controller
             ->with('success', "Schedule \"{$schedule->label}\" applied successfully.");
     }
 
+    public function destroy(ScheduleUpload $schedule)
+    {
+        $schedule->delete();
+
+        return redirect()->route('schedule-uploads.index')
+            ->with('success', 'Schedule upload deleted.');
+    }
+
     public function assignName(Request $request, ScheduleUpload $schedule)
     {
         $validated = $request->validate([

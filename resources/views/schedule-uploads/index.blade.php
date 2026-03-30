@@ -55,10 +55,20 @@
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-right">
-                                @if($upload->status === 'review')
-                                    <a href="{{ route('schedule-uploads.review', $upload) }}"
-                                       class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Review & Apply</a>
-                                @endif
+                                <div class="flex items-center justify-end gap-3">
+                                    @if($upload->status === 'review')
+                                        <a href="{{ route('schedule-uploads.review', $upload) }}"
+                                           class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Review & Apply</a>
+                                    @endif
+                                    <form method="POST" action="{{ route('schedule-uploads.destroy', $upload) }}"
+                                          onsubmit="return confirm('Delete this schedule upload?\n\n{{ addslashes($upload->label ?? 'This upload') }} will be removed. Any applied daily schedules will remain intact.')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit"
+                                                class="text-sm text-red-500 hover:text-red-700 font-medium transition">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

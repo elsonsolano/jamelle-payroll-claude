@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         }
         $middleware->alias([
             'admin'            => \App\Http\Middleware\RequireAdmin::class,
+            'super-admin'      => \App\Http\Middleware\RequireSuperAdmin::class,
             'staff'            => \App\Http\Middleware\RequireStaff::class,
             'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
             'signature.set'    => \App\Http\Middleware\EnsureSignatureSet::class,

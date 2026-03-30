@@ -57,17 +57,34 @@ php artisan config:clear && php artisan route:clear
 
 There is a single `users` table with a `role` column (`admin` | `staff`):
 
-- **Admin** — full access to the admin panel (branches, employees, payroll, DTR view, holidays, schedules)
+- **Admin** — access to the admin panel; further subdivided by `permissions` (see below)
 - **Staff** — access only to the staff portal (`/staff/*`); linked to an `Employee` record via `users.employee_id`
 
 Key `users` columns beyond the standard Laravel auth fields:
 - `employee_id` (nullable FK) — links a staff user to their employee record
 - `role` — `admin` or `staff`
+- `permissions` (JSON, nullable) — `null` = super admin (full access); explicit array = limited admin with named permissions (e.g. `['schedules']`)
 - `can_approve_ot` (bool) — whether this staff user can approve overtime requests
 - `must_change_password` (bool) — forces password change on next login (default `true` for new staff accounts)
 - `signature` (longText) — base64 PNG of drawn signature, set during first-login onboarding
 
 Staff accounts are created by the admin on the employee show page. Default password is `password`; staff are forced to change it on first login, then prompted to draw their signature via canvas.
+
+### Admin Permission System
+
+Admin users are either **super admins** (`permissions = null`) or **limited admins** (`permissions = ['schedules', ...]`). All existing admins have `permissions = null` (backward compatible).
+
+`User` model helpers:
+- `isSuperAdmin(): bool` — `role === 'admin' && permissions === null`
+- `hasPermission(string $permission): bool` — true for super admins, or if `$permission` is in the permissions array
+
+`RequireSuperAdmin` middleware (`super-admin` alias) — aborts 403 if `!isSuperAdmin()`. Applied to all sensitive admin routes (payroll, DTR, holidays, employee CRUD, branches, etc.).
+
+Currently defined permissions: `schedules` — can access schedule uploads and manage employee schedules.
+
+**Schedule manager (limited admin with `schedules`):** Can access `/schedule-uploads/*` and `/employees/{employee}/schedules`. On `employees.index`, gets a simplified view (`schedule-manager-index.blade.php`) showing only name, branch, position, and a "Manage Schedule" link — no salary, gov IDs, or other sensitive data. The back button in `employees/{employee}/schedules` routes to `employees.index` for limited admins (not `employees.show` which is super-admin only).
+
+Admin sidebar is role-aware: sensitive nav items (Branches, Admin Users, DTR, Payroll, Holidays) only render for `isSuperAdmin()`; Schedules link renders for `hasPermission('schedules')`.
 
 ### Key Models & Relationships
 
@@ -180,6 +197,7 @@ Admins can log in as any staff employee via `POST /employees/{employee}/imperson
 Registered in `bootstrap/app.php` as aliases and also appended to the `web` group:
 
 - `admin` (`RequireAdmin`) — 403 if not `role = admin`; applied to all admin panel routes
+- `super-admin` (`RequireSuperAdmin`) — 403 if not `isSuperAdmin()`; applied to sensitive admin sub-routes (payroll, DTR, holidays, employee CRUD, branches, admin-users, etc.)
 - `staff` (`RequireStaff`) — 403 if not `role = staff`; applied to all `/staff/*` routes
 - `EnsurePasswordChanged` — redirects to `/change-password` if `must_change_password = true`; skipped during impersonation
 - `EnsureSignatureSet` — redirects to `/setup-signature` if staff user has no signature; skipped during impersonation
@@ -206,19 +224,25 @@ The last two run globally (appended to web group) so they intercept after auth, 
 **Auth-only** (no role restriction, accessible during impersonation):
 - `POST /impersonation/exit` (`impersonation.exit`) — restores admin session, clears impersonation session keys
 
-**Admin panel** (`auth` + `admin` middleware):
-- All existing admin routes: branches, employees, payroll cutoffs/entries, DTR (read-only view), holidays
-- `POST payroll/cutoffs/{cutoff}/void` (`payroll.cutoffs.void`) — marks a finalized cutoff as voided; requires `void_reason`
-- `POST payroll/cutoffs/{cutoff}/unvoid` (`payroll.cutoffs.unvoid`) — restores a voided cutoff to finalized
-- `employees/{employee}/account` (POST create, PATCH update, POST reset-password) — staff account management
-- `admin-users.*` — full CRUD for admin-role users (`AdminUserController`; route model binding uses `adminUser` key)
-- `POST /employees/import` — bulk employee import via Excel/CSV (`EmployeeImportController`, uses `phpoffice/phpspreadsheet`); template served from `public/employee-import-template.xlsx`
-- `schedule-uploads.*` — schedule import: index, create, store, review, apply (`ScheduleUploadController`); review page has per-row trash-icon delete (`assignments.splice(idx, 1)`), dropdown syncing (changing one row's employee syncs all rows with the same name), and a **List/Grid toggle** — grid view shows employees as rows and dates as columns (Alpine computed getters `uniqueDates`, `uniqueNames`, `getCell(name, date)`)
-- `GET/POST utilities/truncate-schedules` — admin-only utility that deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE` (not `TRUNCATE` — see MySQL note below)
-- Per-employee sub-resources under `employees/{employee}/`: schedules, deductions, allowances
-  - `employees/{employee}/daily-schedules/{daily}` — PUT (update) and DELETE for individual `DailySchedule` records; handled by `EmployeeScheduleController::updateDaily()` / `destroyDaily()` (same controller as weekly schedules)
-- `POST employees/{employee}/impersonate` (`employees.impersonate`) — log in as the employee's staff account; disabled/hidden if employee has no `User` record
-- `POST dtr/{dtr}/approve-ot` / `POST dtr/{dtr}/reject-ot` (`dtr.approve-ot` / `dtr.reject-ot`) — admin OT approval directly from the DTR index/show pages
+**Admin panel** (`auth` + `admin` middleware) — split into two tiers:
+
+*Accessible to all admins (super + limited):*
+- `GET employees` (`employees.index`) — super admins get full employee table; limited admins get `schedule-manager-index.blade.php` (name, branch, position, "Manage Schedule" link only)
+- `employees/{employee}/schedules` + `employees/{employee}/daily-schedules` — schedule management
+- `schedule-uploads.*` — schedule import: index (with delete), create, store, review, apply (`ScheduleUploadController`); `DELETE schedule-uploads/{schedule}` — soft-deletes the upload record; underlying `DailySchedule` rows use `nullOnDelete()` so they are **preserved** after upload deletion; review page has per-row trash-icon delete (`assignments.splice(idx, 1)`), dropdown syncing (changing one row's employee syncs all rows with the same name), and a **List/Grid toggle** — grid view shows employees as rows and dates as columns (Alpine computed getters `uniqueDates`, `uniqueNames`, `getCell(name, date)`)
+
+*Super admin only* (`super-admin` middleware):
+- Branches: `branches.*`
+- Admin users: `admin-users.*` (`AdminUserController`; route model binding uses `adminUser` key); create/edit forms have Access Level radio (`is_super_admin` = `1`/`0`) + permissions checkboxes (shown when Limited Admin selected via Alpine)
+- Employee full management: show, create, store, edit, update, destroy, import
+- `employees/{employee}/account` — staff account management
+- `employees/{employee}/deductions`, `employees/{employee}/allowances`
+- `POST employees/{employee}/impersonate` — log in as staff; disabled if no `User` record
+- Payroll: `payroll/cutoffs/*` (CRUD, generate, void, unvoid, entries, PDF)
+- DTR: `dtr` index/show, `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot`
+- Holidays: `holidays.*`
+- Timemark: `timemark.*`
+- `GET/POST utilities/truncate-schedules` — deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE`
 
 Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
 

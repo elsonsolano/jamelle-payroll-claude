@@ -14,6 +14,16 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): View|\Illuminate\Http\RedirectResponse
     {
+        // Schedule managers get a simplified view — no sensitive employee data
+        if (! auth()->user()->isSuperAdmin()) {
+            $employees = Employee::with('branch')
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(['id', 'first_name', 'last_name', 'nickname', 'branch_id', 'position', 'active']);
+            $branches = Branch::orderBy('name')->get();
+            return view('employees.schedule-manager-index', compact('employees', 'branches'));
+        }
+
         $filterKeys = ['search', 'branch_id', 'status'];
         $hasFilters = $request->hasAny($filterKeys);
 

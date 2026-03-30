@@ -17,6 +17,7 @@
                 <tr class="bg-gray-50 border-b border-gray-200 text-left">
                     <th class="px-5 py-3 font-semibold text-gray-600">Name</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Email</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">Access</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
             </thead>
@@ -35,6 +36,19 @@
                             </div>
                         </td>
                         <td class="px-5 py-3 text-gray-600">{{ $user->email }}</td>
+                        <td class="px-5 py-3">
+                            @if($user->isSuperAdmin())
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700">Super Admin</span>
+                            @else
+                                <div class="flex flex-wrap gap-1">
+                                    @forelse($user->permissions ?? [] as $perm)
+                                        <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 capitalize">{{ str_replace('_', ' ', $perm) }}</span>
+                                    @empty
+                                        <span class="text-xs text-gray-400">No permissions</span>
+                                    @endforelse
+                                </div>
+                            @endif
+                        </td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('admin-users.edit', $user) }}"

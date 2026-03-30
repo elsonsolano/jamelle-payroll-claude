@@ -2,9 +2,9 @@
     <x-slot name="title">Schedule — {{ $employee->full_name }}</x-slot>
 
     <x-slot name="actions">
-        <a href="{{ route('employees.show', $employee) }}"
+        <a href="{{ Auth::user()->isSuperAdmin() ? route('employees.show', $employee) : route('employees.index') }}"
            class="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            ← Back to Employee
+            ← Back to Employees
         </a>
     </x-slot>
 

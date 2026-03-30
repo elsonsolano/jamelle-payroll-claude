@@ -18,6 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'permissions',
         'employee_id',
         'can_approve_ot',
         'signature',
@@ -34,6 +35,7 @@ class User extends Authenticatable
         return [
             'email_verified_at'    => 'datetime',
             'password'             => 'hashed',
+            'permissions'          => 'array',
             'can_approve_ot'       => 'boolean',
             'must_change_password' => 'boolean',
         ];
@@ -52,5 +54,23 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->role === 'staff';
+    }
+
+    /**
+     * Super admins have null permissions (unrestricted access).
+     * Limited admins have an explicit permissions array.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'admin' && $this->permissions === null;
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return in_array($permission, $this->permissions ?? []);
     }
 }
