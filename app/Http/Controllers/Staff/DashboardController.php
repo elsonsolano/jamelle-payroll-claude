@@ -131,13 +131,8 @@ class DashboardController extends Controller
         }
 
         if ($user->can_approve_ot && $isHeadOffice) {
-            // HO approver → approves non-HO branch approvers
-            $headOffice = \App\Models\Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
-            return \App\Models\Dtr::where('ot_status', 'pending')
-                ->whereHas('employee', function ($q) use ($headOffice) {
-                    $q->where('branch_id', '!=', $headOffice?->id)
-                      ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
-                })->count();
+            // HO approver → approves all pending OT across all branches
+            return \App\Models\Dtr::where('ot_status', 'pending')->count();
         }
 
         if ($user->can_approve_ot && !$isHeadOffice) {

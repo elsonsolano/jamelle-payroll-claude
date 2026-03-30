@@ -122,9 +122,20 @@ class DtrComputationService
             return \App\Models\User::where('role', 'admin')->get();
         }
 
-        // Regular staff → branch approvers
-        return \App\Models\User::where('can_approve_ot', true)
+        // Regular staff → branch approvers + HO approvers
+        $headOffice = Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
+
+        $branchApprovers = \App\Models\User::where('can_approve_ot', true)
             ->whereHas('employee', fn($q) => $q->where('branch_id', $branch->id))
             ->get();
+
+        $hoApprovers = $headOffice
+            ? \App\Models\User::where('can_approve_ot', true)
+                ->whereHas('employee', fn($q) => $q->where('branch_id', $headOffice->id))
+                ->where('id', '!=', $submitter->id)
+                ->get()
+            : collect();
+
+        return $branchApprovers->merge($hoApprovers)->unique('id');
     }
 }

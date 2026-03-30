@@ -80,12 +80,7 @@ class OtApprovalController extends Controller
                   ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
             });
         } elseif ($user->can_approve_ot && $isHeadOffice) {
-            // HO approver → approves non-HO branch-level approvers
-            $headOffice = Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
-            $query->whereHas('employee', function ($q) use ($headOffice) {
-                $q->where('branch_id', '!=', $headOffice?->id)
-                  ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
-            });
+            // HO approver → approves all pending OT across all branches
         } elseif ($user->can_approve_ot && !$isHeadOffice) {
             // Branch approver → approves all staff in same branch except themselves
             $query->whereHas('employee', function ($q) use ($branch, $employee) {
