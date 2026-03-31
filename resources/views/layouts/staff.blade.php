@@ -67,6 +67,25 @@
         </div>
     @endif
 
+    {{-- iOS Notification Permission Banner (shown after PWA install, requires user tap) --}}
+    <div id="notif-permission-banner" class="hidden mx-4 mt-3 rounded-xl border border-amber-200 overflow-hidden text-sm">
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-50">
+            <div class="flex-1">
+                <p class="font-semibold text-amber-800">Enable Notifications</p>
+                <p class="text-amber-700 text-xs">Tap to receive reminders and updates</p>
+            </div>
+            <button id="notif-enable-btn"
+                    class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+                Enable
+            </button>
+            <button id="notif-dismiss-btn" class="shrink-0 text-amber-400 hover:text-amber-600 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
     {{-- Install App Banner (injected by JS) --}}
     <div id="pwa-install-banner" class="hidden mx-4 mt-3 rounded-xl border overflow-hidden text-sm">
         {{-- Android --}}
@@ -248,19 +267,43 @@
         }
     }
 
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         navigator.serviceWorker.register('/sw.js').catch(console.error);
 
-        // Use .ready so the SW is fully active before subscribing
         navigator.serviceWorker.ready.then(registration => {
             console.log('[Push] SW ready, permission:', Notification.permission);
+
             if (Notification.permission === 'granted') {
                 subscribeToPush(registration);
             } else if (Notification.permission === 'default') {
-                Notification.requestPermission().then(permission => {
-                    console.log('[Push] Permission result:', permission);
-                    if (permission === 'granted') subscribeToPush(registration);
-                });
+                if (isIOS) {
+                    // iOS requires permission from a user gesture — show the banner instead
+                    const banner = document.getElementById('notif-permission-banner');
+                    if (!localStorage.getItem('notif-banner-dismissed')) {
+                        banner.classList.remove('hidden');
+                    }
+
+                    document.getElementById('notif-enable-btn').addEventListener('click', () => {
+                        Notification.requestPermission().then(permission => {
+                            console.log('[Push] iOS permission result:', permission);
+                            banner.classList.add('hidden');
+                            if (permission === 'granted') subscribeToPush(registration);
+                        });
+                    });
+
+                    document.getElementById('notif-dismiss-btn').addEventListener('click', () => {
+                        localStorage.setItem('notif-banner-dismissed', '1');
+                        banner.classList.add('hidden');
+                    });
+                } else {
+                    // Android: auto-request is fine
+                    Notification.requestPermission().then(permission => {
+                        console.log('[Push] Permission result:', permission);
+                        if (permission === 'granted') subscribeToPush(registration);
+                    });
+                }
             }
         });
     } else {
