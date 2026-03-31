@@ -149,6 +149,97 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::get("timemark/logs", [TimemarkController::class, "index"])->name("timemark.logs");
 
         // Utilities
+        Route::get("utilities/test-push", function () {
+            $count = \App\Models\PushSubscription::count();
+            return response('
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>Test Push Notification</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 2rem; max-width: 480px; }
+                        label { display: block; margin-bottom: .25rem; font-size: .875rem; color: #374151; font-weight: 500; }
+                        input, textarea { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 6px; padding: .5rem .75rem; font-size: 1rem; margin-bottom: 1rem; }
+                        textarea { resize: vertical; }
+                        button { background: #16a34a; color: white; padding: .6rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+                        button:hover { background: #15803d; }
+                        .meta { color: #6b7280; font-size: .875rem; margin-bottom: 1.5rem; }
+                    </style>
+                </head>
+                <body>
+                    <h2 style="margin-bottom:.5rem">Test Push Notification</h2>
+                    <p class="meta">' . $count . ' device(s) subscribed</p>
+                    <form method="POST">
+                        <input type="hidden" name="_token" value="' . csrf_token() . '">
+                        <label>Title</label>
+                        <input type="text" name="title" value="Jamelle Payroll" required>
+                        <label>Message</label>
+                        <textarea name="body" rows="4" required placeholder="Enter your test message..."></textarea>
+                        <button type="submit">Send to All Devices</button>
+                    </form>
+                </body>
+                </html>
+            ');
+        })->name("utilities.test-push");
+
+        Route::post("utilities/test-push", function (\Illuminate\Http\Request $request) {
+            $request->validate([
+                'title' => 'required|string|max:100',
+                'body'  => 'required|string|max:500',
+            ]);
+
+            $subscriptions = \App\Models\PushSubscription::all();
+
+            if ($subscriptions->isEmpty()) {
+                return back()->with('error', 'No subscribed devices found.');
+            }
+
+            $webPush = new \Minishlink\WebPush\WebPush([
+                'VAPID' => [
+                    'subject'    => config('services.vapid.subject'),
+                    'publicKey'  => config('services.vapid.public_key'),
+                    'privateKey' => config('services.vapid.private_key'),
+                ],
+            ]);
+
+            $payload = json_encode([
+                'title' => $request->input('title'),
+                'body'  => $request->input('body'),
+                'url'   => '/staff/dashboard',
+            ]);
+
+            foreach ($subscriptions as $sub) {
+                $webPush->queueNotification(
+                    \Minishlink\WebPush\Subscription::create([
+                        'endpoint'        => $sub->endpoint,
+                        'keys'            => [
+                            'p256dh' => $sub->p256dh_key,
+                            'auth'   => $sub->auth_token,
+                        ],
+                    ]),
+                    $payload
+                );
+            }
+
+            $sent = 0;
+            $failed = 0;
+            foreach ($webPush->flush() as $report) {
+                $report->isSuccess() ? $sent++ : $failed++;
+            }
+
+            return response('
+                <!DOCTYPE html><html><head><meta charset="utf-8"><title>Done</title>
+                <style>body{font-family:sans-serif;padding:2rem;max-width:480px} a{color:#16a34a}</style>
+                </head><body>
+                <h2>Done</h2>
+                <p>Sent: <strong>' . $sent . '</strong> &nbsp; Failed: <strong>' . $failed . '</strong></p>
+                <a href="' . route('utilities.test-push') . '">&larr; Send another</a>
+                </body></html>
+            ');
+        });
+
         Route::get("utilities/truncate-schedules", function () {
             return response('
                 <form method="POST" style="font-family:sans-serif;padding:2rem;max-width:400px">
