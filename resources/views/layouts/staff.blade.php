@@ -67,6 +67,46 @@
         </div>
     @endif
 
+    {{-- Install App Banner (injected by JS) --}}
+    <div id="pwa-install-banner" class="hidden mx-4 mt-3 rounded-xl border overflow-hidden text-sm">
+        {{-- Android --}}
+        <div id="pwa-android" class="hidden items-center gap-3 px-4 py-3 bg-green-50 border-green-200">
+            <div class="flex-1">
+                <p class="font-semibold text-green-800">Install Jamelle Payroll</p>
+                <p class="text-green-700 text-xs">Add to home screen for a better experience</p>
+            </div>
+            <button id="pwa-install-btn"
+                    class="shrink-0 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+                Install
+            </button>
+            <button id="pwa-android-dismiss" class="shrink-0 text-green-400 hover:text-green-600 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        {{-- iOS --}}
+        <div id="pwa-ios" class="hidden px-4 py-3 bg-blue-50 border-blue-200">
+            <div class="flex items-start justify-between gap-2">
+                <div class="flex-1">
+                    <p class="font-semibold text-blue-800">Install Jamelle Payroll</p>
+                    <p class="text-blue-700 text-xs mt-1">
+                        Tap
+                        <svg class="inline w-4 h-4 mx-0.5 align-text-bottom" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                        </svg>
+                        <strong>Share</strong>, then tap <strong>"Add to Home Screen"</strong>
+                    </p>
+                </div>
+                <button id="pwa-ios-dismiss" class="shrink-0 text-blue-400 hover:text-blue-600 p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Page content --}}
     <main class="flex-1 p-4 pb-24">
         {{ $slot }}
@@ -120,6 +160,60 @@
 </div>
 
 <script>
+    // PWA Install Banner
+    (function () {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isStandalone) return; // already installed, show nothing
+
+        const banner   = document.getElementById('pwa-install-banner');
+        const android  = document.getElementById('pwa-android');
+        const ios      = document.getElementById('pwa-ios');
+        const isIOS    = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+        function showBanner(el) {
+            banner.classList.remove('hidden');
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+        }
+
+        // --- Android ---
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showBanner(android);
+        });
+
+        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            if (outcome === 'accepted') {
+                banner.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('pwa-android-dismiss').addEventListener('click', () => {
+            banner.classList.add('hidden');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            banner.classList.add('hidden');
+            deferredPrompt = null;
+        });
+
+        // --- iOS ---
+        if (isIOS && !localStorage.getItem('pwa-ios-dismissed')) {
+            showBanner(ios);
+        }
+
+        document.getElementById('pwa-ios-dismiss').addEventListener('click', () => {
+            localStorage.setItem('pwa-ios-dismissed', '1');
+            banner.classList.add('hidden');
+        });
+    })();
+
     const VAPID_PUBLIC_KEY = '{{ config('services.vapid.public_key') }}';
 
     function urlBase64ToUint8Array(base64String) {
