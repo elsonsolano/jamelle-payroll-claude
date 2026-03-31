@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#22c55e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Payroll">
+    <meta name="apple-mobile-web-app-title" content="Jamelle Payroll">
     <title>{{ isset($title) ? $title . ' — ' : '' }}{{ config('app.name') }}</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/images/icons/icon-192.png">

@@ -1,6 +1,6 @@
 {
-    "name": "Payroll System",
-    "short_name": "Payroll",
+    "name": "Jamelle Payroll",
+    "short_name": "Jamelle",
     "description": "Staff portal for payroll and DTR management",
     "start_url": "/staff/dashboard",
     "display": "standalone",
