@@ -131,13 +131,16 @@
 
     async function subscribeToPush(registration) {
         try {
+            console.log('[Push] SW state:', registration.active?.state);
             const existing = await registration.pushManager.getSubscription();
+            console.log('[Push] Existing subscription:', existing ? 'yes' : 'none');
             const subscription = existing || await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
             });
+            console.log('[Push] Subscription endpoint:', subscription.endpoint);
 
-            await fetch('{{ route('push-subscriptions.store') }}', {
+            const res = await fetch('{{ route('push-subscriptions.store') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,23 +148,29 @@
                 },
                 body: JSON.stringify(subscription.toJSON()),
             });
+            console.log('[Push] Server response:', res.status);
         } catch (e) {
-            console.error('Push subscription failed:', e);
+            console.error('[Push] Subscription failed:', e);
         }
     }
 
     if ('serviceWorker' in navigator && 'PushManager' in window) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                if (Notification.permission === 'granted') {
-                    subscribeToPush(registration);
-                } else if (Notification.permission === 'default') {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') subscribeToPush(registration);
-                    });
-                }
-            })
-            .catch(console.error);
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
+
+        // Use .ready so the SW is fully active before subscribing
+        navigator.serviceWorker.ready.then(registration => {
+            console.log('[Push] SW ready, permission:', Notification.permission);
+            if (Notification.permission === 'granted') {
+                subscribeToPush(registration);
+            } else if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    console.log('[Push] Permission result:', permission);
+                    if (permission === 'granted') subscribeToPush(registration);
+                });
+            }
+        });
+    } else {
+        console.warn('[Push] Not supported:', 'serviceWorker' in navigator, 'PushManager' in window);
     }
 </script>
 
