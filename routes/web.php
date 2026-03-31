@@ -28,6 +28,7 @@ Route::middleware("auth")->group(function () {
     Route::get("/setup-signature", [SetupSignatureController::class, "show"])->name("signature.setup");
     Route::post("/setup-signature", [SetupSignatureController::class, "store"])->name("signature.setup.store");
     Route::post("/impersonation/exit", [ImpersonationController::class, "exit"])->name("impersonation.exit");
+    Route::post("/push-subscriptions", [\App\Http\Controllers\PushSubscriptionController::class, "store"])->name("push-subscriptions.store");
 });
 
 Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(function () {
