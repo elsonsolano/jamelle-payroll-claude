@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\DailySchedule;
+use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
+use App\Services\DtrComputationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class EmployeeScheduleController extends Controller
 {
+    public function __construct(private DtrComputationService $computer) {}
     public function index(Employee $employee): View
     {
         $employee->load('branch');
@@ -102,6 +105,8 @@ class EmployeeScheduleController extends Controller
             $validated
         );
 
+        $this->recomputeDtr($employee, $validated['date']);
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Daily schedule added.');
     }
@@ -128,6 +133,8 @@ class EmployeeScheduleController extends Controller
 
         $daily->update($validated);
 
+        $this->recomputeDtr($employee, $validated['date']);
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Daily schedule updated.');
     }
@@ -137,5 +144,30 @@ class EmployeeScheduleController extends Controller
         $daily->delete();
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Daily schedule deleted.');
+    }
+
+    private function recomputeDtr(Employee $employee, string $date): void
+    {
+        $dtr = Dtr::where('employee_id', $employee->id)->where('date', $date)->first();
+
+        if (! $dtr) {
+            return;
+        }
+
+        $computed = $this->computer->compute(
+            $employee,
+            $date,
+            $dtr->time_in,
+            $dtr->am_out,
+            $dtr->pm_in,
+            $dtr->time_out,
+            $dtr->overtime_hours > 0 ? (float) $dtr->overtime_hours : null,
+        );
+
+        $dtr->update([
+            'late_mins'      => $computed['late_mins'],
+            'undertime_mins' => $computed['undertime_mins'],
+            'is_rest_day'    => $computed['is_rest_day'],
+        ]);
     }
 }

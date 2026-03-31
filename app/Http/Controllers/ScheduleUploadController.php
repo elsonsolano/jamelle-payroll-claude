@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\DailySchedule;
+use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\ScheduleUpload;
+use App\Services\DtrComputationService;
 use App\Services\ScheduleParserService;
 use Illuminate\Http\Request;
 
 class ScheduleUploadController extends Controller
 {
-    public function __construct(private ScheduleParserService $parser) {}
+    public function __construct(
+        private ScheduleParserService $parser,
+        private DtrComputationService $computer,
+    ) {}
 
     public function index()
     {
@@ -88,6 +93,7 @@ class ScheduleUploadController extends Controller
 
         // Resolve branch overrides once
         $branchCache     = [];
+        $affectedDtrs    = [];
         $unmatchedNames  = collect($schedule->ai_response['unmatched_names'] ?? []);
         $nicknamesSaved  = []; // track employee IDs already updated
 
@@ -130,6 +136,36 @@ class ScheduleUploadController extends Controller
                     'notes'              => $row['notes'] ?: null,
                 ]
             );
+
+            $affectedDtrs[] = ['employee_id' => $employeeId, 'date' => $row['date']];
+        }
+
+        // Recompute late_mins and undertime_mins on existing DTRs for affected employees/dates
+        foreach ($affectedDtrs as $affected) {
+            $dtr = Dtr::where('employee_id', $affected['employee_id'])
+                ->where('date', $affected['date'])
+                ->first();
+
+            if (! $dtr) {
+                continue;
+            }
+
+            $employee = Employee::find($affected['employee_id']);
+            $computed = $this->computer->compute(
+                $employee,
+                $affected['date'],
+                $dtr->time_in,
+                $dtr->am_out,
+                $dtr->pm_in,
+                $dtr->time_out,
+                $dtr->overtime_hours > 0 ? (float) $dtr->overtime_hours : null,
+            );
+
+            $dtr->update([
+                'late_mins'      => $computed['late_mins'],
+                'undertime_mins' => $computed['undertime_mins'],
+                'is_rest_day'    => $computed['is_rest_day'],
+            ]);
         }
 
         $schedule->update(['status' => 'applied']);
