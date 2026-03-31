@@ -103,6 +103,7 @@ Admin sidebar is role-aware: sensitive nav items (Branches, Admin Users, DTR, Pa
 - `PayrollEntryVariableDeduction` → manual one-off deductions per payroll entry (`description`, `amount`); **preserved** when payroll is regenerated
 - `Dtr` → belongs to `Employee`; key extra columns: `source` (`device`|`manual`), `ot_status` (`none`|`pending`|`approved`|`rejected`), `ot_end_time`, `ot_approved_by` (FK to users), `ot_approved_at`, `ot_rejection_reason`
 - `TimemarkLog` → audit trail of DaysCamera API fetch operations (timemark feature is hidden from the UI but the code remains)
+- `PushSubscription` → stores Web Push device subscriptions per user (`endpoint`, `endpoint_hash` SHA256 for unique index, `p256dh_key`, `auth_token`); one row per browser/device; used by `minishlink/web-push` to send push notifications
 
 Employees have `salary_type` (daily/monthly), `employee_code` (unique), and `timemark_id` (nullable). Non-branch employees (drivers, area managers, etc.) are assigned to the **Head Office** branch.
 
@@ -118,6 +119,8 @@ All manually entered DTRs go through `DtrComputationService::compute(Employee, d
 **Schedule resolution order:** `DailySchedule` for the exact date is checked first; if none exists, falls back to the most recent `EmployeeSchedule` with `week_start_date <= date`.
 
 **Important:** `Branch.work_start_time` / `Branch.work_end_time` are never used for late/undertime computation.
+
+**DTR recomputation on schedule save:** Whenever a `DailySchedule` is created or updated — either via `EmployeeScheduleController::storeDaily()`/`updateDaily()` or via `ScheduleUploadController::apply()` — any existing `Dtr` for that employee+date is immediately recomputed (`late_mins`, `undertime_mins`, `is_rest_day` updated). This ensures the admin `/dtr` page reflects the correct late data without waiting for payroll regeneration.
 
 Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **End Break**.
 
@@ -243,8 +246,28 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - Holidays: `holidays.*`
 - Timemark: `timemark.*`
 - `GET/POST utilities/truncate-schedules` — deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE`
+- `GET/POST utilities/test-push` — sends a test push notification to all subscribed devices; inline route closure with title + body form
 
 Excel column order (0-indexed): `0`=EE#, `2`=First Name, `3`=Middle Name, `4`=Last Name, `5`=Date Hired, `6`=Position, `7`=Birthdate, `8`=Email, `9`=Mobile, `10`=TIN, `11`=SSS, `12`=PhilHealth, `13`=Pag-IBIG, `14`=Basic Pay (monthly), `15`=Allowance (unused), `16`=Daily Rate, `17`=Branch. Columns `1` (Full Name) and `15` (Allowance) are ignored. Date fields accept `YYYY-MM-DD`, `d-M-Y` (e.g. `28-Oct-1987`), or Excel date serials.
+
+### PWA & Push Notifications
+
+The staff portal is a PWA. Files: `public/manifest.json`, `public/sw.js`, `public/images/icons/icon-192.png`, `public/images/icons/icon-512.png`. App name is **"Jamelle Payroll"**, theme color green (`#22c55e`), `start_url` = `/staff/dashboard`.
+
+**Install banners** (in `layouts/staff.blade.php`, pure JS):
+- **Android** — captures `beforeinstallprompt`, shows a green banner with an Install button; disappears after install or via `appinstalled` event
+- **iOS** — detects iOS Safari + not standalone, shows a blue banner with Share → "Add to Home Screen" instructions; dismissible via `localStorage('pwa-ios-dismissed')`
+- **Neither banner** shows when `display-mode: standalone` (already installed)
+
+**Notification permission** (in `layouts/staff.blade.php`):
+- **Android** — `Notification.requestPermission()` is called automatically (allowed without gesture)
+- **iOS standalone** — shows a separate amber "Enable Notifications" banner; permission is only requested on button tap (iOS requires a user gesture; auto-request is silently ignored); dismissible via `localStorage('notif-banner-dismissed')`
+
+**Push subscription flow:** On permission grant → `navigator.serviceWorker.ready` (not `register().then()` — SW must be fully active) → `pushManager.subscribe()` with VAPID public key → `POST /push-subscriptions` → saved to `push_subscriptions` table. Uses `endpoint_hash` (SHA256) as the unique key to handle `updateOrCreate` on TEXT endpoint columns (MySQL can't index TEXT directly).
+
+**Sending push:** Uses `minishlink/web-push`. VAPID config in `config/services.php` under `services.vapid`. To send, create a `WebPush` instance with VAPID config, queue notifications via `Subscription::create(['endpoint' => ..., 'keys' => ['p256dh' => ..., 'auth' => ...]])`, then call `flush()`. See `routes/web.php` `utilities/test-push` POST handler for a working example.
+
+**iOS Web Push requirement:** iOS 16.4+ only, and only when running as an installed PWA (Add to Home Screen). Does not work in Safari browser tabs or in Chrome/Firefox on iOS.
 
 ### Frontend
 
@@ -288,7 +311,7 @@ Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (
 - `AdminUserSeeder` runs on every deploy (inside `start.sh`); idempotent via `firstOrCreate`
 - `bootstrap/app.php` sets `trustProxies(at: '*')` only when `APP_ENV=production` — calling it unconditionally causes a Symfony `IpUtils::checkIp4` crash on local (no REMOTE_ADDR)
 - `public/hot` is gitignored — never commit it
-- Required env vars: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*` (use public proxy host/port, not `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`, `ANTHROPIC_API_KEY` (not currently used in production — schedule import uses manual JSON paste), `ANTHROPIC_VERIFY_SSL=true`
+- Required env vars: `APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*` (use public proxy host/port, not `mysql.railway.internal`), `LOG_CHANNEL=stderr`, `TIMEMARK_VERIFY_SSL=true`, `ANTHROPIC_API_KEY` (not currently used in production — schedule import uses manual JSON paste), `ANTHROPIC_VERIFY_SSL=true`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 
 ### Database & Seeding
 
