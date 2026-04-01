@@ -128,7 +128,6 @@
                     <button type="button" @click="showAddVarDeduction = false"
                             class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
                 </form>
-                <p class="text-xs text-amber-600 mt-2">⚠ Variable deductions are wiped when payroll is regenerated.</p>
             </div>
 
             <div class="divide-y divide-gray-100">
@@ -156,18 +155,34 @@
                     </div>
                 @endforeach
                 @foreach($entry->payrollVariableDeductions as $varDeduction)
-                    <div class="px-5 py-3 flex justify-between items-center text-sm">
-                        <span class="text-gray-600">
-                            {{ $varDeduction->description }}
-                            <span class="text-xs text-amber-600 ml-1">(variable)</span>
-                        </span>
+                    <div x-data="{ editing: false }" class="px-5 py-3 flex justify-between items-center text-sm">
+                        <span class="text-gray-600">{{ $varDeduction->description }}</span>
                         <div class="flex items-center gap-3">
-                            <span class="text-red-500">- ₱{{ number_format($varDeduction->amount, 2) }}</span>
-                            <form method="POST" action="{{ route('payroll.cutoffs.entries.variable-deductions.destroy', [$cutoff, $entry, $varDeduction]) }}"
-                                  onsubmit="return confirm('Remove this deduction?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="text-xs text-red-400 hover:text-red-600">Remove</button>
-                            </form>
+                            {{-- View mode --}}
+                            <template x-if="!editing">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-red-500">- ₱{{ number_format($varDeduction->amount, 2) }}</span>
+                                    <button @click="editing = true" class="text-xs text-blue-500 hover:text-blue-700">Edit</button>
+                                    <form method="POST" action="{{ route('payroll.cutoffs.entries.variable-deductions.destroy', [$cutoff, $entry, $varDeduction]) }}"
+                                          onsubmit="return confirm('Remove this deduction?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-400 hover:text-red-600">Remove</button>
+                                    </form>
+                                </div>
+                            </template>
+                            {{-- Edit mode --}}
+                            <template x-if="editing">
+                                <form method="POST" action="{{ route('payroll.cutoffs.entries.variable-deductions.update', [$cutoff, $entry, $varDeduction]) }}"
+                                      class="flex items-center gap-2">
+                                    @csrf @method('PATCH')
+                                    <span class="text-gray-400">₱</span>
+                                    <input type="number" name="amount" value="{{ $varDeduction->amount }}"
+                                           min="0" step="0.01"
+                                           class="w-28 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400">
+                                    <button type="submit" class="text-xs text-blue-600 font-medium hover:text-blue-800">Save</button>
+                                    <button type="button" @click="editing = false" class="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                                </form>
+                            </template>
                         </div>
                     </div>
                 @endforeach

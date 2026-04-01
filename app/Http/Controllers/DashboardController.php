@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
+use App\Models\EmployeeSchedule;
 use App\Models\Holiday;
 use App\Models\PayrollCutoff;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
@@ -29,6 +33,8 @@ class DashboardController extends Controller
         // Calendar events — preloaded for client-side month navigation
         $calendarEvents = $this->buildCalendarEvents();
 
+        $scheduleGrid = $this->buildScheduleGrid();
+
         return view('dashboard', compact(
             'totalEmployees',
             'totalBranches',
@@ -36,8 +42,94 @@ class DashboardController extends Controller
             'dtrToday',
             'recentCutoffs',
             'employeesByBranch',
-            'calendarEvents'
+            'calendarEvents',
+            'scheduleGrid'
         ));
+    }
+
+    private function buildScheduleGrid(): array
+    {
+        $start = today();
+        $end   = today()->addDays(14);
+
+        $dates = collect();
+        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+            $dates->push($d->toDateString());
+        }
+
+        $branches = Branch::with(['employees' => function ($q) {
+            $q->where('active', true)->orderBy('last_name')->orderBy('first_name');
+        }])->where('name', 'not like', '%Head Office%')->get();
+
+        $allEmployeeIds = $branches->flatMap(fn ($b) => $b->employees->pluck('id'));
+
+        // Bulk-load DailySchedules for the 15-day window
+        $dailyByEmployee = DailySchedule::whereIn('employee_id', $allEmployeeIds)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->get()
+            ->groupBy('employee_id')
+            ->map(fn ($rows) => $rows->keyBy(fn ($ds) => $ds->date->toDateString()));
+
+        // Bulk-load all EmployeeSchedules for fallback (newest first)
+        $weeklyByEmployee = EmployeeSchedule::whereIn('employee_id', $allEmployeeIds)
+            ->orderByDesc('week_start_date')
+            ->get()
+            ->groupBy('employee_id');
+
+        $grid = [];
+        foreach ($branches as $branch) {
+            $employeeRows = [];
+            foreach ($branch->employees as $employee) {
+                $days = [];
+                foreach ($dates as $dateStr) {
+                    $days[$dateStr] = $this->resolveDay(
+                        $employee->id,
+                        $dateStr,
+                        $dailyByEmployee,
+                        $weeklyByEmployee,
+                    );
+                }
+                $employeeRows[] = ['name' => $employee->full_name, 'days' => $days];
+            }
+            $grid[] = ['branch' => $branch->name, 'employees' => $employeeRows];
+        }
+
+        return ['dates' => $dates->all(), 'branches' => $grid];
+    }
+
+    private function resolveDay(int $employeeId, string $dateStr, Collection $dailyByEmployee, Collection $weeklyByEmployee): array
+    {
+        // DailySchedule takes priority
+        $ds = $dailyByEmployee->get($employeeId)?->get($dateStr);
+        if ($ds) {
+            return [
+                'status' => $ds->is_day_off ? 'off' : 'working',
+                'start'  => $ds->work_start_time,
+                'end'    => $ds->work_end_time,
+                'notes'  => $ds->notes,
+            ];
+        }
+
+        // Fall back to most recent EmployeeSchedule covering this date
+        $date     = Carbon::parse($dateStr);
+        $schedule = $weeklyByEmployee->get($employeeId, collect())
+            ->first(fn ($s) => $s->week_start_date->lte($date));
+
+        if (! $schedule) {
+            return ['status' => 'none', 'start' => null, 'end' => null, 'notes' => null];
+        }
+
+        $restDays = $schedule->rest_days ?? ['Sunday'];
+        if (in_array($date->dayName, $restDays)) {
+            return ['status' => 'off', 'start' => null, 'end' => null, 'notes' => null];
+        }
+
+        return [
+            'status' => 'working',
+            'start'  => $schedule->work_start_time,
+            'end'    => $schedule->work_end_time,
+            'notes'  => null,
+        ];
     }
 
     private function buildCalendarEvents(): array

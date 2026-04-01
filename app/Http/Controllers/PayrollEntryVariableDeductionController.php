@@ -25,6 +25,20 @@ class PayrollEntryVariableDeductionController extends Controller
             ->with('success', 'Deduction added.');
     }
 
+    public function update(Request $request, PayrollCutoff $cutoff, PayrollEntry $entry, PayrollEntryVariableDeduction $variableDeduction): RedirectResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $variableDeduction->update($validated);
+
+        $this->recalculateEntry($entry);
+
+        return redirect()->route('payroll.cutoffs.entries.show', [$cutoff, $entry])
+            ->with('success', 'Deduction updated.');
+    }
+
     public function destroy(PayrollCutoff $cutoff, PayrollEntry $entry, PayrollEntryVariableDeduction $variableDeduction): RedirectResponse
     {
         $variableDeduction->delete();

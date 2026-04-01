@@ -7,6 +7,7 @@ use App\Models\Holiday;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollDeduction;
 use App\Models\PayrollEntry;
+use App\Models\PayrollEntryVariableDeduction;
 use App\Services\DtrComputationService;
 
 class PayrollComputationService
@@ -200,6 +201,26 @@ class PayrollComputationService
                     'description'      => $sd->description,
                 ]);
             }
+        }
+
+        // Always ensure the 7 default variable deductions exist.
+        // firstOrCreate by (payroll_entry_id + description) so they're never duplicated,
+        // and existing amounts set by the admin survive regeneration.
+        $defaultDeductions = [
+            'SSS Premium',
+            'PHILHEALTH Premium',
+            'PAG-IBIG Cont.',
+            'Pag-ibig Loan',
+            'SSS Loan',
+            'Savings',
+            'Retirement Pay',
+        ];
+
+        foreach ($defaultDeductions as $label) {
+            PayrollEntryVariableDeduction::firstOrCreate(
+                ['payroll_entry_id' => $entry->id, 'description' => $label],
+                ['amount' => 0],
+            );
         }
 
         $totalDeductions = round(

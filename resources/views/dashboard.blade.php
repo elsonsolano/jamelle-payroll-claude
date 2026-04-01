@@ -219,4 +219,83 @@
 
     </div>
 
+    {{-- Branch Schedule Grid — Next 15 Days --}}
+    <div class="mt-8">
+        <h2 class="text-base font-semibold text-gray-800 mb-4">Branch Schedules — Next 15 Days</h2>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            @foreach($scheduleGrid['branches'] as $branchData)
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+                {{-- Card Header --}}
+                <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                    <h3 class="font-semibold text-gray-700 text-sm">{{ $branchData['branch'] }}</h3>
+                    <span class="text-xs text-gray-400">{{ count($branchData['employees']) }} employee(s)</span>
+                </div>
+
+                {{-- Scrollable Grid --}}
+                <div class="overflow-auto" style="max-height: 300px;">
+                    @if(empty($branchData['employees']))
+                        <p class="px-5 py-4 text-sm text-gray-400">No active employees.</p>
+                    @else
+                    <table class="min-w-max text-xs border-collapse w-full">
+                        <thead class="sticky top-0 z-10">
+                            <tr>
+                                <th class="sticky left-0 z-20 bg-gray-50 px-4 py-2 text-left font-medium text-gray-500 border-b border-r border-gray-200 min-w-[150px] whitespace-nowrap">
+                                    Employee
+                                </th>
+                                @foreach($scheduleGrid['dates'] as $dateStr)
+                                @php $d = \Carbon\Carbon::parse($dateStr); @endphp
+                                <th class="px-2 py-2 text-center font-medium border-b border-gray-200 min-w-[78px] whitespace-nowrap
+                                    {{ $d->isToday() ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-50 text-gray-500' }}">
+                                    <div class="text-[10px] font-normal">{{ $d->format('D') }}</div>
+                                    <div>{{ $d->format('M d') }}</div>
+                                </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($branchData['employees'] as $empRow)
+                            <tr class="border-b border-gray-100 hover:bg-gray-50/60 transition">
+                                <td class="sticky left-0 bg-white px-4 py-2 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap z-10">
+                                    {{ $empRow['name'] }}
+                                </td>
+                                @foreach($scheduleGrid['dates'] as $dateStr)
+                                @php
+                                    $day = $empRow['days'][$dateStr];
+                                    $isToday = \Carbon\Carbon::parse($dateStr)->isToday();
+                                @endphp
+                                <td class="px-1 py-1.5 text-center align-middle {{ $isToday ? 'bg-indigo-50/30' : '' }}">
+                                    @if($day['status'] === 'working')
+                                        <div class="flex flex-col items-center gap-0.5">
+                                            <span class="px-1.5 py-0.5 bg-green-100 text-green-700 rounded font-medium whitespace-nowrap text-[10px]">
+                                                @if($day['start'] && $day['end'])
+                                                    {{ \Carbon\Carbon::parse($day['start'])->format('G:i') }}–{{ \Carbon\Carbon::parse($day['end'])->format('G:i') }}
+                                                @else
+                                                    Working
+                                                @endif
+                                            </span>
+                                            @if($day['notes'])
+                                                <span class="px-1 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] whitespace-nowrap">
+                                                    {{ $day['notes'] }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @elseif($day['status'] === 'off')
+                                        <span class="text-gray-300 text-base leading-none">—</span>
+                                    @else
+                                        <span class="text-gray-200 text-base leading-none">·</span>
+                                    @endif
+                                </td>
+                                @endforeach
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+
 </x-app-layout>
