@@ -123,12 +123,6 @@
                         <dt class="text-gray-500">OT Hours Requested</dt>
                         <dd class="font-semibold text-gray-800">{{ number_format($dtr->overtime_hours, 2) }}h</dd>
                     </div>
-                    @if($dtr->ot_end_time)
-                        <div class="flex justify-between">
-                            <dt class="text-gray-500">Expected End Time</dt>
-                            <dd class="font-mono text-gray-800">{{ \Carbon\Carbon::parse($dtr->ot_end_time)->format('h:i A') }}</dd>
-                        </div>
-                    @endif
                     @if($dtr->ot_status !== 'pending' && $dtr->approvedBy)
                         <div class="flex justify-between">
                             <dt class="text-gray-500">{{ $dtr->ot_status === 'approved' ? 'Approved by' : 'Rejected by' }}</dt>
