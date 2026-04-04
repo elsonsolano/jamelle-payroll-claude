@@ -89,7 +89,7 @@
     @endphp
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '', note: '' }">
+         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '', note: '', existingNote: '{{ addslashes($todayDtr?->notes ?? '') }}' }">
 
         {{-- Card Header --}}
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
@@ -152,7 +152,7 @@
 
                     @if($isNext)
                         <button type="button"
-                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = ''; open = true"
+                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = existingNote; open = true"
                                 class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                 style="background-color:{{ $color }}">
                             Tap to Log
