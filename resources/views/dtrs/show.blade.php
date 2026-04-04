@@ -98,6 +98,14 @@
             </dl>
         </div>
 
+        {{-- Notes --}}
+        @if($dtr->notes)
+            <div class="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">Note</h3>
+                <p class="text-sm text-gray-700">{{ $dtr->notes }}</p>
+            </div>
+        @endif
+
         {{-- Overtime Status --}}
         @if($dtr->ot_status !== 'none')
             <div @class([

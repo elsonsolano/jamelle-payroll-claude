@@ -89,7 +89,7 @@
     @endphp
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '' }">
+         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '', note: '' }">
 
         {{-- Card Header --}}
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
@@ -152,7 +152,7 @@
 
                     @if($isNext)
                         <button type="button"
-                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; otError = ''; open = true"
+                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = ''; open = true"
                                 class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                 style="background-color:{{ $color }}">
                             Tap to Log
@@ -240,6 +240,16 @@
                                 <p class="text-xs text-amber-600 mt-1">Your overtime will be sent for approval.</p>
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Notes --}}
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Note <span class="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <textarea name="notes" x-model="note" rows="2" maxlength="500"
+                                  placeholder="e.g. Came in late due to traffic…"
+                                  class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
                     </div>
 
                     <div class="flex gap-3">

@@ -26,6 +26,7 @@ class Dtr extends Model
         'ot_approved_by',
         'ot_approved_at',
         'ot_rejection_reason',
+        'notes',
     ];
 
     protected $casts = [

@@ -39,6 +39,7 @@ class DtrController extends Controller
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'notes'    => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
@@ -84,6 +85,7 @@ class DtrController extends Controller
             'ot_status'      => $hasOt ? 'pending' : 'none',
             'source'         => 'manual',
             'status'         => 'Approved',
+            'notes'          => $validated['notes'] ?? null,
             ...$computed,
         ]);
 
@@ -106,6 +108,7 @@ class DtrController extends Controller
             'date'     => 'required|date|before_or_equal:today',
             'has_ot'   => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'notes'    => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
@@ -124,6 +127,10 @@ class DtrController extends Controller
         }
 
         $dtr->{$validated['event']} = $validated['time'];
+
+        if (!empty($validated['notes'])) {
+            $dtr->notes = $validated['notes'];
+        }
 
         // Handle OT when logging Time Out
         $hasOt   = $validated['event'] === 'time_out' && $request->boolean('has_ot') && !empty($validated['ot_hours']);
@@ -195,6 +202,7 @@ class DtrController extends Controller
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'notes'    => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
@@ -231,6 +239,7 @@ class DtrController extends Controller
             'ot_approved_by'      => null,
             'ot_approved_at'      => null,
             'ot_rejection_reason' => null,
+            'notes'               => $validated['notes'] ?? null,
             ...$computed,
         ]);
 
