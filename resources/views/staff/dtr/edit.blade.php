@@ -70,7 +70,7 @@
                     Note <span class="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <textarea name="notes" rows="3" maxlength="500"
-                          placeholder="Add a note or reason (optional)…"
+                          placeholder="Note any reason here — late, early out, or anything else…"
                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 resize-none">{{ old('notes', $dtr->notes) }}</textarea>
                 @error('notes') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
             </div>
