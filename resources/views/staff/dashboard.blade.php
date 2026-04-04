@@ -248,7 +248,7 @@
                             Note <span class="text-gray-400 font-normal">(optional)</span>
                         </label>
                         <textarea name="notes" x-model="note" rows="2" maxlength="500"
-                                  placeholder="e.g. Came in late due to traffic…"
+                                  placeholder="Add a note or reason (optional)…"
                                   class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
                     </div>
 
