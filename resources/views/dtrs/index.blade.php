@@ -132,7 +132,7 @@
                             'bg-amber-50 hover:bg-amber-100' => $dtr->ot_status === 'pending',
                         ])>
                             <td class="px-4 py-3">
-                                <p class="font-medium text-gray-900">{{ $dtr->employee->full_name }}</p>
+                                <a href="{{ route('employees.show', $dtr->employee) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">{{ $dtr->employee->full_name }}</a>
                                 <p class="text-xs text-gray-400">{{ $dtr->employee->branch->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-700">
