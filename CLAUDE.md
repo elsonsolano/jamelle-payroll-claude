@@ -90,7 +90,7 @@ Admin sidebar is role-aware: sensitive nav items (Branches, Admin Users, DTR, Pa
 
 - `Branch` → has many `Employee`s, `PayrollCutoff`s; has `work_start_time`/`work_end_time` columns but these are **not used for DTR computation** — only informational
 - `Employee` → belongs to `Branch`; has one `User`; has many `Dtr`, `EmployeeSchedule`, `DailySchedule`, `EmployeeStandingDeduction`, `EmployeeAllowance`, `PayrollEntry`; has `nickname` (nullable) — short name used for matching names in schedule uploads (e.g. "Eddie", "AJ"); has `birthday` (date, nullable); has `hired_date` (date, nullable) — column is named `hired_date`, not `date_hired`
-- `User` → belongs to `Employee` (staff only); admin users have `employee_id = null`
+- `User` → belongs to `Employee` (staff only); has many `PushSubscription`s; admin users have `employee_id = null`
 - `EmployeeSchedule` → weekly repeating schedule per employee with `rest_days` (array) and optional custom work hours; used as fallback when no `DailySchedule` exists for a date; managed at `/employees/{employee}/schedules`
 - `DailySchedule` → date-specific schedule per employee (`date`, `work_start_time`, `work_end_time`, `is_day_off`, `assigned_branch_id`, `notes`); **takes priority over `EmployeeSchedule`** in DTR computation; unique on `(employee_id, date)`; belongs to `ScheduleUpload`; also visible and inline-editable on the `/employees/{employee}/schedules` page
 - `ScheduleUpload` → tracks each schedule image import (branch, uploader, label, `ai_response` JSON, status: `pending`→`review`→`applied`)
@@ -265,7 +265,11 @@ The staff portal is a PWA. Files: `public/manifest.json`, `public/sw.js`, `publi
 
 **Push subscription flow:** On permission grant → `navigator.serviceWorker.ready` (not `register().then()` — SW must be fully active) → `pushManager.subscribe()` with VAPID public key → `POST /push-subscriptions` → saved to `push_subscriptions` table. Uses `endpoint_hash` (SHA256) as the unique key to handle `updateOrCreate` on TEXT endpoint columns (MySQL can't index TEXT directly).
 
-**Sending push:** Uses `minishlink/web-push`. VAPID config in `config/services.php` under `services.vapid`. To send, create a `WebPush` instance with VAPID config, queue notifications via `Subscription::create(['endpoint' => ..., 'keys' => ['p256dh' => ..., 'auth' => ...]])`, then call `flush()`. See `routes/web.php` `utilities/test-push` POST handler for a working example.
+**Sending push:** Uses `minishlink/web-push`. VAPID config in `config/services.php` under `services.vapid`. To send, create a `WebPush` instance with VAPID config, queue notifications via `Subscription::create(['endpoint' => ..., 'keys' => ['p256dh' => ..., 'auth' => ...]])`, then call `flush()`. See `routes/web.php` `utilities/test-push` POST handler for a working example. For a command-based example, see `app/Console/Commands/SendTimeInReminders.php`.
+
+**Scheduled push reminders** (`routes/console.php`, both run `everyFiveMinutes()`):
+- `notifications:time-in-reminders` — fires only in the 07:00–07:05 window; skips rest days and staff who already timed in; uses daily cache key per user to prevent duplicates
+- `notifications:clock-out-reminders` — fires 15 min before each employee's `work_end_time` (schedule resolution: `DailySchedule` → `EmployeeSchedule` → fallback 9:00 PM); skips rest days and staff who already clocked out
 
 **iOS Web Push requirement:** iOS 16.4+ only, and only when running as an installed PWA (Add to Home Screen). Does not work in Safari browser tabs or in Chrome/Firefox on iOS.
 
@@ -304,12 +308,13 @@ Queue uses database driver. Manual: `php artisan queue:listen --tries=1 --timeou
 
 ### Railway Deployment
 
-Config files: `nixpacks.toml` (build), `railway.json` (deploy), and `start.sh` (runtime entrypoint). Key behaviours:
+Config files: `nixpacks.toml` (build), `railway.json` (web service deploy), `railway-cron.json` (cron service deploy), and `start.sh` (runtime entrypoint). Key behaviours:
 - `bootstrap/cache` and `storage/` dirs are gitignored, so `nixpacks.toml` creates them with `mkdir -p` before `composer install`
 - Build phase: installs deps, runs `npm run build`, caches routes and views only — **config cache is NOT done at build time**; `php artisan config:cache` runs inside `start.sh` at container startup
 - Production server: **nginx + PHP-FPM** via `start.sh`; configs written to `/tmp` at startup substituting `$PORT`
 - Migration ordering: `payroll_deductions` timestamp bumped to `142153` so it runs after `payroll_entries` (FK dependency)
 - Queue worker runs as a **separate Railway service** with start command: `php artisan queue:listen --tries=1 --timeout=0`
+- Cron service runs as a **separate Railway service** using `railway-cron.json` (set via Settings → Config-as-code in Railway dashboard); start command: `php artisan config:cache && php artisan schedule:run`; cron schedule: `*/5 * * * *`. The cron service must have the same env vars as the web service (DB, APP_KEY, VAPID, etc.) — Railway does not share variables between services automatically.
 - `AdminUserSeeder` runs on every deploy (inside `start.sh`); idempotent via `firstOrCreate`
 - `bootstrap/app.php` sets `trustProxies(at: '*')` only when `APP_ENV=production` — calling it unconditionally causes a Symfony `IpUtils::checkIp4` crash on local (no REMOTE_ADDR)
 - `public/hot` is gitignored — never commit it
