@@ -139,6 +139,9 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::post("dtr/{dtr}/approve-ot", [DtrController::class, "approveOt"])->name("dtr.approve-ot");
         Route::post("dtr/{dtr}/reject-ot", [DtrController::class, "rejectOt"])->name("dtr.reject-ot");
 
+        // Reports
+        Route::get("reports/lates", [\App\Http\Controllers\ReportsController::class, "lates"])->name("reports.lates");
+
         // Holidays
         Route::get("holidays", [HolidayController::class, "index"])->name("holidays.index");
         Route::post("holidays", [HolidayController::class, "store"])->name("holidays.store");
