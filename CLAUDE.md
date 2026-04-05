@@ -287,7 +287,9 @@ Two layouts:
 
 **Alpine.js + Vite timing:** Vite loads Alpine as a deferred ES module (`type="module"`). This means `@push('scripts')` / `@stack('scripts')` content executes **after** Alpine has already initialized and evaluated all `x-data` attributes — so any Alpine component function defined via `@push` will be undefined when Alpine looks for it. **Always define Alpine component functions in a `<script>` tag placed directly before the `x-data` element** in the Blade template, not in a pushed stack.
 
-Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf` (uses DejaVu Sans; peso sign rendered as `PHP` prefix since DejaVu Sans UFM lacks the ₱ glyph). Excel import via `phpoffice/phpspreadsheet`.
+Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`. Excel import via `phpoffice/phpspreadsheet`.
+
+**DOMPDF fonts:** Currently uses DejaVu Sans (bundled with DOMPDF); the ₱ peso sign is rendered as `PHP` prefix because DejaVu Sans UFM lacks the glyph. `register-fonts.php` (untracked) is a dev utility script for experimenting with registering Noto Sans (which supports ₱ via U+20B1) — run it manually with `php register-fonts.php` after placing `NotoSans-Regular.ttf` and `NotoSans-Bold.ttf` in `storage/fonts/`. The `storage/fonts/*.json` files are DOMPDF font cache files (auto-generated, gitignored).
 
 The timemark fetch button is hidden from the admin sidebar (commented out in `layouts/app.blade.php`) but the underlying code (`FetchAttendanceJob`, `TimemarkController`, `timemark.*` routes) is intact.
 
