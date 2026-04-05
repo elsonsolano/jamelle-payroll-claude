@@ -9,7 +9,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -24,10 +23,7 @@ class SendClockOutReminders extends Command
         $today     = $now->toDateString();
         $windowEnd = $now->copy()->addMinutes(5);
 
-        Log::info('[ClockOutReminder] Running', [
-            'time'      => $now->toTimeString(),
-            'window'    => $now->toTimeString() . ' – ' . $windowEnd->toTimeString(),
-        ]);
+        $this->info('[ClockOutReminder] Running — window: ' . $now->toTimeString() . ' to ' . $windowEnd->toTimeString());
 
         try {
             $users = User::where('role', 'staff')
@@ -35,7 +31,7 @@ class SendClockOutReminders extends Command
                 ->whereHas('pushSubscriptions')
                 ->get();
 
-            Log::info('[ClockOutReminder] Staff with subscriptions found', ['count' => $users->count()]);
+            $this->info('[ClockOutReminder] Staff with subscriptions: ' . $users->count());
 
             $webPush = $this->makeWebPush();
             $payload = json_encode([
@@ -45,7 +41,6 @@ class SendClockOutReminders extends Command
             ]);
 
             $recipients = [];
-            $skipped    = [];
 
             foreach ($users as $user) {
                 $employee = $user->employee;
@@ -55,12 +50,12 @@ class SendClockOutReminders extends Command
 
                 $cacheKey = "clock_out_reminder:{$user->id}:{$today}";
                 if (Cache::has($cacheKey)) {
-                    $skipped[] = $employee->full_name . ' (already sent)';
+                    $this->info('[ClockOutReminder] Skipped ' . $employee->full_name . ' — already sent today');
                     continue;
                 }
 
                 if ($this->isRestDay($employee, $today)) {
-                    $skipped[] = $employee->full_name . ' (rest day)';
+                    $this->info('[ClockOutReminder] Skipped ' . $employee->full_name . ' — rest day');
                     continue;
                 }
 
@@ -70,15 +65,14 @@ class SendClockOutReminders extends Command
                     ->exists();
 
                 if ($alreadyClockedOut) {
-                    $skipped[] = $employee->full_name . ' (already clocked out)';
+                    $this->info('[ClockOutReminder] Skipped ' . $employee->full_name . ' — already clocked out');
                     continue;
                 }
 
                 $target = $this->resolveNotificationTime($employee, $today);
 
-                // Only send if the target falls within the current 5-minute window
                 if ($target->lt($now) || $target->gte($windowEnd)) {
-                    $skipped[] = $employee->full_name . ' (target ' . $target->toTimeString() . ' not in window)';
+                    $this->info('[ClockOutReminder] Skipped ' . $employee->full_name . ' — target ' . $target->toTimeString() . ' not in window');
                     continue;
                 }
 
@@ -93,11 +87,7 @@ class SendClockOutReminders extends Command
                 }
 
                 Cache::put($cacheKey, true, now()->endOfDay());
-                $recipients[] = $employee->full_name . ' (target ' . $target->toTimeString() . ')';
-            }
-
-            if ($skipped) {
-                Log::info('[ClockOutReminder] Skipped employees', ['employees' => $skipped]);
+                $recipients[] = $employee->full_name . ' (target: ' . $target->toTimeString() . ')';
             }
 
             $sent   = 0;
@@ -105,26 +95,13 @@ class SendClockOutReminders extends Command
             foreach ($webPush->flush() as $report) {
                 $report->isSuccess() ? $sent++ : $failed++;
                 if (! $report->isSuccess()) {
-                    Log::warning('[ClockOutReminder] Push delivery failed', [
-                        'reason'   => $report->getReason(),
-                        'endpoint' => $report->getRequest()?->getUri()?->__toString(),
-                    ]);
+                    $this->warn('[ClockOutReminder] Push failed — ' . $report->getReason());
                 }
             }
 
-            Log::info('[ClockOutReminder] Done', [
-                'recipients' => $recipients ?: ['none'],
-                'pushSent'   => $sent,
-                'pushFailed' => $failed,
-            ]);
-
-            $this->info('[ClockOutReminder] Done — sent: ' . $sent . ', failed: ' . $failed);
+            $this->info('[ClockOutReminder] Done — recipients: ' . (count($recipients) ? implode(', ', $recipients) : 'none') . ' | sent: ' . $sent . ' | failed: ' . $failed);
         } catch (\Throwable $e) {
-            Log::error('[ClockOutReminder] Command failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            $this->error('[ClockOutReminder] Failed: ' . $e->getMessage());
+            $this->error('[ClockOutReminder] Command failed: ' . $e->getMessage());
         }
     }
 

@@ -9,7 +9,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -27,12 +26,12 @@ class SendTimeInReminders extends Command
         $windowEnd   = $now->copy()->setTime(7, 5, 0);
 
         if ($now->lt($windowStart) || $now->gte($windowEnd)) {
-            Log::info('[TimeInReminder] Skipped — outside 07:00–07:05 window', ['current_time' => $now->toTimeString()]);
+            $this->info('[TimeInReminder] Skipped — outside 07:00–07:05 window (current: ' . $now->toTimeString() . ')');
             return;
         }
 
         $today = $now->toDateString();
-        Log::info('[TimeInReminder] Running', ['date' => $today, 'time' => $now->toTimeString()]);
+        $this->info('[TimeInReminder] Running for ' . $today);
 
         try {
             $users = User::where('role', 'staff')
@@ -40,7 +39,7 @@ class SendTimeInReminders extends Command
                 ->whereHas('pushSubscriptions')
                 ->get();
 
-            Log::info('[TimeInReminder] Staff with subscriptions found', ['count' => $users->count()]);
+            $this->info('[TimeInReminder] Staff with subscriptions: ' . $users->count());
 
             $webPush = $this->makeWebPush();
             $payload = json_encode([
@@ -50,7 +49,6 @@ class SendTimeInReminders extends Command
             ]);
 
             $recipients = [];
-            $skipped    = [];
 
             foreach ($users as $user) {
                 $employee = $user->employee;
@@ -60,12 +58,12 @@ class SendTimeInReminders extends Command
 
                 $cacheKey = "time_in_reminder:{$user->id}:{$today}";
                 if (Cache::has($cacheKey)) {
-                    $skipped[] = $employee->full_name . ' (already sent)';
+                    $this->info('[TimeInReminder] Skipped ' . $employee->full_name . ' — already sent today');
                     continue;
                 }
 
                 if ($this->isRestDay($employee, $today)) {
-                    $skipped[] = $employee->full_name . ' (rest day)';
+                    $this->info('[TimeInReminder] Skipped ' . $employee->full_name . ' — rest day');
                     continue;
                 }
 
@@ -75,7 +73,7 @@ class SendTimeInReminders extends Command
                     ->exists();
 
                 if ($alreadyTimedIn) {
-                    $skipped[] = $employee->full_name . ' (already timed in)';
+                    $this->info('[TimeInReminder] Skipped ' . $employee->full_name . ' — already timed in');
                     continue;
                 }
 
@@ -93,35 +91,18 @@ class SendTimeInReminders extends Command
                 $recipients[] = $employee->full_name;
             }
 
-            if ($skipped) {
-                Log::info('[TimeInReminder] Skipped employees', ['employees' => $skipped]);
-            }
-
             $sent   = 0;
             $failed = 0;
             foreach ($webPush->flush() as $report) {
                 $report->isSuccess() ? $sent++ : $failed++;
                 if (! $report->isSuccess()) {
-                    Log::warning('[TimeInReminder] Push delivery failed', [
-                        'reason'   => $report->getReason(),
-                        'endpoint' => $report->getRequest()?->getUri()?->__toString(),
-                    ]);
+                    $this->warn('[TimeInReminder] Push failed — ' . $report->getReason());
                 }
             }
 
-            Log::info('[TimeInReminder] Done', [
-                'recipients' => $recipients ?: ['none'],
-                'pushSent'   => $sent,
-                'pushFailed' => $failed,
-            ]);
-
-            $this->info('[TimeInReminder] Done — sent: ' . $sent . ', failed: ' . $failed);
+            $this->info('[TimeInReminder] Done — recipients: ' . (count($recipients) ? implode(', ', $recipients) : 'none') . ' | sent: ' . $sent . ' | failed: ' . $failed);
         } catch (\Throwable $e) {
-            Log::error('[TimeInReminder] Command failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            $this->error('[TimeInReminder] Failed: ' . $e->getMessage());
+            $this->error('[TimeInReminder] Command failed: ' . $e->getMessage());
         }
     }
 
