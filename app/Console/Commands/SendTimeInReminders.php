@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -26,68 +27,102 @@ class SendTimeInReminders extends Command
         $windowEnd   = $now->copy()->setTime(7, 5, 0);
 
         if ($now->lt($windowStart) || $now->gte($windowEnd)) {
+            Log::info('[TimeInReminder] Skipped — outside 07:00–07:05 window', ['current_time' => $now->toTimeString()]);
             return;
         }
 
         $today = $now->toDateString();
+        Log::info('[TimeInReminder] Running', ['date' => $today, 'time' => $now->toTimeString()]);
 
-        $users = User::where('role', 'staff')
-            ->with(['employee', 'pushSubscriptions'])
-            ->whereHas('pushSubscriptions')
-            ->get();
+        try {
+            $users = User::where('role', 'staff')
+                ->with(['employee', 'pushSubscriptions'])
+                ->whereHas('pushSubscriptions')
+                ->get();
 
-        $webPush = $this->makeWebPush();
-        $payload = json_encode([
-            'title' => 'Time to Clock In!',
-            'body'  => 'Do not forget to clock in for today! Have a great shift!',
-            'url'   => '/staff/dashboard',
-        ]);
+            Log::info('[TimeInReminder] Staff with subscriptions found', ['count' => $users->count()]);
 
-        $recipients = [];
+            $webPush = $this->makeWebPush();
+            $payload = json_encode([
+                'title' => 'Time to Clock In!',
+                'body'  => 'Do not forget to clock in for today! Have a great shift!',
+                'url'   => '/staff/dashboard',
+            ]);
 
-        foreach ($users as $user) {
-            $employee = $user->employee;
-            if (! $employee) {
-                continue;
+            $recipients = [];
+            $skipped    = [];
+
+            foreach ($users as $user) {
+                $employee = $user->employee;
+                if (! $employee) {
+                    continue;
+                }
+
+                $cacheKey = "time_in_reminder:{$user->id}:{$today}";
+                if (Cache::has($cacheKey)) {
+                    $skipped[] = $employee->full_name . ' (already sent)';
+                    continue;
+                }
+
+                if ($this->isRestDay($employee, $today)) {
+                    $skipped[] = $employee->full_name . ' (rest day)';
+                    continue;
+                }
+
+                $alreadyTimedIn = Dtr::where('employee_id', $employee->id)
+                    ->where('date', $today)
+                    ->whereNotNull('time_in')
+                    ->exists();
+
+                if ($alreadyTimedIn) {
+                    $skipped[] = $employee->full_name . ' (already timed in)';
+                    continue;
+                }
+
+                foreach ($user->pushSubscriptions as $sub) {
+                    $webPush->queueNotification(
+                        Subscription::create([
+                            'endpoint' => $sub->endpoint,
+                            'keys'     => ['p256dh' => $sub->p256dh_key, 'auth' => $sub->auth_token],
+                        ]),
+                        $payload
+                    );
+                }
+
+                Cache::put($cacheKey, true, now()->endOfDay());
+                $recipients[] = $employee->full_name;
             }
 
-            $cacheKey = "time_in_reminder:{$user->id}:{$today}";
-            if (Cache::has($cacheKey)) {
-                continue;
+            if ($skipped) {
+                Log::info('[TimeInReminder] Skipped employees', ['employees' => $skipped]);
             }
 
-            if ($this->isRestDay($employee, $today)) {
-                continue;
+            $sent   = 0;
+            $failed = 0;
+            foreach ($webPush->flush() as $report) {
+                $report->isSuccess() ? $sent++ : $failed++;
+                if (! $report->isSuccess()) {
+                    Log::warning('[TimeInReminder] Push delivery failed', [
+                        'reason'   => $report->getReason(),
+                        'endpoint' => $report->getRequest()?->getUri()?->__toString(),
+                    ]);
+                }
             }
 
-            $alreadyTimedIn = Dtr::where('employee_id', $employee->id)
-                ->where('date', $today)
-                ->whereNotNull('time_in')
-                ->exists();
+            Log::info('[TimeInReminder] Done', [
+                'recipients' => $recipients ?: ['none'],
+                'pushSent'   => $sent,
+                'pushFailed' => $failed,
+            ]);
 
-            if ($alreadyTimedIn) {
-                continue;
-            }
-
-            foreach ($user->pushSubscriptions as $sub) {
-                $webPush->queueNotification(
-                    Subscription::create([
-                        'endpoint' => $sub->endpoint,
-                        'keys'     => ['p256dh' => $sub->p256dh_key, 'auth' => $sub->auth_token],
-                    ]),
-                    $payload
-                );
-            }
-
-            Cache::put($cacheKey, true, now()->endOfDay());
-            $recipients[] = $employee->full_name;
+            $this->info('[TimeInReminder] Done — sent: ' . $sent . ', failed: ' . $failed);
+        } catch (\Throwable $e) {
+            Log::error('[TimeInReminder] Command failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $this->error('[TimeInReminder] Failed: ' . $e->getMessage());
         }
-
-        foreach ($webPush->flush() as $report) {
-            // fire and forget
-        }
-
-        $this->info('Time-in reminders sent to: ' . (count($recipients) ? implode(', ', $recipients) : 'none'));
     }
 
     private function isRestDay(Employee $employee, string $date): bool
