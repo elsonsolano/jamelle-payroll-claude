@@ -121,8 +121,11 @@
                                                     : '—';
                                             @endphp
                                             <tr>
-                                                <td class="py-2 pl-12 pr-4 text-gray-700">
-                                                    {{ \Carbon\Carbon::parse($dtr->date)->format('D, M d, Y') }}
+                                                <td class="py-2 pl-12 pr-4">
+                                                    <a href="{{ route('dtr.show', $dtr) }}"
+                                                       class="text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
+                                                        {{ \Carbon\Carbon::parse($dtr->date)->format('D, M d, Y') }}
+                                                    </a>
                                                 </td>
                                                 <td class="py-2 px-4 text-gray-600">{{ $scheduledStart }}</td>
                                                 <td class="py-2 px-4 text-gray-600">
