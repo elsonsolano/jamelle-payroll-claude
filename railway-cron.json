@@ -4,6 +4,6 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "php artisan schedule:run"
+        "startCommand": "php artisan config:cache && php artisan schedule:run"
     }
 }
