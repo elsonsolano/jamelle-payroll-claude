@@ -38,16 +38,27 @@ class PayrollCutoffController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'branch_id'  => 'required|exists:branches,id',
-            'name'       => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
+            'branch_ids'   => 'required|array|min:1',
+            'branch_ids.*' => 'exists:branches,id',
+            'name'         => 'required|string|max:255',
+            'start_date'   => 'required|date',
+            'end_date'     => 'required|date|after_or_equal:start_date',
         ]);
 
-        $validated['status'] = 'draft';
-        PayrollCutoff::create($validated);
+        foreach ($validated['branch_ids'] as $branchId) {
+            PayrollCutoff::create([
+                'branch_id'  => $branchId,
+                'name'       => $validated['name'],
+                'start_date' => $validated['start_date'],
+                'end_date'   => $validated['end_date'],
+                'status'     => 'draft',
+            ]);
+        }
 
-        return redirect()->route('payroll.cutoffs.index')->with('success', 'Payroll cutoff created successfully.');
+        $count = count($validated['branch_ids']);
+        $label = $count === 1 ? '1 cutoff created.' : "{$count} cutoffs created.";
+
+        return redirect()->route('payroll.cutoffs.index')->with('success', $label);
     }
 
     public function show(PayrollCutoff $cutoff): View
