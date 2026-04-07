@@ -120,6 +120,8 @@ All manually entered DTRs go through `DtrComputationService::compute(Employee, d
 
 **Important:** `Branch.work_start_time` / `Branch.work_end_time` are never used for late/undertime computation.
 
+**Overnight shift handling:** Time values are stored as bare time strings (e.g. `01:00:00`) with no date component. When `time_out <= time_in`, the service infers the employee clocked out past midnight and adds one day to `time_out` before computing the diff. The same logic applies to break end time and to the scheduled `work_end_time` undertime check. A visible orange **(+1 day)** indicator is shown next to the time_out value on all display surfaces (admin DTR index, admin DTR show, staff DTR list, staff dashboard event rows, staff dashboard recent DTRs, and the PDF export).
+
 **DTR recomputation on schedule save:** Whenever a `DailySchedule` is created or updated — either via `EmployeeScheduleController::storeDaily()`/`updateDaily()` or via `ScheduleUploadController::apply()` — any existing `Dtr` for that employee+date is immediately recomputed (`late_mins`, `undertime_mins`, `is_rest_day` updated). This ensures the admin `/dtr` page reflects the correct late data without waiting for payroll regeneration.
 
 Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **End Break**.
@@ -216,9 +218,9 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `GET/POST /setup-signature` — signature canvas onboarding
 
 **Staff portal** (`auth` + `staff` middleware, prefix `/staff`, name prefix `staff.`):
-- `staff.dashboard` — home with quote of the day, today's schedule snippet, OT approvals card (approvers only), Today's DTR card, recent DTRs
+- `staff.dashboard` — home with quote of the day, today's schedule snippet, OT approvals card (approvers only), Open Shift card (overnight), Today's DTR card, recent DTRs
 - `staff.dtr.*` — index (shows pending OT amber banner + amber dot on nav icon), create, store, edit, update (edit blocked if DTR is in a **finalized** payroll; voided cutoffs do not block)
-- `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update today's DTR; handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
+- `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update the DTR for the submitted `date` (may be yesterday for overnight shifts); handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
 - `staff.ot-approvals.*` — index, approve, reject (access not middleware-gated, enforced inside controller)
 - `staff.notifications.*` — index, mark-read
 - `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); contains the Logout button (Logout was removed from the bottom nav)
@@ -230,7 +232,7 @@ The last two run globally (appended to web group) so they intercept after auth, 
 **Admin panel** (`auth` + `admin` middleware) — split into two tiers:
 
 *Accessible to all admins (super + limited):*
-- `GET employees` (`employees.index`) — super admins get full employee table; limited admins get `schedule-manager-index.blade.php` (name, branch, position, "Manage Schedule" link only)
+- `GET employees` (`employees.index`) — super admins get full employee table (no salary column); limited admins get `schedule-manager-index.blade.php` (name, branch, position, "Manage Schedule" link only)
 - `employees/{employee}/schedules` + `employees/{employee}/daily-schedules` — schedule management
 - `schedule-uploads.*` — schedule import: index (with delete), create, store, review, apply (`ScheduleUploadController`); `DELETE schedule-uploads/{schedule}` — soft-deletes the upload record; underlying `DailySchedule` rows use `nullOnDelete()` so they are **preserved** after upload deletion; review page has per-row trash-icon delete (`assignments.splice(idx, 1)`), dropdown syncing (changing one row's employee syncs all rows with the same name), and a **List/Grid toggle** — grid view shows employees as rows and dates as columns (Alpine computed getters `uniqueDates`, `uniqueNames`, `getCell(name, date)`)
 
@@ -241,8 +243,9 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `employees/{employee}/account` — staff account management
 - `employees/{employee}/deductions`, `employees/{employee}/allowances`
 - `POST employees/{employee}/impersonate` — log in as staff; disabled if no `User` record
-- Payroll: `payroll/cutoffs/*` (CRUD, generate, void, unvoid, entries, PDF)
-- DTR: `dtr` index/show, `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot`
+- Payroll: `payroll/cutoffs/*` (CRUD, generate, void, unvoid, entries, PDF); the **create form** shows branch as a checkbox list (all branches pre-checked) — submitting creates one `PayrollCutoff` per selected branch in a single request; the edit form retains a single branch dropdown
+- DTR: `dtr` index/show, `dtr/export` (PDF), `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot` — **`dtr/export` must be declared before `dtr/{dtr}`** to avoid route conflict; when filtering by `cutoff_id`, the query constrains by both the cutoff's date range **and** its `branch_id`
+- Reports: `reports/lates` and `reports/overtime` (`ReportsController`) — both filter by date range, branch, and employee name search; Overtime report also filters by OT status; results grouped by employee showing occurrences, totals, and expandable detail rows linking to the DTR show page
 - Holidays: `holidays.*`
 - Timemark: `timemark.*`
 - `GET/POST utilities/truncate-schedules` — deletes all `daily_schedules` and `schedule_uploads` rows; uses `SET FOREIGN_KEY_CHECKS=0` + `DELETE`
@@ -279,9 +282,9 @@ Two layouts:
 - `x-app-layout` (`AppLayout.php` → `layouts/app.blade.php`) — desktop sidebar layout for admin; includes "Powered by Futuristech.ph" footer
 - `x-staff-layout` (`StaffLayout.php` → `layouts/staff.blade.php`) — mobile-first layout with bottom nav bar for staff portal; max-width constrained, sticky top bar, fixed bottom nav (no footer — intentionally omitted to avoid conflict with the bottom nav)
 
-**Staff dashboard Today's DTR card:** Shows 4 event rows (Time In, Start Break, End Break, Time Out) with timemark color coding (green/amber/orange/blue). Each row is either logged (checkmark), next-to-log (colored dot + "Tap to Log" button), or locked (gray). Tapping opens an Alpine.js bottom sheet with a native `<input type="time">` and a 12-hour preview rendered below it via `toLocaleTimeString`. Time Out row includes an optional OT section. `<input type="time">` always renders in 24-hour format on Android/Brave regardless of locale — the 12-hour preview below the input is the workaround.
+**Staff dashboard order:** Quote of the Day → Today's Schedule snippet → OT Approvals Waiting card (approvers only) → Open Shift card (overnight, amber, only when yesterday has `time_in` but no `time_out`) → Today's DTR card → Recent DTRs.
 
-**Staff dashboard order:** Quote of the Day → Today's Schedule snippet (tappable, links to `staff.schedule`) → OT Approvals Waiting card (approvers only) → Today's DTR card → Recent DTRs. Pending OT count and unread notifications were removed from the dashboard; pending OT is shown as an amber banner on the DTR index instead.
+**Staff dashboard DTR cards:** The Open Shift card and Today's DTR card share a **single Alpine component** that owns the bottom sheet. The `date` and `dateLabel` Alpine properties are set dynamically when a "Tap to Log" button is tapped, so the same bottom sheet submits to the correct date (yesterday or today). The hidden `<input name="date">` uses `:value="date"` (Alpine-bound). The `log-event` endpoint accepts any `date` that is `before_or_equal:today`, so logging yesterday's time_out works without backend changes.
 
 **Staff dashboard daily quote:** `DashboardController::dailyQuote()` picks from a hardcoded array of 30 quotes using `today()->dayOfYear % count($quotes)` — same quote all day for all staff, changes each morning.
 
