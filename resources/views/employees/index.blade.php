@@ -105,7 +105,6 @@
                     <th class="px-5 py-3 font-semibold text-gray-600">Employee</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Branch</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Position</th>
-                    <th class="px-5 py-3 font-semibold text-gray-600">Salary</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">SSS No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">PhilHealth No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Pag-IBIG No.</th>
@@ -131,10 +130,6 @@
                         </td>
                         <td class="px-5 py-3 text-gray-600">{{ $employee->branch->name }}</td>
                         <td class="px-5 py-3 text-gray-500">{{ $employee->position ?? '—' }}</td>
-                        <td class="px-5 py-3">
-                            <div class="text-gray-800 font-medium">₱{{ number_format($employee->rate, 2) }}</div>
-                            <div class="text-xs text-gray-400">{{ ucfirst($employee->salary_type) }} rate</div>
-                        </td>
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->sss_no ?: '—' }}</td>
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->phic_no ?: '—' }}</td>
                         <td class="px-5 py-3 font-mono text-xs text-gray-600">{{ $employee->pagibig_no ?: '—' }}</td>
