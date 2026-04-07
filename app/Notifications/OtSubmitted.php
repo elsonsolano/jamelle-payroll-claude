@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Dtr;
+use App\Notifications\Channels\WebPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -14,7 +15,7 @@ class OtSubmitted extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', WebPushChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -27,6 +28,16 @@ class OtSubmitted extends Notification
             'ot_end_time'   => $this->dtr->ot_end_time,
             'message'       => "{$employee->full_name} submitted an overtime request for {$this->dtr->date->format('M d, Y')}.",
             'type'          => 'ot_submitted',
+        ];
+    }
+
+    public function toWebPush(object $notifiable): array
+    {
+        $employee = $this->dtr->employee;
+        return [
+            'title' => 'OT Request',
+            'body'  => "{$employee->full_name} filed OT for {$this->dtr->date->format('M d, Y')}.",
+            'url'   => '/staff/ot-approvals',
         ];
     }
 }

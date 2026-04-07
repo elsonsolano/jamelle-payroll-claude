@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Dtr;
+use App\Notifications\Channels\WebPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -14,7 +15,7 @@ class OtRejected extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', WebPushChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -26,6 +27,15 @@ class OtRejected extends Notification
             'message'       => "Your overtime request for {$this->dtr->date->format('M d, Y')} has been rejected.",
             'approver_name' => $this->approverName,
             'type'          => 'ot_rejected',
+        ];
+    }
+
+    public function toWebPush(object $notifiable): array
+    {
+        return [
+            'title' => 'OT Rejected',
+            'body'  => "Your OT for {$this->dtr->date->format('M d, Y')} was rejected.",
+            'url'   => '/staff/dtr',
         ];
     }
 }
