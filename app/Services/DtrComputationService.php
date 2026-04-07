@@ -45,15 +45,25 @@ class DtrComputationService
         // Compute total_hours: time_in → time_out minus break (am_out → pm_in)
         $totalHours = 0;
         if ($timeIn && $timeOut) {
-            $in    = Carbon::createFromTimeString($timeIn);
-            $out   = Carbon::createFromTimeString($timeOut);
+            $in  = Carbon::createFromTimeString($timeIn);
+            $out = Carbon::createFromTimeString($timeOut);
+
+            // Handle overnight shifts: if time_out is before or equal to time_in,
+            // the employee clocked out past midnight on the next day.
+            if ($out->lte($in)) {
+                $out->addDay();
+            }
+
             $total = $in->diffInMinutes($out);
 
             if ($amOut && $pmIn) {
                 $breakStart = Carbon::createFromTimeString($amOut);
                 $breakEnd   = Carbon::createFromTimeString($pmIn);
-                $breakMins  = $breakStart->diffInMinutes($breakEnd);
-                $total      = max(0, $total - $breakMins);
+                if ($breakEnd->lte($breakStart)) {
+                    $breakEnd->addDay();
+                }
+                $breakMins = $breakStart->diffInMinutes($breakEnd);
+                $total     = max(0, $total - $breakMins);
             }
 
             $totalHours = round($total / 60, 2);
@@ -77,6 +87,16 @@ class DtrComputationService
         if ($timeOut && !$isRestDay && $workEnd) {
             $scheduledOut = Carbon::createFromTimeString($workEnd);
             $actualOut    = Carbon::createFromTimeString($timeOut);
+            // If scheduled end is past midnight relative to time_in, adjust both
+            if ($timeIn) {
+                $shiftStart = Carbon::createFromTimeString($timeIn);
+                if ($scheduledOut->lte($shiftStart)) {
+                    $scheduledOut->addDay();
+                }
+                if ($actualOut->lte($shiftStart)) {
+                    $actualOut->addDay();
+                }
+            }
             if ($actualOut->lt($scheduledOut)) {
                 $undertimeMins = (int) $actualOut->diffInMinutes($scheduledOut);
             }
