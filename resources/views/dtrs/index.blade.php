@@ -163,6 +163,9 @@
                             </td>
                             <td class="px-4 py-3 text-center font-mono text-xs text-gray-700">
                                 {{ $dtr->time_out ? \Carbon\Carbon::parse($dtr->time_out)->format('h:i A') : '—' }}
+                                @if($dtr->time_in && $dtr->time_out && \Carbon\Carbon::createFromTimeString($dtr->time_out)->lte(\Carbon\Carbon::createFromTimeString($dtr->time_in)))
+                                    <span class="block text-orange-500 font-semibold text-xs">+1 day</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <span class="font-medium text-gray-800">{{ number_format($dtr->total_hours, 2) }}</span>

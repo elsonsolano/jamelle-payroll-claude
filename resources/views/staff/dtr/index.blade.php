@@ -36,7 +36,11 @@
                         <p>In: {{ $fmt12($dtr->time_in) }}
                            &nbsp; Break: {{ $fmt12($dtr->am_out) }}</p>
                         <p>End Break: {{ $fmt12($dtr->pm_in) }}
-                           &nbsp; Out: {{ $fmt12($dtr->time_out) }}</p>
+                           &nbsp; Out: {{ $fmt12($dtr->time_out) }}
+                           @if($dtr->time_in && $dtr->time_out && strtotime($dtr->time_out) <= strtotime($dtr->time_in))
+                               <span class="text-orange-500 font-semibold">(+1 day)</span>
+                           @endif
+                        </p>
                         @php $utMins = $dtr->total_hours > 0 ? max(0, (int)round((8 - $dtr->total_hours) * 60)) : 0; @endphp
                         <p>Total: {{ $dtr->total_hours }}h
                            &nbsp;·&nbsp; Late: {{ $dtr->late_mins }}m

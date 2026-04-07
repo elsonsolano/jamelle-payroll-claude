@@ -130,7 +130,12 @@
                         <td>{{ $dtr->time_in    ? \Carbon\Carbon::parse($dtr->time_in)->format('h:i A')  : '—' }}</td>
                         <td>{{ $dtr->am_out     ? \Carbon\Carbon::parse($dtr->am_out)->format('h:i A')   : '—' }}</td>
                         <td>{{ $dtr->pm_in      ? \Carbon\Carbon::parse($dtr->pm_in)->format('h:i A')    : '—' }}</td>
-                        <td>{{ $dtr->time_out   ? \Carbon\Carbon::parse($dtr->time_out)->format('h:i A') : '—' }}</td>
+                        <td>
+                            {{ $dtr->time_out ? \Carbon\Carbon::parse($dtr->time_out)->format('h:i A') : '—' }}
+                            @if($dtr->time_in && $dtr->time_out && \Carbon\Carbon::createFromTimeString($dtr->time_out)->lte(\Carbon\Carbon::createFromTimeString($dtr->time_in)))
+                                <br><span style="color:#f97316;font-size:8px;font-weight:bold;">+1 day</span>
+                            @endif
+                        </td>
                         <td>{{ $dtr->time_in ? number_format($dtr->total_hours, 2) : '—' }}</td>
                         <td>
                             @if($dtr->overtime_hours > 0 && $dtr->ot_status !== 'rejected')

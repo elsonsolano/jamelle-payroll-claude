@@ -18,6 +18,15 @@ class DashboardController extends Controller
             ->whereDate('date', today())
             ->first();
 
+        // Detect an incomplete overnight shift: yesterday has time_in but no time_out
+        $yesterdayDtr = null;
+        $candidateYesterday = $employee->dtrs()
+            ->whereDate('date', today()->subDay())
+            ->first();
+        if ($candidateYesterday && $candidateYesterday->time_in && !$candidateYesterday->time_out) {
+            $yesterdayDtr = $candidateYesterday;
+        }
+
         $recentDtrs = $employee->dtrs()
             ->whereDate('date', '<', today())
             ->orderByDesc('date')
@@ -34,7 +43,7 @@ class DashboardController extends Controller
         $todaySchedule = $this->todaySchedule($employee);
 
         return view('staff.dashboard', compact(
-            'employee', 'todayDtr', 'recentDtrs', 'pendingApprovalCount', 'quote', 'todaySchedule'
+            'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount', 'quote', 'todaySchedule'
         ));
     }
 

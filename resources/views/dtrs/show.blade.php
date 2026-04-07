@@ -38,20 +38,29 @@
         </div>
 
         {{-- Punch Times --}}
+        @php
+            $isOvernight = $dtr->time_in && $dtr->time_out &&
+                \Carbon\Carbon::createFromTimeString($dtr->time_out)->lte(
+                    \Carbon\Carbon::createFromTimeString($dtr->time_in)
+                );
+        @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-6">
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Punch Times</h3>
             <div class="grid grid-cols-2 gap-4">
                 @foreach([
-                    ['label' => 'Time In',  'value' => $dtr->time_in,  'color' => 'green'],
-                    ['label' => 'Start Break', 'value' => $dtr->am_out,   'color' => 'gray'],
-                    ['label' => 'End Break',   'value' => $dtr->pm_in,    'color' => 'gray'],
-                    ['label' => 'Time Out', 'value' => $dtr->time_out, 'color' => 'red'],
+                    ['label' => 'Time In',     'value' => $dtr->time_in,  'overnight' => false],
+                    ['label' => 'Start Break', 'value' => $dtr->am_out,   'overnight' => false],
+                    ['label' => 'End Break',   'value' => $dtr->pm_in,    'overnight' => false],
+                    ['label' => 'Time Out',    'value' => $dtr->time_out, 'overnight' => $isOvernight],
                 ] as $punch)
                     <div class="bg-gray-50 rounded-lg p-4 text-center">
                         <p class="text-xs text-gray-500 mb-1">{{ $punch['label'] }}</p>
                         <p class="text-lg font-bold {{ $punch['value'] ? 'text-gray-900' : 'text-gray-300' }}">
                             {{ $punch['value'] ? \Carbon\Carbon::parse($punch['value'])->format('h:i A') : '—' }}
                         </p>
+                        @if($punch['overnight'])
+                            <p class="text-xs text-orange-500 font-semibold mt-0.5">+1 day</p>
+                        @endif
                     </div>
                 @endforeach
             </div>

@@ -56,49 +56,69 @@
     </div>
     @endif
 
-    {{-- Today's DTR Card --}}
+    {{-- DTR Cards + shared bottom sheet --}}
     @php
         $today      = today();
+        $yesterday  = today()->subDay();
         $todayLabel = $today->format('D, M d Y');
         $events = [
-            'time_in'  => ['label' => 'Time In',     'color' => '#04AA48'],
-            'am_out'   => ['label' => 'Start Break',  'color' => '#E0A400'],
-            'pm_in'    => ['label' => 'End Break',    'color' => '#E26E17'],
-            'time_out' => ['label' => 'Time Out',     'color' => '#026DEF'],
+            'time_in'  => ['label' => 'Time In',    'color' => '#04AA48'],
+            'am_out'   => ['label' => 'Start Break', 'color' => '#E0A400'],
+            'pm_in'    => ['label' => 'End Break',   'color' => '#E26E17'],
+            'time_out' => ['label' => 'Time Out',    'color' => '#026DEF'],
         ];
         $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : null;
 
-        // Determine the next loggable event
+        // Next loggable event — Today
         $nextEvent = null;
         if ($todayDtr) {
             if (!$todayDtr->time_out) {
-                // time_out is available once time_in is set
-                if (!$todayDtr->time_in) {
-                    $nextEvent = 'time_in';
-                } elseif (!$todayDtr->am_out) {
-                    $nextEvent = 'am_out';
-                } elseif (!$todayDtr->pm_in) {
-                    $nextEvent = 'pm_in';
-                } else {
-                    $nextEvent = 'time_out';
-                }
+                if      (!$todayDtr->time_in) $nextEvent = 'time_in';
+                elseif  (!$todayDtr->am_out)  $nextEvent = 'am_out';
+                elseif  (!$todayDtr->pm_in)   $nextEvent = 'pm_in';
+                else                          $nextEvent = 'time_out';
             }
         } else {
             $nextEvent = 'time_in';
         }
+
+        // Next loggable event — Yesterday (overnight continuation)
+        $yesterdayNextEvent = null;
+        if ($yesterdayDtr) {
+            if      (!$yesterdayDtr->am_out) $yesterdayNextEvent = 'am_out';
+            elseif  (!$yesterdayDtr->pm_in)  $yesterdayNextEvent = 'pm_in';
+            else                             $yesterdayNextEvent = 'time_out';
+        }
     @endphp
 
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4"
-         x-data="{ open: false, event: '', label: '', time: '', hasOt: false, otHours: '', otError: '', note: '', existingNote: '{{ addslashes($todayDtr?->notes ?? '') }}' }">
+    {{-- Shared Alpine component wrapping both cards and the single bottom sheet --}}
+    <div x-data="{
+            open: false,
+            date: '{{ $today->format('Y-m-d') }}',
+            dateLabel: '{{ $todayLabel }}',
+            event: '',
+            label: '',
+            time: '',
+            hasOt: false,
+            otHours: '',
+            otError: '',
+            note: '',
+            todayNote: '{{ addslashes($todayDtr?->notes ?? '') }}',
+            yesterdayNote: '{{ addslashes($yesterdayDtr?->notes ?? '') }}'
+         }">
 
-        {{-- Card Header --}}
-        <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <div>
-                <p class="text-xs text-gray-400">Today</p>
-                <p class="text-sm font-semibold text-gray-800">{{ $todayLabel }}</p>
-            </div>
-            @if($todayDtr)
-                <a href="{{ route('staff.dtr.edit', $todayDtr) }}"
+        {{-- ── Yesterday Incomplete Shift Card ── --}}
+        @if($yesterdayDtr)
+        @php
+            $yLabel = $yesterday->format('D, M d Y');
+        @endphp
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl shadow-sm mb-4">
+            <div class="flex items-center justify-between px-4 pt-4 pb-2">
+                <div>
+                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Open Shift</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ $yLabel }}</p>
+                </div>
+                <a href="{{ route('staff.dtr.edit', $yesterdayDtr) }}"
                    class="flex items-center gap-1 text-xs text-indigo-600 font-medium">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -106,72 +126,151 @@
                     </svg>
                     Edit
                 </a>
-            @endif
-        </div>
+            </div>
 
-        {{-- Event Rows --}}
-        <div class="px-4 pb-3 space-y-2">
-            @foreach($events as $field => $event)
-                @php
-                    $label      = $event['label'];
-                    $color      = $event['color'];
-                    $loggedTime = $todayDtr?->{$field} ?? null;
-                    $isLogged   = !is_null($loggedTime);
-                    $isNext     = $nextEvent === $field;
-                    $isLocked   = !$isLogged && !$isNext;
-                @endphp
-
-                <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
-                     style="{{ $isLocked ? 'background-color:#f9fafb' : 'background-color:' . $color . '18' }}">
-                    <div class="flex items-center gap-2.5">
-                        {{-- Status icon --}}
-                        @if($isLogged)
-                            <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                 style="background-color:{{ $color }}">
-                                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </div>
-                        @elseif($isNext)
-                            <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                 style="background-color:{{ $color }}">
-                                <div class="w-2 h-2 rounded-full bg-white"></div>
-                            </div>
-                        @else
-                            <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"></div>
-                        @endif
-
-                        <div>
-                            <p class="text-sm font-medium {{ $isLocked ? 'text-gray-400' : '' }}"
-                               @if(!$isLocked) style="color:{{ $color }}" @endif>{{ $label }}</p>
-                            @if($isLogged)
-                                <p class="text-xs" style="color:{{ $color }}">{{ $fmt12($loggedTime) }}</p>
+            <div class="px-4 pb-3 space-y-2">
+                @foreach($events as $field => $event)
+                    @php
+                        $yLoggedTime = $yesterdayDtr->{$field} ?? null;
+                        $yIsLogged   = !is_null($yLoggedTime);
+                        $yIsNext     = $yesterdayNextEvent === $field;
+                        $yIsLocked   = !$yIsLogged && !$yIsNext;
+                        $eLabel      = $event['label'];
+                        $eColor      = $event['color'];
+                    @endphp
+                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                         style="{{ $yIsLocked ? 'background-color:#fffbeb' : 'background-color:' . $eColor . '18' }}">
+                        <div class="flex items-center gap-2.5">
+                            @if($yIsLogged)
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                     style="background-color:{{ $eColor }}">
+                                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            @elseif($yIsNext)
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                     style="background-color:{{ $eColor }}">
+                                    <div class="w-2 h-2 rounded-full bg-white"></div>
+                                </div>
+                            @else
+                                <div class="w-6 h-6 rounded-full border-2 border-amber-200 flex-shrink-0"></div>
                             @endif
+
+                            <div>
+                                <p class="text-sm font-medium {{ $yIsLocked ? 'text-amber-300' : '' }}"
+                                   @if(!$yIsLocked) style="color:{{ $eColor }}" @endif>{{ $eLabel }}</p>
+                                @if($yIsLogged)
+                                    <p class="text-xs" style="color:{{ $eColor }}">
+                                        {{ $fmt12($yLoggedTime) }}
+                                        @if($field === 'time_out' && $yesterdayDtr->time_in && strtotime($yLoggedTime) <= strtotime($yesterdayDtr->time_in))
+                                            <span class="text-orange-500 font-semibold">(+1 day)</span>
+                                        @endif
+                                    </p>
+                                @endif
+                            </div>
                         </div>
+
+                        @if($yIsNext)
+                            <button type="button"
+                                    @click="date = '{{ $yesterday->format('Y-m-d') }}'; dateLabel = '{{ $yLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = yesterdayNote; open = true"
+                                    class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
+                                    style="background-color:{{ $eColor }}">
+                                Tap to Log
+                            </button>
+                        @endif
                     </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
 
-                    @if($isNext)
-                        <button type="button"
-                                @click="event = '{{ $field }}'; label = '{{ $label }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = existingNote; open = true"
-                                class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
-                                style="background-color:{{ $color }}">
-                            Tap to Log
-                        </button>
-                    @endif
-                </div>
-            @endforeach
+        {{-- ── Today's DTR Card ── --}}
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4">
 
-            {{-- Total hours when fully logged --}}
-            @if($todayDtr && $todayDtr->time_in && $todayDtr->time_out)
-                <div class="pt-1 flex justify-end">
-                    <span class="text-xs text-gray-500 font-medium">
-                        Total: <span class="text-gray-800">{{ $todayDtr->total_hours }}h</span>
-                    </span>
+            <div class="flex items-center justify-between px-4 pt-4 pb-2">
+                <div>
+                    <p class="text-xs text-gray-400">Today</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ $todayLabel }}</p>
                 </div>
-            @endif
+                @if($todayDtr)
+                    <a href="{{ route('staff.dtr.edit', $todayDtr) }}"
+                       class="flex items-center gap-1 text-xs text-indigo-600 font-medium">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edit
+                    </a>
+                @endif
+            </div>
+
+            <div class="px-4 pb-3 space-y-2">
+                @foreach($events as $field => $event)
+                    @php
+                        $eLabel     = $event['label'];
+                        $eColor     = $event['color'];
+                        $loggedTime = $todayDtr?->{$field} ?? null;
+                        $isLogged   = !is_null($loggedTime);
+                        $isNext     = $nextEvent === $field;
+                        $isLocked   = !$isLogged && !$isNext;
+                    @endphp
+
+                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                         style="{{ $isLocked ? 'background-color:#f9fafb' : 'background-color:' . $eColor . '18' }}">
+                        <div class="flex items-center gap-2.5">
+                            @if($isLogged)
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                     style="background-color:{{ $eColor }}">
+                                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            @elseif($isNext)
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                     style="background-color:{{ $eColor }}">
+                                    <div class="w-2 h-2 rounded-full bg-white"></div>
+                                </div>
+                            @else
+                                <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"></div>
+                            @endif
+
+                            <div>
+                                <p class="text-sm font-medium {{ $isLocked ? 'text-gray-400' : '' }}"
+                                   @if(!$isLocked) style="color:{{ $eColor }}" @endif>{{ $eLabel }}</p>
+                                @if($isLogged)
+                                    <p class="text-xs" style="color:{{ $eColor }}">
+                                        {{ $fmt12($loggedTime) }}
+                                        @if($field === 'time_out' && $todayDtr->time_in && strtotime($loggedTime) <= strtotime($todayDtr->time_in))
+                                            <span class="text-orange-500 font-semibold">(+1 day)</span>
+                                        @endif
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if($isNext)
+                            <button type="button"
+                                    @click="date = '{{ $today->format('Y-m-d') }}'; dateLabel = '{{ $todayLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = todayNote; open = true"
+                                    class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
+                                    style="background-color:{{ $eColor }}">
+                                Tap to Log
+                            </button>
+                        @endif
+                    </div>
+                @endforeach
+
+                @if($todayDtr && $todayDtr->time_in && $todayDtr->time_out)
+                    <div class="pt-1 flex justify-end">
+                        <span class="text-xs text-gray-500 font-medium">
+                            Total: <span class="text-gray-800">{{ $todayDtr->total_hours }}h</span>
+                        </span>
+                    </div>
+                @endif
+            </div>
         </div>
 
-        {{-- Log Event Bottom Sheet Modal --}}
+        {{-- ── Shared Bottom Sheet ── --}}
         <div x-show="open" x-cloak
              class="fixed inset-0 z-50 flex flex-col justify-end"
              x-transition:enter="transition ease-out duration-200"
@@ -181,10 +280,8 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0">
 
-            {{-- Backdrop --}}
             <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
 
-            {{-- Sheet --}}
             <div class="relative bg-white rounded-t-2xl p-5 shadow-xl"
                  x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="translate-y-full"
@@ -202,13 +299,13 @@
                     <p class="text-xs text-red-700 font-medium">Make sure the times you enter match exactly what is recorded in your timemark.</p>
                 </div>
 
-                <p class="text-xs text-gray-400 mb-0.5">{{ $todayLabel }}</p>
+                <p class="text-xs text-gray-400 mb-0.5" x-text="dateLabel"></p>
                 <h3 class="text-lg font-bold text-gray-900 mb-4" x-text="label"></h3>
 
                 <form method="POST" action="{{ route('staff.dtr.log-event') }}"
                       @submit.prevent="if (hasOt && !otHours) { otError = 'Please enter your overtime hours.' } else { otError = ''; $el.submit() }">
                     @csrf
-                    <input type="hidden" name="date" value="{{ $today->format('Y-m-d') }}">
+                    <input type="hidden" name="date" :value="date">
                     <input type="hidden" name="event" :value="event">
 
                     <div class="mb-4">
@@ -266,7 +363,7 @@
             </div>
         </div>
 
-    </div>
+    </div> {{-- end Alpine wrapper --}}
 
     {{-- Recent DTRs --}}
     @if($recentDtrs->isNotEmpty())
@@ -280,6 +377,9 @@
                     {{ $dtr->time_in ? date('g:i A', strtotime($dtr->time_in)) : '--' }}
                     –
                     {{ $dtr->time_out ? date('g:i A', strtotime($dtr->time_out)) : '--' }}
+                    @if($dtr->time_in && $dtr->time_out && strtotime($dtr->time_out) <= strtotime($dtr->time_in))
+                        <span class="text-orange-500 font-semibold">(+1 day)</span>
+                    @endif
                     &nbsp;·&nbsp;{{ $dtr->total_hours }}h
                 </p>
             </div>
