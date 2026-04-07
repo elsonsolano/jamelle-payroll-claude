@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\PayrollCutoff;
 use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,62 @@ class DtrController extends Controller
         $cutoffs   = PayrollCutoff::with('branch')->orderByDesc('start_date')->get();
 
         return view('dtrs.index', compact('dtrs', 'employees', 'branches', 'cutoffs'));
+    }
+
+    public function export(Request $request): \Illuminate\Http\Response
+    {
+        $query = Dtr::with('employee.branch')->whereHas('employee');
+
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->whereHas('employee', fn($q) => $q->where('branch_id', $request->branch_id));
+        }
+
+        if ($request->filled('cutoff_id')) {
+            $cutoff = PayrollCutoff::findOrFail($request->cutoff_id);
+            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date]);
+        } else {
+            if ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+
+        $dtrs = $query->orderBy('date')->orderBy('employee_id')->get();
+
+        // Determine date range label for the header
+        if ($request->filled('cutoff_id')) {
+            $cutoffModel = PayrollCutoff::find($request->cutoff_id);
+            $dateFrom = $cutoffModel->start_date->format('M d, Y');
+            $dateTo   = $cutoffModel->end_date->format('M d, Y');
+        } elseif ($request->filled('date_from') || $request->filled('date_to')) {
+            $dateFrom = $request->filled('date_from') ? \Carbon\Carbon::parse($request->date_from)->format('M d, Y') : null;
+            $dateTo   = $request->filled('date_to')   ? \Carbon\Carbon::parse($request->date_to)->format('M d, Y')   : null;
+        } else {
+            $dateFrom = $dtrs->isNotEmpty() ? \Carbon\Carbon::parse($dtrs->min('date'))->format('M d, Y') : null;
+            $dateTo   = $dtrs->isNotEmpty() ? \Carbon\Carbon::parse($dtrs->max('date'))->format('M d, Y') : null;
+        }
+
+        // Group: branch name → employee_id → DTRs
+        $grouped = $dtrs
+            ->sortBy(fn($d) => $d->employee->branch->name)
+            ->groupBy(fn($d) => $d->employee->branch->name)
+            ->map(fn($branchDtrs) => $branchDtrs
+                ->sortBy(fn($d) => $d->employee->last_name . $d->employee->first_name)
+                ->groupBy('employee_id')
+            );
+
+        $pdf = Pdf::loadView('dtrs.export', compact('grouped', 'dateFrom', 'dateTo'))
+                  ->setPaper('a4', 'landscape');
+
+        $filename = 'dtr-export-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function show(Dtr $dtr): View
