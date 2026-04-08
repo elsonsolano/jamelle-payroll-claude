@@ -43,7 +43,7 @@ class EmployeeController extends Controller
             return redirect()->route('employees.index', session('employee_filters'));
         }
 
-        $query = Employee::with('branch');
+        $query = Employee::with(['branch', 'user']);
 
         if ($request->filled('search')) {
             $s = $request->search;

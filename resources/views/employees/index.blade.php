@@ -123,7 +123,22 @@
                                     {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1)) }}
                                 </div>
                                 <div>
-                                    <p class="font-medium text-gray-900">{{ $employee->full_name }}</p>
+                                    <div class="flex items-center gap-1.5">
+                                        <p class="font-medium text-gray-900">{{ $employee->full_name }}</p>
+                                        @if($employee->user)
+                                            <span title="Has portal account" class="text-green-500">
+                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </span>
+                                        @else
+                                            <span title="No portal account" class="text-gray-300">
+                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </span>
+                                        @endif
+                                    </div>
                                     <p class="text-xs text-gray-400">{{ $employee->employee_code }}</p>
                                 </div>
                             </div>
