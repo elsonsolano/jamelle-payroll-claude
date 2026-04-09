@@ -18,13 +18,45 @@ class EmployeeScheduleController extends Controller
     public function index(Employee $employee): View
     {
         $employee->load('branch');
+        $defaultSchedule = $employee->employeeSchedules()->where('week_start_date', '2000-01-01')->first();
         $schedules      = $employee->employeeSchedules()->orderByDesc('week_start_date')->get();
         $dailySchedules = DailySchedule::where('employee_id', $employee->id)
             ->with('assignedBranch')
             ->orderByDesc('date')
             ->get();
         $branches = Branch::orderBy('name')->get(['id', 'name']);
-        return view('schedules.index', compact('employee', 'schedules', 'dailySchedules', 'branches'));
+        return view('schedules.index', compact('employee', 'schedules', 'dailySchedules', 'branches', 'defaultSchedule'));
+    }
+
+    public function saveDefault(Request $request, Employee $employee): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rest_days'       => 'required|array|min:1',
+            'rest_days.*'     => 'string|in:Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
+            'work_start_time' => 'nullable|date_format:H:i',
+            'work_end_time'   => 'nullable|date_format:H:i',
+        ]);
+
+        if (empty($validated['work_start_time']) || empty($validated['work_end_time'])) {
+            $validated['work_start_time'] = null;
+            $validated['work_end_time']   = null;
+        }
+
+        EmployeeSchedule::updateOrCreate(
+            ['employee_id' => $employee->id, 'week_start_date' => '2000-01-01'],
+            $validated,
+        );
+
+        return redirect()->route('employees.schedules.index', $employee)
+            ->with('success', 'Default schedule saved.');
+    }
+
+    public function destroyDefault(Employee $employee): RedirectResponse
+    {
+        $employee->employeeSchedules()->where('week_start_date', '2000-01-01')->delete();
+
+        return redirect()->route('employees.schedules.index', $employee)
+            ->with('success', 'Default schedule removed.');
     }
 
     public function store(Request $request, Employee $employee): RedirectResponse

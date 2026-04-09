@@ -62,6 +62,8 @@ Route::middleware(["auth", "admin"])->group(function () {
     // Employee schedules & daily schedules
     Route::prefix("employees/{employee}")->name("employees.")->group(function () {
         Route::get("schedules", [EmployeeScheduleController::class, "index"])->name("schedules.index");
+        Route::post("schedules/default", [EmployeeScheduleController::class, "saveDefault"])->name("schedules.saveDefault");
+        Route::delete("schedules/default", [EmployeeScheduleController::class, "destroyDefault"])->name("schedules.destroyDefault");
         Route::post("schedules", [EmployeeScheduleController::class, "store"])->name("schedules.store");
         Route::put("schedules/{schedule}", [EmployeeScheduleController::class, "update"])->name("schedules.update");
         Route::delete("schedules/{schedule}", [EmployeeScheduleController::class, "destroy"])->name("schedules.destroy");

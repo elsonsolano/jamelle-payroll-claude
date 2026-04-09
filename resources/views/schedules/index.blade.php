@@ -10,6 +10,13 @@
 
     <div class="max-w-3xl space-y-6">
 
+        {{-- Success flash --}}
+        @if(session('success'))
+            <div class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
+                {{ session('success') }}
+            </div>
+        @endif
+
         {{-- Employee Card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
             <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold flex-shrink-0">
@@ -28,6 +35,122 @@
             </div>
         </div>
 
+
+        {{-- Default Schedule --}}
+        @php
+            $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        @endphp
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden"
+             x-data="{ editing: {{ $errors->hasAny(['rest_days','work_start_time','work_end_time']) && !$defaultSchedule ? 'false' : ($errors->hasAny(['rest_days','work_start_time','work_end_time']) ? 'true' : 'false') }} }">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="font-semibold text-gray-800">Default Schedule
+                    <span class="text-xs font-normal text-gray-400 ml-1">applies when no specific daily schedule is set</span>
+                </h2>
+                @if($defaultSchedule)
+                    <button @click="editing = !editing"
+                            class="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                            x-text="editing ? 'Cancel' : 'Edit'"></button>
+                @endif
+            </div>
+
+            {{-- View state --}}
+            @if($defaultSchedule)
+                <div x-show="!editing" class="px-5 py-4 space-y-3">
+                    <div class="flex gap-1.5 flex-wrap">
+                        @foreach($days as $day)
+                            @php $isRest = in_array($day, $defaultSchedule->rest_days ?? []); @endphp
+                            <span @class([
+                                'px-3 py-1.5 rounded-lg text-xs font-medium',
+                                'bg-red-100 text-red-600'       => $isRest,
+                                'bg-indigo-100 text-indigo-700' => !$isRest,
+                            ])>{{ substr($day, 0, 3) }}</span>
+                        @endforeach
+                    </div>
+                    @if($defaultSchedule->work_start_time && $defaultSchedule->work_end_time)
+                        <p class="text-sm text-gray-700">
+                            {{ \Carbon\Carbon::parse($defaultSchedule->work_start_time)->format('g:i A') }}
+                            – {{ \Carbon\Carbon::parse($defaultSchedule->work_end_time)->format('g:i A') }}
+                        </p>
+                    @else
+                        <p class="text-sm text-gray-400">Using branch default hours</p>
+                    @endif
+                    <form method="POST" action="{{ route('employees.schedules.destroyDefault', $employee) }}"
+                          onsubmit="return confirm('Remove default schedule?')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Remove default schedule</button>
+                    </form>
+                </div>
+            @else
+                <div x-show="!editing" class="px-5 py-6 flex items-center justify-between">
+                    <p class="text-sm text-gray-400">No default schedule set.</p>
+                    <button @click="editing = true"
+                            class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                        Set Default Schedule
+                    </button>
+                </div>
+            @endif
+
+            {{-- Edit / Create form --}}
+            <div x-show="editing" x-cloak class="border-t border-gray-100 px-5 py-5">
+                <form method="POST" action="{{ route('employees.schedules.saveDefault', $employee) }}">
+                    @csrf
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Rest Days <span class="text-red-500">*</span>
+                                <span class="text-xs font-normal text-gray-400 ml-1">(select the day(s) off)</span>
+                            </label>
+                            @php
+                                $defaultRestDays = old('rest_days', $defaultSchedule?->rest_days ?? []);
+                            @endphp
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($days as $day)
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" name="rest_days[]" value="{{ $day }}"
+                                               {{ in_array($day, $defaultRestDays) ? 'checked' : '' }}
+                                               class="sr-only peer">
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border transition
+                                                     border-gray-300 bg-white text-gray-600
+                                                     peer-checked:bg-red-100 peer-checked:text-red-700 peer-checked:border-red-300
+                                                     hover:bg-gray-50">
+                                            {{ substr($day, 0, 3) }}
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('rest_days') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Work Hours</label>
+                            <p class="text-xs text-gray-400 mb-2">Leave blank to use the branch's default work hours.</p>
+                            <div class="flex items-center gap-3">
+                                <input type="time" name="work_start_time"
+                                       value="{{ old('work_start_time', $defaultSchedule?->work_start_time ? \Carbon\Carbon::parse($defaultSchedule->work_start_time)->format('H:i') : '') }}"
+                                       class="rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <span class="text-gray-400 text-sm">to</span>
+                                <input type="time" name="work_end_time"
+                                       value="{{ old('work_end_time', $defaultSchedule?->work_end_time ? \Carbon\Carbon::parse($defaultSchedule->work_end_time)->format('H:i') : '') }}"
+                                       class="rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            @error('work_start_time') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            @error('work_end_time') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+                        <button type="submit"
+                                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                            Save
+                        </button>
+                        <button type="button" @click="editing = false"
+                                class="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         {{-- Add Daily Schedule --}}
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-data="{ open: {{ $errors->hasAny(['date','work_start_time','work_end_time','assigned_branch_id']) ? 'true' : 'false' }}, isDayOff: false }">
@@ -206,8 +329,9 @@
             @endforelse
         </div>
 
-        {{-- Schedule History --}}
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {{-- Schedule History (hidden — managed via Default Schedule card above) --}}
+        {{-- <div class="bg-white rounded-xl border border-gray-200 overflow-hidden"> --}}
+        @if(false)
             <div class="px-5 py-4 border-b border-gray-100">
                 <h2 class="font-semibold text-gray-800">Schedule History</h2>
             </div>
@@ -305,6 +429,7 @@
                 </div>
             @endforelse
         </div>
+        @endif {{-- end hidden Schedule History --}}
 
     </div>
 
