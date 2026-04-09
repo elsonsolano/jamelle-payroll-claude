@@ -47,6 +47,11 @@ class EmployeeScheduleController extends Controller
             $validated,
         );
 
+        // Recompute all existing DTRs so late/undertime reflects the new default schedule
+        $employee->dtrs()->whereNotNull('time_in')->get()->each(function ($dtr) use ($employee) {
+            $this->recomputeDtr($employee, $dtr->date);
+        });
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Default schedule saved.');
     }
