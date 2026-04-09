@@ -10,13 +10,6 @@
 
     <div class="max-w-3xl space-y-6">
 
-        {{-- Success flash --}}
-        @if(session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- Employee Card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
             <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold flex-shrink-0">
