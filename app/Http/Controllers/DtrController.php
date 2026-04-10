@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
+use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
@@ -113,7 +115,18 @@ class DtrController extends Controller
     public function show(Dtr $dtr): View
     {
         $dtr->load('employee.branch', 'approvedBy');
-        return view('dtrs.show', compact('dtr'));
+
+        // Resolve schedule for this DTR's date — DailySchedule takes priority
+        $dailySchedule = DailySchedule::where('employee_id', $dtr->employee_id)
+            ->where('date', $dtr->date)
+            ->first();
+
+        $weeklySchedule = $dailySchedule ? null : EmployeeSchedule::where('employee_id', $dtr->employee_id)
+            ->where('week_start_date', '<=', $dtr->date)
+            ->orderByDesc('week_start_date')
+            ->first();
+
+        return view('dtrs.show', compact('dtr', 'dailySchedule', 'weeklySchedule'));
     }
 
     public function approveOt(Dtr $dtr): RedirectResponse

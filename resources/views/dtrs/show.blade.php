@@ -37,6 +37,61 @@
             </div>
         </div>
 
+        {{-- Schedule --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Schedule</h3>
+            @if($dailySchedule)
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Source</span>
+                        <span class="font-medium text-blue-600">Daily Override</span>
+                    </div>
+                    @if($dailySchedule->is_day_off)
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Status</span>
+                            <span class="font-medium text-amber-600">Day Off</span>
+                        </div>
+                    @else
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Work Hours</span>
+                            <span class="font-medium text-gray-800">
+                                {{ \Carbon\Carbon::parse($dailySchedule->work_start_time)->format('h:i A') }}
+                                –
+                                {{ \Carbon\Carbon::parse($dailySchedule->work_end_time)->format('h:i A') }}
+                            </span>
+                        </div>
+                    @endif
+                    @if($dailySchedule->notes)
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Notes</span>
+                            <span class="font-medium text-gray-800">{{ $dailySchedule->notes }}</span>
+                        </div>
+                    @endif
+                </div>
+            @elseif($weeklySchedule)
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Source</span>
+                        <span class="font-medium text-gray-600">Weekly Default</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Work Hours</span>
+                        <span class="font-medium text-gray-800">
+                            {{ \Carbon\Carbon::parse($weeklySchedule->work_start_time)->format('h:i A') }}
+                            –
+                            {{ \Carbon\Carbon::parse($weeklySchedule->work_end_time)->format('h:i A') }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Rest Days</span>
+                        <span class="font-medium text-gray-800">{{ implode(', ', $weeklySchedule->rest_days ?? ['Sunday']) }}</span>
+                    </div>
+                </div>
+            @else
+                <p class="text-sm text-gray-400">No schedule set for this date — late and undertime are not tracked.</p>
+            @endif
+        </div>
+
         {{-- Punch Times --}}
         @php
             $isOvernight = $dtr->time_in && $dtr->time_out &&
