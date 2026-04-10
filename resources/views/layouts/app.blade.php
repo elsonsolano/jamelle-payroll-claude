@@ -131,6 +131,16 @@
                 </x-slot>
                 Overtime
             </x-sidebar-link>
+
+            <div class="pt-3 pb-1 px-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Developer</p>
+            </div>
+
+            <a href="{{ route('adminer') }}" target="_blank"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5v5c0 1.657 3.582 3 8 3s8-1.343 8-3V5M4 10v5c0 1.657 3.582 3 8 3s8-1.343 8-3v-5"/></svg>
+                Database
+            </a>
             @endif
 
         </nav>

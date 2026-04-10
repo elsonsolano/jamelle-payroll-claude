@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsurePasswordChanged::class,
             \App\Http\Middleware\EnsureSignatureSet::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            'admin/adminer',
+            'admin/adminer/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

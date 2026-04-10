@@ -156,6 +156,9 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::post("timemark/fetch", [TimemarkController::class, "fetch"])->name("timemark.fetch");
         Route::get("timemark/logs", [TimemarkController::class, "index"])->name("timemark.logs");
 
+        // Adminer — database UI; CSRF excluded in bootstrap/app.php
+        Route::any("admin/adminer", \App\Http\Controllers\AdminerController::class)->name("adminer");
+
         // Utilities
         Route::get("utilities/test-push", function () {
             $count = \App\Models\PushSubscription::count();
