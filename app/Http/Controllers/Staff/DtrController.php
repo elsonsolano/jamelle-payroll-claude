@@ -33,7 +33,7 @@ class DtrController extends Controller
     {
         $validated = $request->validate([
             'date'     => 'required|date|before_or_equal:today',
-            'time_in'  => 'nullable|date_format:H:i',
+            'time_in'  => 'required|date_format:H:i',
             'am_out'   => 'nullable|date_format:H:i',
             'pm_in'    => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
