@@ -10,16 +10,42 @@
                 </a>
             @endif
 
-            @if(in_array($cutoff->status, ['draft', 'finalized']))
+            @if($cutoff->status !== 'voided')
+                @php
+                    $generateLabel = match($cutoff->status) {
+                        'draft'       => 'Generate Payroll',
+                        'processing'  => 'Regenerate',
+                        'finalized'   => 'Regenerate Payroll',
+                    };
+                    $generateConfirm = match($cutoff->status) {
+                        'draft'      => 'Generate payroll for all active employees in this branch?',
+                        'processing' => 'Recalculate payroll? Existing preview entries will be overwritten. Continue?',
+                        'finalized'  => 'This will move the payroll back to Preview and recalculate all entries. Manually added variable deductions will be deleted and must be re-entered. Continue?',
+                    };
+                @endphp
                 <form method="POST" action="{{ route('payroll.cutoffs.generate', $cutoff) }}"
-                      onsubmit="return confirm('{{ $cutoff->status === 'finalized' ? 'This will regenerate payroll and overwrite existing entries. Any variable deductions added manually will be deleted and must be re-entered. Continue?' : 'Generate payroll for all active employees in this branch?' }}')">
+                      onsubmit="return confirm('{{ $generateConfirm }}')">
                     @csrf
                     <button type="submit"
                             class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
-                        {{ $cutoff->status === 'finalized' ? 'Regenerate Payroll' : 'Generate Payroll' }}
+                        {{ $generateLabel }}
+                    </button>
+                </form>
+            @endif
+
+            @if($cutoff->status === 'processing')
+                <form method="POST" action="{{ route('payroll.cutoffs.finalize', $cutoff) }}"
+                      onsubmit="return confirm('Finalize this payroll? Staff DTRs in this period will be locked and can no longer be edited.')">
+                    @csrf
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Finalize
                     </button>
                 </form>
             @endif
@@ -76,6 +102,19 @@
             </div>
         </div>
 
+        @if($cutoff->status === 'processing')
+        {{-- Preview Banner --}}
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <p class="text-sm font-semibold text-amber-700">Payroll Preview — not yet finalized</p>
+                <p class="text-sm text-amber-600 mt-0.5">Compare these numbers with your old records. Staff can still add or edit DTR entries. Once everything looks correct, click <strong>Finalize</strong> to lock the payroll.</p>
+            </div>
+        </div>
+        @endif
+
         @if($cutoff->status === 'voided')
         {{-- Void Banner --}}
         <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
@@ -123,7 +162,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
                     <p class="text-gray-400 text-sm">No payroll entries yet.</p>
-                    @if($cutoff->status === 'draft')
+                    @if(in_array($cutoff->status, ['draft', 'processing']))
                         <p class="text-gray-400 text-sm mt-1">Click <span class="font-medium text-indigo-600">Generate Payroll</span> to compute payroll for all active employees.</p>
                     @endif
                 </div>

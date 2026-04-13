@@ -131,6 +131,7 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::patch("entries/{entry}/variable-deductions/{variableDeduction}", [PayrollEntryVariableDeductionController::class, "update"])->name("entries.variable-deductions.update");
             Route::delete("entries/{entry}/variable-deductions/{variableDeduction}", [PayrollEntryVariableDeductionController::class, "destroy"])->name("entries.variable-deductions.destroy");
             Route::post("generate", [PayrollEntryController::class, "generate"])->name("generate");
+            Route::post("finalize", [PayrollEntryController::class, "finalize"])->name("finalize");
             Route::post("void", [PayrollCutoffController::class, "void"])->name("void");
             Route::post("unvoid", [PayrollCutoffController::class, "unvoid"])->name("unvoid");
         });

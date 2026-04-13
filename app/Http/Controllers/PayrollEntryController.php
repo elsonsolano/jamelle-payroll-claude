@@ -58,9 +58,20 @@ class PayrollEntryController extends Controller
             $this->payrollService->computeEntry($cutoff, $employee);
         }
 
+        return redirect()->route('payroll.cutoffs.show', $cutoff)
+            ->with('success', 'Payroll computed for ' . $employees->count() . ' employee(s). Review the numbers, then click Finalize when ready.');
+    }
+
+    public function finalize(PayrollCutoff $cutoff): RedirectResponse
+    {
+        if ($cutoff->status !== 'processing') {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'Only a payroll in preview (Processing) state can be finalized.');
+        }
+
         $cutoff->update(['status' => 'finalized']);
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
-            ->with('success', 'Payroll generated for ' . $employees->count() . ' employee(s).');
+            ->with('success', 'Payroll finalized. Staff DTRs in this period are now locked.');
     }
 }
