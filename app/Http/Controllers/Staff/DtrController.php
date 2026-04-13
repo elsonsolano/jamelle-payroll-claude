@@ -118,9 +118,9 @@ class DtrController extends Controller
             'date'        => $validated['date'],
         ]);
 
-        if ($dtr->exists) {
-            $this->ensureEditable($dtr);
-        } else {
+        $this->ensureEditable($dtr);
+
+        if (!$dtr->exists) {
             $dtr->source    = 'manual';
             $dtr->status    = 'Approved';
             $dtr->ot_status = 'none';

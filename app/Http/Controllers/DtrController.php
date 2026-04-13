@@ -10,6 +10,7 @@ use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
+use App\Services\DtrComputationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ use Illuminate\View\View;
 
 class DtrController extends Controller
 {
+    public function __construct(private DtrComputationService $computer) {}
+
     public function index(Request $request): View
     {
         $query = Dtr::with('employee.branch')->whereHas('employee');
@@ -127,6 +130,67 @@ class DtrController extends Controller
             ->first();
 
         return view('dtrs.show', compact('dtr', 'dailySchedule', 'weeklySchedule'));
+    }
+
+    public function edit(Dtr $dtr): View
+    {
+        $dtr->load('employee.branch');
+        return view('dtrs.edit', compact('dtr'));
+    }
+
+    public function update(Request $request, Dtr $dtr): RedirectResponse
+    {
+        $validated = $request->validate([
+            'time_in'  => 'nullable|date_format:H:i',
+            'am_out'   => 'nullable|date_format:H:i',
+            'pm_in'    => 'nullable|date_format:H:i',
+            'time_out' => 'nullable|date_format:H:i',
+            'ot_hours' => 'nullable|numeric|min:0.25|max:24',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        $otHours = !empty($validated['ot_hours']) ? (float) $validated['ot_hours'] : null;
+
+        $computed = $this->computer->compute(
+            $dtr->employee,
+            $dtr->date->format('Y-m-d'),
+            $validated['time_in'] ?? null,
+            $validated['am_out'] ?? null,
+            $validated['pm_in'] ?? null,
+            $validated['time_out'] ?? null,
+            $otHours,
+        );
+
+        // Recompute ot_end_time if time_out and ot_hours are present
+        $otEndTime = null;
+        if ($otHours && !empty($validated['time_out'])) {
+            $otEndTime = \Carbon\Carbon::createFromTimeString($validated['time_out'])
+                ->addMinutes((int) ($otHours * 60))
+                ->format('H:i:s');
+        }
+
+        // If OT hours changed, reset ot_status to pending; otherwise preserve
+        $prevOtHours = $dtr->overtime_hours;
+        $newOtStatus = $dtr->ot_status;
+        if ($otHours && abs($otHours - $prevOtHours) > 0.001) {
+            $newOtStatus = 'pending';
+        } elseif (!$otHours) {
+            $newOtStatus = 'none';
+        }
+
+        $dtr->update([
+            'time_in'    => $validated['time_in'] ?? null,
+            'am_out'     => $validated['am_out'] ?? null,
+            'pm_in'      => $validated['pm_in'] ?? null,
+            'time_out'   => $validated['time_out'] ?? null,
+            'ot_end_time' => $otEndTime,
+            'ot_status'  => $newOtStatus,
+            'notes'      => $validated['notes'] ?? null,
+            ...$computed,
+        ]);
+
+        return redirect()->route('dtr.show', $dtr)
+            ->with('success', 'DTR updated successfully.');
     }
 
     public function approveOt(Dtr $dtr): RedirectResponse

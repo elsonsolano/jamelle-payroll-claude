@@ -297,22 +297,10 @@
     </table>
 
     {{-- Signature Block --}}
-    <div style="margin-top:40px; display:flex; justify-content:space-between;">
-        <table style="width:100%; border:none;">
-            <tr>
-                <td style="width:45%; border:none; text-align:center; padding-top:40px;">
-                    <div style="border-top:1px solid #374151; padding-top:4px; font-size:10px; color:#374151;">
-                        Prepared by
-                    </div>
-                </td>
-                <td style="width:10%; border:none;"></td>
-                <td style="width:45%; border:none; text-align:center; padding-top:40px;">
-                    <div style="border-top:1px solid #374151; padding-top:4px; font-size:10px; color:#374151;">
-                        Received by: {{ $entry->employee->full_name }}
-                    </div>
-                </td>
-            </tr>
-        </table>
+    <div style="margin-top:40px; text-align:center; width:45%;">
+        <div style="border-top:1px solid #374151; padding-top:4px; font-size:10px; color:#374151;">
+            Received by: {{ $entry->employee->full_name }}
+        </div>
     </div>
 
     {{-- Generated date --}}

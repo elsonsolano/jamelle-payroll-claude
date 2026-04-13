@@ -130,7 +130,6 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Hours</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Late</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">Status</th>
                         <th class="px-4 py-3 font-semibold text-gray-600"></th>
                     </tr>
                 </thead>
@@ -141,7 +140,16 @@
                             'bg-amber-50 hover:bg-amber-100' => $dtr->ot_status === 'pending',
                         ])>
                             <td class="px-4 py-3">
-                                <a href="{{ route('employees.show', $dtr->employee) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">{{ $dtr->employee->full_name }}</a>
+                                <div class="flex items-center gap-1.5">
+                                    <a href="{{ route('employees.show', $dtr->employee) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">{{ $dtr->employee->full_name }}</a>
+                                    @if($dtr->notes)
+                                        <span title="{{ $dtr->notes }}" class="cursor-default text-gray-400 hover:text-gray-600" style="line-height:1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-6 4h4M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                        </span>
+                                    @endif
+                                </div>
                                 <p class="text-xs text-gray-400">{{ $dtr->employee->branch->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-gray-700">
@@ -201,14 +209,6 @@
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-center">
-                                <span @class([
-                                    'text-xs font-medium px-2 py-0.5 rounded-full',
-                                    'bg-green-100 text-green-700'  => $dtr->status === 'Approved',
-                                    'bg-amber-100 text-amber-700'  => $dtr->status === 'Pending',
-                                    'bg-red-100 text-red-700'      => $dtr->status === 'Rejected',
-                                ])>{{ $dtr->status }}</span>
-                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     @if($dtr->ot_status === 'pending')
@@ -226,6 +226,8 @@
                                             Reject
                                         </button>
                                     @endif
+                                    <a href="{{ route('dtr.edit', $dtr) }}"
+                                       class="text-sm text-gray-500 hover:text-gray-800 font-medium">Edit</a>
                                     <a href="{{ route('dtr.show', $dtr) }}"
                                        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View</a>
                                 </div>
@@ -233,7 +235,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-5 py-10 text-center text-gray-400">
+                            <td colspan="10" class="px-5 py-10 text-center text-gray-400">
                                 No DTR records found.
                             </td>
                         </tr>
