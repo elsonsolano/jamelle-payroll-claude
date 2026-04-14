@@ -162,6 +162,7 @@ class ScheduleUploadController extends Controller
             );
 
             $dtr->update([
+                'total_hours'    => $computed['total_hours'],
                 'late_mins'      => $computed['late_mins'],
                 'undertime_mins' => $computed['undertime_mins'],
                 'is_rest_day'    => $computed['is_rest_day'],

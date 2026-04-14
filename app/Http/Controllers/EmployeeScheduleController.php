@@ -84,6 +84,12 @@ class EmployeeScheduleController extends Controller
 
         EmployeeSchedule::create($validated);
 
+        $employee->dtrs()
+            ->whereNotNull('time_in')
+            ->where('date', '>=', $validated['week_start_date'])
+            ->get()
+            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule added successfully.');
     }
@@ -105,13 +111,27 @@ class EmployeeScheduleController extends Controller
 
         $schedule->update($validated);
 
+        $employee->dtrs()
+            ->whereNotNull('time_in')
+            ->where('date', '>=', $validated['week_start_date'])
+            ->get()
+            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule updated successfully.');
     }
 
     public function destroy(Employee $employee, EmployeeSchedule $schedule): RedirectResponse
     {
+        $weekStartDate = $schedule->week_start_date->toDateString();
         $schedule->delete();
+
+        $employee->dtrs()
+            ->whereNotNull('time_in')
+            ->where('date', '>=', $weekStartDate)
+            ->get()
+            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule deleted.');
     }
@@ -178,7 +198,11 @@ class EmployeeScheduleController extends Controller
 
     public function destroyDaily(Employee $employee, DailySchedule $daily): RedirectResponse
     {
+        $date = $daily->date->toDateString();
         $daily->delete();
+
+        $this->recomputeDtr($employee, $date);
+
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Daily schedule deleted.');
     }
@@ -202,6 +226,7 @@ class EmployeeScheduleController extends Controller
         );
 
         $dtr->update([
+            'total_hours'    => $computed['total_hours'],
             'late_mins'      => $computed['late_mins'],
             'undertime_mins' => $computed['undertime_mins'],
             'is_rest_day'    => $computed['is_rest_day'],
