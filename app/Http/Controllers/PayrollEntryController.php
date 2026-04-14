@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollEntry;
+use App\Notifications\PayslipAvailable;
 use App\Services\PayrollComputationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -70,6 +71,17 @@ class PayrollEntryController extends Controller
         }
 
         $cutoff->update(['status' => 'finalized']);
+
+        // Notify each staff member who has an entry in this cutoff
+        $cutoff->payrollEntries()
+            ->with('employee.user')
+            ->get()
+            ->each(function ($entry) use ($cutoff) {
+                $user = $entry->employee?->user;
+                if ($user && $user->role === 'staff') {
+                    $user->notify(new PayslipAvailable($cutoff));
+                }
+            });
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
             ->with('success', 'Payroll finalized. Staff DTRs in this period are now locked.');

@@ -94,6 +94,23 @@
         </div>
         @endif
 
+        {{-- My Payslips --}}
+        <a href="{{ route('staff.payslips.index') }}"
+           class="flex items-center justify-between w-full bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:border-green-200 hover:shadow-sm transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <span class="text-sm font-semibold text-gray-800">My Payslips</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+
         {{-- Logout --}}
         <form method="POST" action="{{ route('logout') }}">
             @csrf

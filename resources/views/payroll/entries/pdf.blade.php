@@ -167,6 +167,19 @@
 </head>
 <body>
 
+    {{-- Logo --}}
+    @php
+        $logoPath = public_path('images/logo.png');
+        $logoSrc  = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+    @endphp
+    @if($logoSrc)
+    <div style="text-align:center; margin-bottom:12px;">
+        <img src="{{ $logoSrc }}" style="height:64px; width:auto;">
+    </div>
+    @endif
+
     {{-- Header --}}
     <div class="header">
         <div class="company-name">{{ $entry->employee->branch->name }}</div>
