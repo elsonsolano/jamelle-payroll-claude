@@ -11,6 +11,7 @@ class RecomputeDtrHours extends Command
 {
     protected $signature = 'dtr:recompute
                             {--employee= : Recompute only for a specific employee ID}
+                            {--branch=   : Recompute only for a specific branch ID}
                             {--from=     : Start date (YYYY-MM-DD)}
                             {--to=       : End date (YYYY-MM-DD)}
                             {--dry-run   : Show what would change without saving}';
@@ -23,6 +24,9 @@ class RecomputeDtrHours extends Command
 
         if ($this->option('employee')) {
             $query->where('employee_id', $this->option('employee'));
+        }
+        if ($this->option('branch')) {
+            $query->whereHas('employee', fn($q) => $q->where('branch_id', $this->option('branch')));
         }
         if ($this->option('from')) {
             $query->where('date', '>=', $this->option('from'));
