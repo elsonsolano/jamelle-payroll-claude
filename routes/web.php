@@ -139,6 +139,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         // DTR admin view
         Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");
         Route::get("dtr/export", [DtrController::class, "export"])->name("dtr.export");
+        Route::get("dtr/export-excel", [DtrController::class, "exportExcel"])->name("dtr.export-excel");
         Route::get("dtr/{dtr}/edit", [DtrController::class, "edit"])->name("dtr.edit");
         Route::put("dtr/{dtr}", [DtrController::class, "update"])->name("dtr.update");
         Route::get("dtr/{dtr}", [DtrController::class, "show"])->name("dtr.show");

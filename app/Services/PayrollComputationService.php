@@ -213,7 +213,6 @@ class PayrollComputationService
             'Pag-ibig Loan',
             'SSS Loan',
             'Savings',
-            'Retirement Pay',
         ];
 
         foreach ($defaultDeductions as $label) {

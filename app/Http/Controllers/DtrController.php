@@ -12,6 +12,11 @@ use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
 use App\Services\DtrComputationService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +118,178 @@ class DtrController extends Controller
         $filename = 'dtr-export-' . now()->format('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    public function exportExcel(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $query = Dtr::with('employee.branch')->whereHas('employee');
+
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->whereHas('employee', fn($q) => $q->where('branch_id', $request->branch_id));
+        }
+
+        if ($request->filled('cutoff_id')) {
+            $cutoff = PayrollCutoff::findOrFail($request->cutoff_id);
+            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date])
+                  ->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+        } else {
+            if ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+
+        $dtrs = $query->orderBy('date')->orderBy('employee_id')->get();
+
+        // Group: branch name → employee_id → DTRs
+        $grouped = $dtrs
+            ->sortBy(fn($d) => $d->employee->branch->name)
+            ->groupBy(fn($d) => $d->employee->branch->name)
+            ->map(fn($branchDtrs) => $branchDtrs
+                ->sortBy(fn($d) => $d->employee->last_name . $d->employee->first_name)
+                ->groupBy('employee_id')
+            );
+
+        // Determine date range label
+        if ($request->filled('cutoff_id')) {
+            $cutoffModel = PayrollCutoff::find($request->cutoff_id);
+            $dateLabel = $cutoffModel->start_date->format('M d, Y') . ' – ' . $cutoffModel->end_date->format('M d, Y');
+        } elseif ($request->filled('date_from') || $request->filled('date_to')) {
+            $from = $request->filled('date_from') ? \Carbon\Carbon::parse($request->date_from)->format('M d, Y') : null;
+            $to   = $request->filled('date_to')   ? \Carbon\Carbon::parse($request->date_to)->format('M d, Y')   : null;
+            $dateLabel = implode(' – ', array_filter([$from, $to]));
+        } else {
+            $dateLabel = 'All records';
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->removeSheetByIndex(0); // remove default blank sheet
+
+        $sheetIndex = 0;
+
+        foreach ($grouped as $branchName => $employeeGroups) {
+            $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, substr($branchName, 0, 31));
+            $spreadsheet->addSheet($sheet, $sheetIndex++);
+
+            // Header row 1: title
+            $sheet->mergeCells('A1:H1');
+            $sheet->setCellValue('A1', 'Daily Time Record (DTR) – ' . $branchName);
+            $sheet->getStyle('A1')->applyFromArray([
+                'font'      => ['bold' => true, 'size' => 13],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
+            ]);
+
+            // Header row 2: date range
+            $sheet->mergeCells('A2:H2');
+            $sheet->setCellValue('A2', 'Period: ' . $dateLabel);
+            $sheet->getStyle('A2')->applyFromArray([
+                'font'      => ['color' => ['argb' => 'FF6B7280'], 'size' => 10],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
+            ]);
+
+            $currentRow = 3;
+
+            $colHeaders = ['Date', 'Day', 'Time In', 'Start Break', 'End Break', 'Time Out', 'Hours', 'OT Hrs', 'Late (mins)'];
+            $colWidths  = [14,      10,    11,         13,            11,           11,          8,        8,          13];
+
+            foreach ($employeeGroups as $employeeId => $empDtrs) {
+                $employee = $empDtrs->first()->employee;
+
+                // Employee name row
+                $currentRow++;
+                $sheet->mergeCells("A{$currentRow}:I{$currentRow}");
+                $sheet->setCellValue("A{$currentRow}", $employee->full_name);
+                $sheet->getStyle("A{$currentRow}")->applyFromArray([
+                    'font'      => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1D4ED8']],
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDBEAFE']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'indent' => 1],
+                ]);
+
+                // Column header row
+                $currentRow++;
+                foreach ($colHeaders as $colIdx => $header) {
+                    $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+                    $sheet->setCellValue("{$col}{$currentRow}", $header);
+                    $sheet->getStyle("{$col}{$currentRow}")->applyFromArray([
+                        'font'      => ['bold' => true, 'size' => 9],
+                        'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF3F4F6']],
+                        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                    ]);
+                    $sheet->getColumnDimensionByColumn($colIdx + 1)->setWidth($colWidths[$colIdx]);
+                }
+                $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getBorders()->getAllBorders()
+                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+                    ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFD1D5DB'));
+
+                // DTR data rows
+                foreach ($empDtrs as $dtr) {
+                    $currentRow++;
+
+                    $isOvernight = $dtr->time_in && $dtr->time_out &&
+                        \Carbon\Carbon::createFromTimeString($dtr->time_out)
+                            ->lte(\Carbon\Carbon::createFromTimeString($dtr->time_in));
+
+                    $timeOut = $dtr->time_out
+                        ? \Carbon\Carbon::parse($dtr->time_out)->format('h:i A') . ($isOvernight ? ' (+1)' : '')
+                        : '—';
+
+                    $dayLabel = $dtr->date->format('l') . ($dtr->is_rest_day ? ' · Rest' : '');
+
+                    $row = [
+                        $dtr->date->format('M d, Y'),
+                        $dayLabel,
+                        $dtr->time_in  ? \Carbon\Carbon::parse($dtr->time_in)->format('h:i A')  : '—',
+                        $dtr->am_out   ? \Carbon\Carbon::parse($dtr->am_out)->format('h:i A')   : '—',
+                        $dtr->pm_in    ? \Carbon\Carbon::parse($dtr->pm_in)->format('h:i A')    : '—',
+                        $timeOut,
+                        $dtr->time_in  ? number_format($dtr->total_hours, 2)                     : '—',
+                        ($dtr->overtime_hours > 0 && $dtr->ot_status !== 'rejected')
+                            ? number_format($dtr->overtime_hours, 2)
+                            : '—',
+                        $dtr->late_mins > 0 ? $dtr->late_mins : '—',
+                    ];
+
+                    foreach ($row as $colIdx => $value) {
+                        $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+                        $sheet->setCellValue("{$col}{$currentRow}", $value);
+                        $sheet->getStyle("{$col}{$currentRow}")->applyFromArray([
+                            'font'      => ['size' => 9],
+                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                        ]);
+                    }
+
+                    $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getBorders()->getAllBorders()
+                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+                        ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFE5E7EB'));
+
+                    // Zebra stripe
+                    if ($currentRow % 2 === 0) {
+                        $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()->setARGB('FFFAFAFA');
+                    }
+                }
+            }
+
+            // Freeze top 2 rows
+            $sheet->freezePane('A3');
+        }
+
+        $filename = 'dtr-export-' . now()->format('Y-m-d') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control'       => 'max-age=0',
+        ]);
     }
 
     public function show(Dtr $dtr): View

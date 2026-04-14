@@ -106,15 +106,26 @@
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <p class="text-sm text-gray-500">{{ $dtrs->total() }} record(s) found</p>
-            <a href="{{ route('dtr.export', request()->query()) }}"
-               target="_blank"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-                Export PDF
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('dtr.export', request()->query()) }}"
+                   target="_blank"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Export PDF
+                </a>
+                <a href="{{ route('dtr.export-excel', request()->query()) }}"
+                   target="_blank"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Export Excel
+                </a>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
