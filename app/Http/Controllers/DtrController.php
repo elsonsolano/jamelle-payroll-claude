@@ -115,7 +115,7 @@ class DtrController extends Controller
         $pdf = Pdf::loadView('dtrs.export', compact('grouped', 'dateFrom', 'dateTo'))
                   ->setPaper('a4', 'landscape');
 
-        $filename = 'dtr-export-' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'dtr-export-' . now()->format('Y-m-d_His') . '.pdf';
 
         return $pdf->download($filename);
     }
@@ -178,7 +178,7 @@ class DtrController extends Controller
             $spreadsheet->addSheet($sheet, $sheetIndex++);
 
             // Header row 1: title
-            $sheet->mergeCells('A1:H1');
+            $sheet->mergeCells('A1:J1');
             $sheet->setCellValue('A1', 'Daily Time Record (DTR) – ' . $branchName);
             $sheet->getStyle('A1')->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 13],
@@ -186,7 +186,7 @@ class DtrController extends Controller
             ]);
 
             // Header row 2: date range
-            $sheet->mergeCells('A2:H2');
+            $sheet->mergeCells('A2:J2');
             $sheet->setCellValue('A2', 'Period: ' . $dateLabel);
             $sheet->getStyle('A2')->applyFromArray([
                 'font'      => ['color' => ['argb' => 'FF6B7280'], 'size' => 10],
@@ -195,15 +195,15 @@ class DtrController extends Controller
 
             $currentRow = 3;
 
-            $colHeaders = ['Date', 'Day', 'Time In', 'Start Break', 'End Break', 'Time Out', 'Hours', 'OT Hrs', 'Late (mins)'];
-            $colWidths  = [14,      10,    11,         13,            11,           11,          8,        8,          13];
+            $colHeaders = ['Date', 'Day', 'Rest Day', 'Time In', 'Start Break', 'End Break', 'Time Out', 'Hours', 'OT Hrs', 'Late (mins)'];
+            $colWidths  = [14,      10,    10,          11,        13,            11,           11,          8,        8,          13];
 
             foreach ($employeeGroups as $employeeId => $empDtrs) {
                 $employee = $empDtrs->first()->employee;
 
                 // Employee name row
                 $currentRow++;
-                $sheet->mergeCells("A{$currentRow}:I{$currentRow}");
+                $sheet->mergeCells("A{$currentRow}:J{$currentRow}");
                 $sheet->setCellValue("A{$currentRow}", $employee->full_name);
                 $sheet->getStyle("A{$currentRow}")->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1D4ED8']],
@@ -223,7 +223,7 @@ class DtrController extends Controller
                     ]);
                     $sheet->getColumnDimensionByColumn($colIdx + 1)->setWidth($colWidths[$colIdx]);
                 }
-                $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("A{$currentRow}:J{$currentRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
                     ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFD1D5DB'));
 
@@ -244,6 +244,7 @@ class DtrController extends Controller
                     $row = [
                         $dtr->date->format('M d, Y'),
                         $dayLabel,
+                        $dtr->is_rest_day ? 'Yes' : '—',
                         $dtr->time_in  ? \Carbon\Carbon::parse($dtr->time_in)->format('h:i A')  : '—',
                         $dtr->am_out   ? \Carbon\Carbon::parse($dtr->am_out)->format('h:i A')   : '—',
                         $dtr->pm_in    ? \Carbon\Carbon::parse($dtr->pm_in)->format('h:i A')    : '—',
@@ -264,15 +265,25 @@ class DtrController extends Controller
                         ]);
                     }
 
-                    $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getBorders()->getAllBorders()
+                    $sheet->getStyle("A{$currentRow}:J{$currentRow}")->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
                         ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFE5E7EB'));
 
                     // Zebra stripe
                     if ($currentRow % 2 === 0) {
-                        $sheet->getStyle("A{$currentRow}:I{$currentRow}")->getFill()
+                        $sheet->getStyle("A{$currentRow}:J{$currentRow}")->getFill()
                             ->setFillType(Fill::FILL_SOLID)
                             ->getStartColor()->setARGB('FFFAFAFA');
+                    }
+
+                    // Highlight rest day cell in amber
+                    if ($dtr->is_rest_day) {
+                        $sheet->getStyle("C{$currentRow}")->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()->setARGB('FFFEF3C7');
+                        $sheet->getStyle("C{$currentRow}")->getFont()
+                            ->setBold(true)
+                            ->getColor()->setARGB('FF92400E');
                     }
                 }
             }
@@ -281,7 +292,7 @@ class DtrController extends Controller
             $sheet->freezePane('A3');
         }
 
-        $filename = 'dtr-export-' . now()->format('Y-m-d') . '.xlsx';
+        $filename = 'dtr-export-' . now()->format('Y-m-d_His') . '.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);

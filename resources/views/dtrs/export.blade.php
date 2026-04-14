@@ -72,11 +72,22 @@
             vertical-align: top;
         }
 
-        .col-date  { width: 13%; }
-        .col-time  { width: 11%; }
-        .col-hours { width: 7%; }
-        .col-ot    { width: 7%; }
-        .col-late  { width: 7%; }
+        .col-date    { width: 12%; }
+        .col-time    { width: 10%; }
+        .col-hours   { width: 6%; }
+        .col-ot      { width: 6%; }
+        .col-late    { width: 6%; }
+        .col-restday { width: 7%; }
+
+        .badge-rest {
+            display: inline-block;
+            background-color: #fef3c7;
+            color: #92400e;
+            font-size: 7.5px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
 
         .text-gray { color: #9ca3af; }
     </style>
@@ -118,6 +129,7 @@
                         <th class="col-hours">Hours</th>
                         <th class="col-ot">OT</th>
                         <th class="col-late">Late</th>
+                        <th class="col-restday">Rest Day</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -125,7 +137,7 @@
                     <tr>
                         <td>
                             {{ $dtr->date->format('M d, Y') }}<br>
-                            <span class="text-gray">{{ $dtr->date->format('l') }}{{ $dtr->is_rest_day ? ' · Rest Day' : '' }}</span>
+                            <span class="text-gray">{{ $dtr->date->format('l') }}</span>
                         </td>
                         <td>{{ $dtr->time_in    ? \Carbon\Carbon::parse($dtr->time_in)->format('h:i A')  : '—' }}</td>
                         <td>{{ $dtr->am_out     ? \Carbon\Carbon::parse($dtr->am_out)->format('h:i A')   : '—' }}</td>
@@ -147,6 +159,13 @@
                         <td>
                             @if($dtr->late_mins > 0)
                                 {{ $dtr->late_mins }} min
+                            @else
+                                <span class="text-gray">—</span>
+                            @endif
+                        </td>
+                        <td style="text-align:center">
+                            @if($dtr->is_rest_day)
+                                <span class="badge-rest">Yes</span>
                             @else
                                 <span class="text-gray">—</span>
                             @endif

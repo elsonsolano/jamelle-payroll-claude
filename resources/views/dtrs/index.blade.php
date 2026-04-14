@@ -154,7 +154,7 @@
                                 <div class="flex items-center gap-1.5">
                                     <a href="{{ route('employees.show', $dtr->employee) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">{{ $dtr->employee->full_name }}</a>
                                     @if($dtr->notes)
-                                        <span title="{{ $dtr->notes }}" class="cursor-default text-gray-400 hover:text-gray-600" style="line-height:1">
+                                        <span data-tippy-content="{{ $dtr->notes }}" class="cursor-default text-gray-400 hover:text-gray-600" style="line-height:1">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-6 4h4M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                             </svg>
@@ -261,5 +261,17 @@
             </div>
         @endif
     </div>
+
+@push('scripts')
+<script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+<script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+<script>
+    tippy('[data-tippy-content]', {
+        delay: 0,
+        placement: 'top',
+        theme: 'light-border',
+    });
+</script>
+@endpush
 
 </x-app-layout>
