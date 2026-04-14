@@ -104,7 +104,8 @@ class DtrComputationService
                 if ($breakEnd->lte($breakStart)) {
                     $breakEnd->addDay();
                 }
-                $breakMins = $breakStart->diffInMinutes($breakEnd);
+                // Always deduct at least 1 hour for break; penalize if longer.
+                $breakMins = max(60, $breakStart->diffInMinutes($breakEnd));
                 $total     = max(0, $total - $breakMins);
             }
 
