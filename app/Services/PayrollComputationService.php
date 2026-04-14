@@ -12,8 +12,10 @@ use App\Services\DtrComputationService;
 
 class PayrollComputationService
 {
-    public function computeEntry(PayrollCutoff $cutoff, Employee $employee): PayrollEntry
+    public function computeEntry(PayrollCutoff $cutoff, Employee $employee, array $options = []): PayrollEntry
     {
+        $options = $this->normalizeOptions($options);
+
         // Get all DTRs for this employee within the cutoff date range,
         // and recompute late/undertime/is_rest_day from the current schedule first
         $dtrs = $employee->dtrs()
@@ -79,15 +81,16 @@ class PayrollComputationService
                 $totalOvertimeHours += $dtrOtHours;
 
                 $holiday = $holidays->get($dtr->date->toDateString());
+                $holidayBillableHours = $this->resolveHolidayBillableHours($billableHours, $holiday, $options);
 
                 if ($holiday?->type === 'regular') {
                     // Worked on a Regular Holiday: additional 100% premium on billable hours
-                    $holidayPay  += $billableHours * $hourlyRate;
+                    $holidayPay  += $holidayBillableHours * $hourlyRate;
                     $overtimePay += $dtrOtHours * ($hourlyRate * 2.6);
 
                 } elseif ($holiday?->type === 'special_non_working') {
                     // Worked on a Special Non-Working Day: additional 30% premium on billable hours
-                    $holidayPay  += $billableHours * $hourlyRate * 0.30;
+                    $holidayPay  += $holidayBillableHours * $hourlyRate * 0.30;
                     $overtimePay += $dtrOtHours * ($hourlyRate * 1.69);
 
                 } else {
@@ -96,9 +99,7 @@ class PayrollComputationService
                 }
             }
 
-            // Truncate total billable hours to 2-decimal-place days — matches Excel's computation.
-            // e.g. 95.98h → 11.9975 days → truncated to 11.99 days → 11.99 × 518 = basic pay
-            $workingDays = floor($totalBillableHours / 8 * 100) / 100;
+            $workingDays = $this->computeWorkingDays($totalBillableHours, $options);
             $basicPay    = $workingDays * $dailyRate;
 
             // Regular holidays NOT worked: daily employee still gets 100% daily rate
@@ -239,5 +240,42 @@ class PayrollComputationService
         ]);
 
         return $entry->fresh();
+    }
+
+    private function normalizeOptions(array $options): array
+    {
+        return array_merge([
+            'mode' => 'default',
+            // The sheet rounds near-full holiday shifts up to a full 8-hour holiday premium.
+            'sheet_holiday_full_day_threshold' => 7.95,
+        ], $options);
+    }
+
+    private function computeWorkingDays(float $totalBillableHours, array $options): float
+    {
+        $days = $totalBillableHours / 8;
+
+        if ($options['mode'] === 'sheet') {
+            return round($days, 2);
+        }
+
+        return floor($days * 100) / 100;
+    }
+
+    private function resolveHolidayBillableHours(float $billableHours, ?Holiday $holiday, array $options): float
+    {
+        if ($options['mode'] !== 'sheet') {
+            return $billableHours;
+        }
+
+        if (! in_array($holiday?->type, ['regular', 'special_non_working'], true)) {
+            return $billableHours;
+        }
+
+        if ($billableHours >= $options['sheet_holiday_full_day_threshold']) {
+            return 8.0;
+        }
+
+        return $billableHours;
     }
 }
