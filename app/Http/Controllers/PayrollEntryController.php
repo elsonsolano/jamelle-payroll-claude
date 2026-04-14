@@ -204,23 +204,13 @@ class PayrollEntryController extends Controller
 
     public function generate(Request $request, PayrollCutoff $cutoff): RedirectResponse
     {
-        if ($cutoff->status === 'voided') {
-            return redirect()->route('payroll.cutoffs.show', $cutoff)
-                ->with('error', 'Cannot regenerate a voided payroll cutoff.');
+        $mode = $request->input('mode', 'default');
+
+        if (! in_array($mode, ['default', 'sheet'], true)) {
+            $mode = 'default';
         }
 
-        $cutoff->update(['status' => 'processing']);
-
-        $employees = Employee::where('branch_id', $cutoff->branch_id)
-            ->where('active', true)
-            ->get();
-
-        foreach ($employees as $employee) {
-            $this->payrollService->computeEntry($cutoff, $employee);
-        }
-
-        return redirect()->route('payroll.cutoffs.show', $cutoff)
-            ->with('success', 'Payroll computed for ' . $employees->count() . ' employee(s). Review the numbers, then click Finalize when ready.');
+        return $this->generateForMode($cutoff, $mode);
     }
 
     public function finalize(PayrollCutoff $cutoff): RedirectResponse
@@ -245,5 +235,30 @@ class PayrollEntryController extends Controller
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
             ->with('success', 'Payroll finalized. Staff DTRs in this period are now locked.');
+    }
+
+    private function generateForMode(PayrollCutoff $cutoff, string $mode): RedirectResponse
+    {
+        if ($cutoff->status === 'voided') {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'Cannot regenerate a voided payroll cutoff.');
+        }
+
+        $cutoff->update(['status' => 'processing']);
+
+        $employees = Employee::where('branch_id', $cutoff->branch_id)
+            ->where('active', true)
+            ->get();
+
+        foreach ($employees as $employee) {
+            $this->payrollService->computeEntry($cutoff, $employee, ['mode' => $mode]);
+        }
+
+        $message = $mode === 'sheet'
+            ? 'Payroll recomputed using sheet logic for '
+            : 'Payroll computed for ';
+
+        return redirect()->route('payroll.cutoffs.show', $cutoff)
+            ->with('success', $message . $employees->count() . ' employee(s). Review the numbers, then click Finalize when ready.');
     }
 }
