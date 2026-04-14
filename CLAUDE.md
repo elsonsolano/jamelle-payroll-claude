@@ -144,6 +144,8 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 - Active `EmployeeStandingDeduction` records matching the cutoff's period are copied as `PayrollDeduction` line items.
 - On **first generation**, active `EmployeeStandingDeduction` records are auto-copied as `PayrollDeduction` line items. On **regeneration**, all existing `PayrollDeduction`, `PayrollEntryVariableDeduction`, and `PayrollEntryRefund` records are preserved — only the pay figures (basic, overtime, holiday, allowance, gross, net) are recalculated.
 - `net_pay = gross_pay − total_deductions + total_refunds`
+- **Default variable deductions** (created via `firstOrCreate` on every generation, amount preserved on regeneration): SSS Premium, PHILHEALTH Premium, PAG-IBIG Cont., Pag-ibig Loan, SSS Loan, Savings. These are `PayrollEntryVariableDeduction` rows with `amount = 0` until filled in manually.
+- **Finalization** (`PayrollEntryController::finalize()`) moves status to `finalized`, locks DTRs, and sends a `PayslipAvailable` notification to every staff user with an entry in the cutoff.
 
 **Philippine Holiday Pay Rules (DOLE)** — applied per `Holiday` records in the cutoff period:
 
@@ -184,12 +186,13 @@ Admins can also approve/reject OT directly from the admin `/dtr` page via `DtrCo
 
 ### In-App Notifications
 
-Uses Laravel's database notification channel (`notifications` table). Three notification classes in `app/Notifications/`:
+Uses Laravel's database notification channel (`notifications` table). Notification classes in `app/Notifications/`:
 - `OtSubmitted` — sent to approvers when staff submits OT
 - `OtApproved` — sent to the staff member when their OT is approved (includes `approver_name`)
 - `OtRejected` — sent to the staff member when their OT is rejected (includes rejection reason and `approver_name`)
+- `PayslipAvailable` — sent to each staff member when admin finalizes a payroll cutoff; links to `/staff/payslips`
 
-Unread count is shown in the staff portal top bar bell icon.
+All four use both `database` and `WebPushChannel`. Unread count is shown in the staff portal top bar bell icon. The notifications index (`staff/notifications/index.blade.php`) renders a distinct icon per `data.type`: `ot_approved` (green check), `ot_rejected` (red X), `payslip_available` (indigo document), default (amber clock).
 
 ### Admin Impersonation
 
@@ -223,7 +226,10 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `POST staff.dtr.log-event` — single-event logging from the dashboard (Time In / Start Break / End Break / Time Out); uses `firstOrNew` to create or update the DTR for the submitted `date` (may be yesterday for overnight shifts); handles OT submission when event is `time_out`; must be declared **before** the `{dtr}` resource to avoid route conflicts
 - `staff.ot-approvals.*` — index, approve, reject (access not middleware-gated, enforced inside controller)
 - `staff.notifications.*` — index, mark-read
-- `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); contains the Logout button (Logout was removed from the bottom nav)
+- `staff.profile` — read-only employee profile page (contact info, gov IDs, emergency contact); contains the Logout button and a "My Payslips" link card
+- `staff.payslips.index` — list of finalized payroll entries for the logged-in employee, newest first
+- `staff.payslips.show` — mobile-friendly HTML payslip detail (earnings, deductions, refunds, net pay) with Download PDF button; ownership enforced via `abort_if($entry->employee_id !== $employee->id, 403)`
+- `staff.payslips.pdf` — streams the payslip PDF using `payroll/entries/pdf.blade.php` (same template as admin); ownership enforced
 - `staff.schedule` — 6-week schedule grid + 30-day upcoming list; resolves `DailySchedule` first then falls back to `EmployeeSchedule` (same logic as DTR computation)
 
 **Auth-only** (no role restriction, accessible during impersonation):
@@ -244,7 +250,7 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `employees/{employee}/deductions`, `employees/{employee}/allowances`
 - `POST employees/{employee}/impersonate` — log in as staff; disabled if no `User` record
 - Payroll: `payroll/cutoffs/*` (CRUD, generate, finalize, void, unvoid, entries, PDF); the **create form** shows branch as a checkbox list (all branches pre-checked) — submitting creates one `PayrollCutoff` per selected branch in a single request; the edit form retains a single branch dropdown; `POST generate` computes payroll and leaves status at `processing`; `POST finalize` moves `processing` → `finalized` and locks DTRs
-- DTR: `dtr` index/show, `dtr/export` (PDF), `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot` — **`dtr/export` must be declared before `dtr/{dtr}`** to avoid route conflict; when filtering by `cutoff_id`, the query constrains by both the cutoff's date range **and** its `branch_id`
+- DTR: `dtr` index/show, `dtr/export` (PDF), `dtr/export-excel` (xlsx), `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot` — **both export routes must be declared before `dtr/{dtr}`** to avoid route conflict; when filtering by `cutoff_id`, the query constrains by both the cutoff's date range **and** its `branch_id`. Both exports share the same filter logic and are grouped by branch → employee. The Excel export (`DtrController::exportExcel`) uses `phpoffice/phpspreadsheet` — one sheet per branch, employee name rows in blue, rest day cells highlighted amber, filenames include `now()->format('Y-m-d_His')` for uniqueness.
 - Reports: `reports/lates` and `reports/overtime` (`ReportsController`) — both filter by date range, branch, and employee name search; Overtime report also filters by OT status; results grouped by employee showing occurrences, totals, and expandable detail rows linking to the DTR show page
 - Holidays: `holidays.*`
 - Timemark: `timemark.*`
@@ -294,7 +300,11 @@ Two layouts:
 
 **Alpine.js + Vite timing:** Vite loads Alpine as a deferred ES module (`type="module"`). This means `@push('scripts')` / `@stack('scripts')` content executes **after** Alpine has already initialized and evaluated all `x-data` attributes — so any Alpine component function defined via `@push` will be undefined when Alpine looks for it. **Always define Alpine component functions in a `<script>` tag placed directly before the `x-data` element** in the Blade template, not in a pushed stack.
 
-Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`. Excel import via `phpoffice/phpspreadsheet`.
+Alpine.js handles interactivity inline (no Vue/React). PDF payslips via `barryvdh/laravel-dompdf`. Excel import/export via `phpoffice/phpspreadsheet`.
+
+**Tippy.js tooltips:** The DTR index uses Tippy.js (loaded via CDN in `@push('scripts')`) for instant note tooltips. Use `data-tippy-content="..."` on the trigger element and initialise with `tippy('[data-tippy-content]', { delay: 0 })`. Do not use the native `title=""` attribute for tooltips — it has a ~1s browser delay.
+
+**DOMPDF image embedding:** Always embed images as base64 in DOMPDF templates — file path `src` attributes can fail depending on server config. Pattern: `'data:image/png;base64,' . base64_encode(file_get_contents(public_path('images/logo.png')))`. The payslip PDF (`payroll/entries/pdf.blade.php`) embeds `public/images/logo.png` this way, centered at the top. Wrap in a `file_exists()` check so missing files degrade gracefully.
 
 **DOMPDF fonts:** Currently uses DejaVu Sans (bundled with DOMPDF); the ₱ peso sign is rendered as `PHP` prefix because DejaVu Sans UFM lacks the glyph. `register-fonts.php` (untracked) is a dev utility script for experimenting with registering Noto Sans (which supports ₱ via U+20B1) — run it manually with `php register-fonts.php` after placing `NotoSans-Regular.ttf` and `NotoSans-Bold.ttf` in `storage/fonts/`. The `storage/fonts/*.json` files are DOMPDF font cache files (auto-generated, gitignored).
 
