@@ -141,6 +141,7 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Hours</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Late</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">UT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600"></th>
                     </tr>
                 </thead>
@@ -220,6 +221,15 @@
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-center">
+                                @if($dtr->undertime_mins > 0)
+                                    <span class="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                                        {{ $dtr->undertime_mins }}m
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     @if($dtr->ot_status === 'pending')
@@ -246,7 +256,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-5 py-10 text-center text-gray-400">
+                            <td colspan="11" class="px-5 py-10 text-center text-gray-400">
                                 No DTR records found.
                             </td>
                         </tr>

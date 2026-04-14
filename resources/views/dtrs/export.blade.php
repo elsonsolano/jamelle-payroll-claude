@@ -77,6 +77,7 @@
         .col-hours   { width: 6%; }
         .col-ot      { width: 6%; }
         .col-late    { width: 6%; }
+        .col-ut      { width: 6%; }
         .col-restday { width: 7%; }
 
         .badge-rest {
@@ -129,6 +130,7 @@
                         <th class="col-hours">Hours</th>
                         <th class="col-ot">OT</th>
                         <th class="col-late">Late</th>
+                        <th class="col-ut">UT</th>
                         <th class="col-restday">Rest Day</th>
                     </tr>
                 </thead>
@@ -159,6 +161,13 @@
                         <td>
                             @if($dtr->late_mins > 0)
                                 {{ $dtr->late_mins }} min
+                            @else
+                                <span class="text-gray">—</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($dtr->undertime_mins > 0)
+                                {{ $dtr->undertime_mins }} min
                             @else
                                 <span class="text-gray">—</span>
                             @endif
