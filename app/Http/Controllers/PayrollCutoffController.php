@@ -66,7 +66,10 @@ class PayrollCutoffController extends Controller
         $cutoff->load('branch');
         $entries = $cutoff->payrollEntries()
             ->with('employee')
-            ->orderBy('employee_id')
+            ->join('employees', 'employees.id', '=', 'payroll_entries.employee_id')
+            ->orderBy('employees.last_name')
+            ->orderBy('employees.first_name')
+            ->select('payroll_entries.*')
             ->paginate(30);
 
         $summary = [
