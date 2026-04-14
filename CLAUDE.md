@@ -24,7 +24,16 @@ php artisan test --filter=TestClassName
 
 # Build frontend assets
 npm run build
+
+# Recompute DTR hours, late, undertime, and rest-day flag for all records
+php artisan dtr:recompute
+
+# Recompute with filters (all options are optional and combinable)
+php artisan dtr:recompute --employee=13 --branch=3 --from=2026-03-30 --to=2026-04-13
+php artisan dtr:recompute --dry-run   # preview without saving
 ```
+
+> **After importing a Railway DB dump locally**, always run `php artisan dtr:recompute` — the production DB may have DTR `total_hours` values computed with older code or before schedules were set up.
 
 ## Pre-deploy Checklist
 
@@ -110,7 +119,7 @@ Employees have `salary_type` (daily/monthly), `employee_code` (unique), and `tim
 ### DTR Computation (`app/Services/DtrComputationService.php`)
 
 All manually entered DTRs go through `DtrComputationService::compute(Employee, date, time_in, am_out, pm_in, time_out, ?float $otHours)` which returns:
-- `total_hours` — time_in→time_out minus break (am_out→pm_in)
+- `total_hours` — schedule-bounded effective hours minus break deduction (see rules below)
 - `overtime_hours` — directly from the `$otHours` input (staff enter hours, not end time)
 - `late_mins` — minutes after `work_start_time`; **0 if no schedule set**
 - `undertime_mins` — minutes before `work_end_time`; **0 if no schedule set**
@@ -120,9 +129,22 @@ All manually entered DTRs go through `DtrComputationService::compute(Employee, d
 
 **Important:** `Branch.work_start_time` / `Branch.work_end_time` are never used for late/undertime computation.
 
+**Schedule-aware hour boundaries:** When a schedule exists, `effective_start = max(actual_time_in, scheduled_start)` (early arrival not credited) and `effective_out = min(actual_time_out, scheduled_end)` (staying late not credited past schedule end). When no schedule exists, actual times are used as-is.
+
+**Break deduction rules (company policy):**
+- Break logged (`am_out` + `pm_in` present): deduct `max(actual_break_mins, 60)` — employees who return early from break are still docked 1 hour; extended breaks are penalized (extra time deducted)
+- No break logged, effective window **> 5 hours** (300 min): force-deduct 60 minutes — all staff must take a 1-hour break; without this, late arrivals could be masked by the 8h billable cap
+- No break logged, effective window **≤ 5 hours**: no deduction (short/half-day shifts)
+
+**Billable hours** (used in payroll and shown in the DTR index/exports): `min(total_hours, 8.0)` — capped at 8 hours per day. Shown as an amber value in the DTR index when capped.
+
+**DTR columns on index, PDF, and Excel exports:** Date, Day, Rest Day, Time In, Start Break, End Break, Time Out, Hours (raw `total_hours`), Billable (`min(total_hours, 8)`), OT Hrs, Late (mins), UT (mins).
+
 **Overnight shift handling:** Time values are stored as bare time strings (e.g. `01:00:00`) with no date component. When `time_out <= time_in`, the service infers the employee clocked out past midnight and adds one day to `time_out` before computing the diff. The same logic applies to break end time and to the scheduled `work_end_time` undertime check. A visible orange **(+1 day)** indicator is shown next to the time_out value on all display surfaces (admin DTR index, admin DTR show, staff DTR list, staff dashboard event rows, staff dashboard recent DTRs, and the PDF export).
 
 **DTR recomputation on schedule save:** Whenever a `DailySchedule` is created or updated — either via `EmployeeScheduleController::storeDaily()`/`updateDaily()` or via `ScheduleUploadController::apply()` — any existing `Dtr` for that employee+date is immediately recomputed (`late_mins`, `undertime_mins`, `is_rest_day` updated). This ensures the admin `/dtr` page reflects the correct late data without waiting for payroll regeneration.
+
+**Batch recompute command:** `php artisan dtr:recompute` (in `app/Console/Commands/RecomputeDtrHours.php`) reruns `DtrComputationService::compute()` on every DTR with a `time_in` and saves all four computed fields (`total_hours`, `late_mins`, `undertime_mins`, `is_rest_day`). Supports `--employee`, `--branch`, `--from`, `--to`, `--dry-run` filters. Run this after importing a production DB dump or after bulk schedule changes.
 
 Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **End Break**.
 
@@ -249,8 +271,8 @@ The last two run globally (appended to web group) so they intercept after auth, 
 - `employees/{employee}/account` — staff account management
 - `employees/{employee}/deductions`, `employees/{employee}/allowances`
 - `POST employees/{employee}/impersonate` — log in as staff; disabled if no `User` record
-- Payroll: `payroll/cutoffs/*` (CRUD, generate, finalize, void, unvoid, entries, PDF); the **create form** shows branch as a checkbox list (all branches pre-checked) — submitting creates one `PayrollCutoff` per selected branch in a single request; the edit form retains a single branch dropdown; `POST generate` computes payroll and leaves status at `processing`; `POST finalize` moves `processing` → `finalized` and locks DTRs
-- DTR: `dtr` index/show, `dtr/export` (PDF), `dtr/export-excel` (xlsx), `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot` — **both export routes must be declared before `dtr/{dtr}`** to avoid route conflict; when filtering by `cutoff_id`, the query constrains by both the cutoff's date range **and** its `branch_id`. Both exports share the same filter logic and are grouped by branch → employee. The Excel export (`DtrController::exportExcel`) uses `phpoffice/phpspreadsheet` — one sheet per branch, employee name rows in blue, rest day cells highlighted amber, filenames include `now()->format('Y-m-d_His')` for uniqueness.
+- Payroll: `payroll/cutoffs/*` (CRUD, generate, finalize, void, unvoid, entries, PDF); the **create form** shows branch as a checkbox list (all branches pre-checked) — submitting creates one `PayrollCutoff` per selected branch in a single request; the edit form retains a single branch dropdown; `POST generate` computes payroll and leaves status at `processing`; `POST finalize` moves `processing` → `finalized` and locks DTRs. Payroll entries are sorted by employee last name. The entry show page (`payroll/entries/show.blade.php`) has a right-hand **calculation breakdown panel** showing step-by-step DTR rows, working days formula, OT, and holiday pay — built by `PayrollEntryController::buildBreakdown()`.
+- DTR: `dtr` index/show, `dtr/export` (PDF), `dtr/export-excel` (xlsx), `dtr/{dtr}/approve-ot`, `dtr/{dtr}/reject-ot` — **both export routes must be declared before `dtr/{dtr}`** to avoid route conflict; when filtering by `cutoff_id`, the query constrains by both the cutoff's date range **and** its `branch_id`. Both exports share the same filter logic and are grouped by branch → employee. The Excel export (`DtrController::exportExcel`) uses `phpoffice/phpspreadsheet` — one sheet per branch, employee name rows in blue, rest day cells highlighted amber, filenames include `now()->format('Y-m-d_His')` for uniqueness. All three surfaces (index, PDF, Excel) include **Billable** (`min(total_hours, 8)`) and **UT** (`undertime_mins`) columns.
 - Reports: `reports/lates` and `reports/overtime` (`ReportsController`) — both filter by date range, branch, and employee name search; Overtime report also filters by OT status; results grouped by employee showing occurrences, totals, and expandable detail rows linking to the DTR show page
 - Holidays: `holidays.*`
 - Timemark: `timemark.*`
