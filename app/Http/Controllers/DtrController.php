@@ -178,7 +178,7 @@ class DtrController extends Controller
             $spreadsheet->addSheet($sheet, $sheetIndex++);
 
             // Header row 1: title
-            $sheet->mergeCells('A1:K1');
+            $sheet->mergeCells('A1:L1');
             $sheet->setCellValue('A1', 'Daily Time Record (DTR) – ' . $branchName);
             $sheet->getStyle('A1')->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 13],
@@ -186,7 +186,7 @@ class DtrController extends Controller
             ]);
 
             // Header row 2: date range
-            $sheet->mergeCells('A2:K2');
+            $sheet->mergeCells('A2:L2');
             $sheet->setCellValue('A2', 'Period: ' . $dateLabel);
             $sheet->getStyle('A2')->applyFromArray([
                 'font'      => ['color' => ['argb' => 'FF6B7280'], 'size' => 10],
@@ -195,15 +195,15 @@ class DtrController extends Controller
 
             $currentRow = 3;
 
-            $colHeaders = ['Date', 'Day', 'Rest Day', 'Time In', 'Start Break', 'End Break', 'Time Out', 'Hours', 'OT Hrs', 'Late (mins)', 'UT (mins)'];
-            $colWidths  = [14,      10,    10,          11,        13,            11,           11,          8,        8,          13,            12];
+            $colHeaders = ['Date', 'Day', 'Rest Day', 'Time In', 'Start Break', 'End Break', 'Time Out', 'Hours', 'Billable', 'OT Hrs', 'Late (mins)', 'UT (mins)'];
+            $colWidths  = [14,      10,    10,          11,        13,            11,           11,          8,        9,           8,        13,            12];
 
             foreach ($employeeGroups as $employeeId => $empDtrs) {
                 $employee = $empDtrs->first()->employee;
 
                 // Employee name row
                 $currentRow++;
-                $sheet->mergeCells("A{$currentRow}:K{$currentRow}");
+                $sheet->mergeCells("A{$currentRow}:L{$currentRow}");
                 $sheet->setCellValue("A{$currentRow}", $employee->full_name);
                 $sheet->getStyle("A{$currentRow}")->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF1D4ED8']],
@@ -223,7 +223,7 @@ class DtrController extends Controller
                     ]);
                     $sheet->getColumnDimensionByColumn($colIdx + 1)->setWidth($colWidths[$colIdx]);
                 }
-                $sheet->getStyle("A{$currentRow}:K{$currentRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("A{$currentRow}:L{$currentRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
                     ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFD1D5DB'));
 
@@ -250,6 +250,7 @@ class DtrController extends Controller
                         $dtr->pm_in    ? \Carbon\Carbon::parse($dtr->pm_in)->format('h:i A')    : '—',
                         $timeOut,
                         $dtr->time_in  ? number_format($dtr->total_hours, 2)                     : '—',
+                        $dtr->time_in  ? number_format(min((float) $dtr->total_hours, 8.0), 2)  : '—',
                         ($dtr->overtime_hours > 0 && $dtr->ot_status !== 'rejected')
                             ? number_format($dtr->overtime_hours, 2)
                             : '—',
@@ -266,13 +267,13 @@ class DtrController extends Controller
                         ]);
                     }
 
-                    $sheet->getStyle("A{$currentRow}:K{$currentRow}")->getBorders()->getAllBorders()
+                    $sheet->getStyle("A{$currentRow}:L{$currentRow}")->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
                         ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFE5E7EB'));
 
                     // Zebra stripe
                     if ($currentRow % 2 === 0) {
-                        $sheet->getStyle("A{$currentRow}:K{$currentRow}")->getFill()
+                        $sheet->getStyle("A{$currentRow}:L{$currentRow}")->getFill()
                             ->setFillType(Fill::FILL_SOLID)
                             ->getStartColor()->setARGB('FFFAFAFA');
                     }

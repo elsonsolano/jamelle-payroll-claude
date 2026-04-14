@@ -139,6 +139,7 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">End Break</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Time Out</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Hours</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">Billable</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Late</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">UT</th>
@@ -189,6 +190,16 @@
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <span class="font-medium text-gray-800">{{ number_format($dtr->total_hours, 2) }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                @if($dtr->time_in)
+                                    @php $billable = min((float) $dtr->total_hours, 8.0); @endphp
+                                    <span class="font-medium {{ $billable < $dtr->total_hours ? 'text-amber-600' : 'text-gray-800' }}">
+                                        {{ number_format($billable, 2) }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-center">
                                 @if($dtr->ot_status === 'pending')
@@ -256,7 +267,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-5 py-10 text-center text-gray-400">
+                            <td colspan="12" class="px-5 py-10 text-center text-gray-400">
                                 No DTR records found.
                             </td>
                         </tr>

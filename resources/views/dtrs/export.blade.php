@@ -74,8 +74,9 @@
 
         .col-date    { width: 12%; }
         .col-time    { width: 10%; }
-        .col-hours   { width: 6%; }
-        .col-ot      { width: 6%; }
+        .col-hours    { width: 6%; }
+        .col-billable { width: 6%; }
+        .col-ot       { width: 6%; }
         .col-late    { width: 6%; }
         .col-ut      { width: 6%; }
         .col-restday { width: 7%; }
@@ -128,6 +129,7 @@
                         <th class="col-time">End Break</th>
                         <th class="col-time">Time Out</th>
                         <th class="col-hours">Hours</th>
+                        <th class="col-billable">Billable</th>
                         <th class="col-ot">OT</th>
                         <th class="col-late">Late</th>
                         <th class="col-ut">UT</th>
@@ -151,6 +153,7 @@
                             @endif
                         </td>
                         <td>{{ $dtr->time_in ? number_format($dtr->total_hours, 2) : '—' }}</td>
+                        <td>{{ $dtr->time_in ? number_format(min((float) $dtr->total_hours, 8.0), 2) : '—' }}</td>
                         <td>
                             @if($dtr->overtime_hours > 0 && $dtr->ot_status !== 'rejected')
                                 {{ number_format($dtr->overtime_hours, 2) }}
