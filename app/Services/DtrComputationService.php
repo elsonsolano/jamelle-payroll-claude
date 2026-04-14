@@ -107,6 +107,10 @@ class DtrComputationService
                 // Always deduct at least 1 hour for break; penalize if longer.
                 $breakMins = max(60, $breakStart->diffInMinutes($breakEnd));
                 $total     = max(0, $total - $breakMins);
+            } elseif ($total > 300) {
+                // No break logged but shift > 5 hours: force-deduct 1 hour
+                // (company rule: all staff must take a 1-hour break).
+                $total = max(0, $total - 60);
             }
 
             $totalHours = round($total / 60, 2);
