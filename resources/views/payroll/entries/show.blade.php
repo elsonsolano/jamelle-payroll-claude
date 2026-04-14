@@ -13,7 +13,9 @@
         </a>
     </x-slot>
 
-    <div class="max-w-2xl space-y-5">
+    <div class="flex gap-6 items-start">
+    {{-- Left: payslip --}}
+    <div class="flex-1 min-w-0 max-w-2xl space-y-5">
 
         {{-- Header --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6">
@@ -260,6 +262,197 @@
             <p class="text-white font-bold text-3xl">₱{{ number_format($entry->net_pay, 2) }}</p>
         </div>
 
-    </div>
+    </div>{{-- end left column --}}
+
+    {{-- Right: Calculation Breakdown --}}
+    <div class="w-96 flex-shrink-0 space-y-4 text-sm sticky top-6">
+        <h3 class="font-bold text-gray-700 text-base">Calculation Breakdown</h3>
+
+        @php
+            $b = $breakdown;
+            $rateLabel = $b['salary_type'] === 'daily'
+                ? '₱' . number_format($b['rate'], 2) . '/day  (₱' . number_format($b['hourly_rate'], 4) . '/hr)'
+                : '₱' . number_format($b['rate'], 2) . '/month';
+        @endphp
+        <p class="text-xs text-gray-500">Rate: {{ $rateLabel }}</p>
+
+        {{-- Basic Pay --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <span class="font-semibold text-gray-700 text-xs uppercase tracking-wider">Basic Pay</span>
+                <span class="font-bold text-gray-900">₱{{ number_format($entry->basic_pay, 2) }}</span>
+            </div>
+            <div class="px-4 py-3 space-y-3">
+
+                @if($b['salary_type'] === 'daily')
+                    {{-- DTR table --}}
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium mb-1">DTR Summary</p>
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-100">
+                                    <th class="text-left pb-1">Date</th>
+                                    <th class="text-right pb-1">Actual</th>
+                                    <th class="text-right pb-1">Billable</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                @foreach($b['dtr_rows'] as $row)
+                                <tr class="{{ $row['is_rest'] ? 'text-amber-600' : 'text-gray-700' }}">
+                                    <td class="py-0.5">
+                                        {{ $row['date'] }} <span class="text-gray-400">{{ $row['day'] }}</span>
+                                        @if($row['holiday']) <span class="text-green-600">*</span> @endif
+                                        @if($row['late_mins'] > 0) <span class="text-red-400 text-[10px]">-{{ $row['late_mins'] }}m</span> @endif
+                                    </td>
+                                    <td class="py-0.5 text-right">{{ number_format($row['hours'], 2) }}h</td>
+                                    <td class="py-0.5 text-right font-medium">{{ number_format($row['billable'], 2) }}h</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="border-t border-gray-200 text-gray-600">
+                                <tr>
+                                    <td class="pt-1 font-medium">Total</td>
+                                    <td></td>
+                                    <td class="pt-1 text-right font-medium">{{ number_format($b['total_billable'], 2) }}h</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {{-- Working days formula --}}
+                    <div class="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-600 space-y-0.5">
+                        <p>Working days = floor({{ number_format($b['total_billable'], 2) }}h ÷ 8 × 100) ÷ 100</p>
+                        <p class="font-semibold text-gray-800">= {{ number_format($b['working_days'], 2) }} days</p>
+                    </div>
+
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-600">{{ number_format($b['working_days'], 2) }} days × ₱{{ number_format($b['rate'], 2) }}</span>
+                        <span class="font-medium text-gray-800">₱{{ number_format($b['base_pay'], 2) }}</span>
+                    </div>
+
+                    @foreach($b['unworked_holidays'] as $uh)
+                    <div class="flex justify-between text-xs text-green-700">
+                        <span>+ {{ $uh['date'] }} {{ $uh['name'] }} (unworked regular holiday)</span>
+                        <span class="font-medium">₱{{ number_format($uh['amount'], 2) }}</span>
+                    </div>
+                    @endforeach
+
+                    @if(count($b['unworked_holidays']) > 0)
+                    <div class="flex justify-between text-xs border-t border-gray-100 pt-1 font-semibold text-gray-800">
+                        <span>Basic Pay Total</span>
+                        <span>₱{{ number_format($entry->basic_pay, 2) }}</span>
+                    </div>
+                    @endif
+
+                @else
+                    <div class="text-xs text-gray-600">
+                        Monthly: ₱{{ number_format($b['rate'], 2) }} ÷ 2 (semi-monthly)
+                        = <span class="font-semibold text-gray-800">₱{{ number_format($b['base_pay'], 2) }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Overtime Pay --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <span class="font-semibold text-gray-700 text-xs uppercase tracking-wider">Overtime Pay</span>
+                <span class="font-bold {{ $entry->overtime_pay > 0 ? 'text-indigo-600' : 'text-gray-300' }}">₱{{ number_format($entry->overtime_pay, 2) }}</span>
+            </div>
+            <div class="px-4 py-3">
+                @if(count($b['ot_rows']) === 0)
+                    <p class="text-xs text-gray-400">No overtime this period.</p>
+                @else
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-400 border-b border-gray-100">
+                                <th class="text-left pb-1">Date</th>
+                                <th class="text-right pb-1">Hrs</th>
+                                <th class="text-right pb-1">× Rate</th>
+                                <th class="text-right pb-1">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50 text-gray-700">
+                            @foreach($b['ot_rows'] as $row)
+                            <tr>
+                                <td class="py-0.5">
+                                    {{ $row['date'] }}
+                                    @if(!empty($row['holiday'])) <span class="text-green-600 text-[10px]">{{ $row['holiday'] }}</span> @endif
+                                </td>
+                                <td class="py-0.5 text-right">{{ $row['hours'] }}</td>
+                                <td class="py-0.5 text-right text-gray-500">×{{ $row['mult'] }}</td>
+                                <td class="py-0.5 text-right font-medium">₱{{ number_format($row['amount'], 2) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <p class="text-xs text-gray-400 mt-2">Rate per OT hr = ₱{{ number_format($b['hourly_rate'], 4) }} × multiplier</p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Holiday Pay --}}
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <span class="font-semibold text-gray-700 text-xs uppercase tracking-wider">Holiday Pay</span>
+                <span class="font-bold {{ $entry->holiday_pay > 0 ? 'text-green-600' : 'text-gray-300' }}">₱{{ number_format($entry->holiday_pay, 2) }}</span>
+            </div>
+            <div class="px-4 py-3">
+                @if(count($b['holiday_rows']) === 0)
+                    <p class="text-xs text-gray-400">No holiday premiums this period.</p>
+                @else
+                    <div class="space-y-2">
+                        @foreach($b['holiday_rows'] as $row)
+                        <div class="text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                            <div class="flex justify-between">
+                                <span class="font-medium text-gray-700">{{ $row['date'] }} — {{ $row['name'] }}</span>
+                                <span class="font-semibold text-green-700">₱{{ number_format($row['amount'], 2) }}</span>
+                            </div>
+                            <div class="text-gray-400 mt-0.5">
+                                @if($row['hours'] !== null)
+                                    @if($row['type'] === 'regular')
+                                        Regular holiday worked: {{ number_format($row['hours'], 2) }}h × ₱{{ number_format($b['hourly_rate'], 4) }} × 100%
+                                    @else
+                                        Special non-working worked: {{ number_format($row['hours'], 2) }}h × ₱{{ number_format($b['hourly_rate'], 4) }} × 30%
+                                    @endif
+                                @else
+                                    @if($row['type'] === 'regular')
+                                        Regular holiday worked: ₱{{ number_format($b['daily_equiv'] ?? 0, 4) }}/day × 100%
+                                    @else
+                                        Special non-working worked: ₱{{ number_format($b['daily_equiv'] ?? 0, 4) }}/day × 30%
+                                    @endif
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if(count($b['unworked_holidays'] ?? []) > 0)
+                    <div class="mt-2 pt-2 border-t border-gray-100">
+                        <p class="text-xs text-gray-400">Unworked regular holidays are added to Basic Pay, not here.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Net Pay formula --}}
+        <div class="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 text-xs space-y-1 text-gray-600">
+            <p class="font-semibold text-gray-700 mb-1">Net Pay Formula</p>
+            <div class="flex justify-between"><span>Basic Pay</span><span>₱{{ number_format($entry->basic_pay, 2) }}</span></div>
+            <div class="flex justify-between"><span>+ Overtime Pay</span><span>₱{{ number_format($entry->overtime_pay, 2) }}</span></div>
+            <div class="flex justify-between"><span>+ Holiday Pay</span><span>₱{{ number_format($entry->holiday_pay, 2) }}</span></div>
+            <div class="flex justify-between"><span>+ Allowance</span><span>₱{{ number_format($entry->allowance_pay, 2) }}</span></div>
+            <div class="flex justify-between font-semibold text-gray-800 border-t border-gray-200 pt-1"><span>= Gross Pay</span><span>₱{{ number_format($entry->gross_pay, 2) }}</span></div>
+            <div class="flex justify-between text-red-500"><span>− Deductions</span><span>₱{{ number_format($entry->total_deductions, 2) }}</span></div>
+            @if($entry->payrollRefunds->isNotEmpty())
+            <div class="flex justify-between text-emerald-600"><span>+ Refunds</span><span>₱{{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</span></div>
+            @endif
+            <div class="flex justify-between font-bold text-indigo-700 border-t border-gray-200 pt-1"><span>= Net Pay</span><span>₱{{ number_format($entry->net_pay, 2) }}</span></div>
+        </div>
+
+    </div>{{-- end right column --}}
+
+    </div>{{-- end flex wrapper --}}
 
 </x-app-layout>
