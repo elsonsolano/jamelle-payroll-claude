@@ -187,11 +187,13 @@
                     </button>
                 </form>
 
-                @if($autoConfirmDate)
-                    <p class="text-xs text-center text-gray-400">
-                        If not confirmed, this will be automatically stamped on {{ $autoConfirmDate->format('M d, Y') }}.
-                    </p>
-                @endif
+                <p class="text-xs text-center text-gray-400">
+                    @if($autoConfirmDate)
+                        If not confirmed, this will be automatically stamped on <strong>{{ $autoConfirmDate->format('M d, Y') }}</strong>.
+                    @else
+                        If not confirmed, this will be automatically stamped 5 days after payroll finalization.
+                    @endif
+                </p>
             </div>
         @endif
 
