@@ -13,7 +13,10 @@ class PayrollCutoffController extends Controller
     public function index(Request $request): View
     {
         $query = PayrollCutoff::with('branch')
-            ->withCount('payrollEntries');
+            ->withCount('payrollEntries')
+            ->withSum('payrollEntries as total_basic_pay', 'basic_pay')
+            ->withSum('payrollEntries as total_deductions', 'total_deductions')
+            ->withSum('payrollEntries as total_net_pay', 'net_pay');
 
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);

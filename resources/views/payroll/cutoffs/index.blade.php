@@ -47,6 +47,9 @@
                     <th class="px-5 py-3 font-semibold text-gray-600">Branch</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Period</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-center">Employees</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600 text-right">Total Basic Pay</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600 text-right">Total Deductions</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600 text-right">Total Net Pay</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-center">Status</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
@@ -66,6 +69,15 @@
                         </td>
                         <td class="px-5 py-3 text-center text-gray-700 font-medium">
                             {{ $cutoff->payroll_entries_count }}
+                        </td>
+                        <td class="px-5 py-3 text-right text-gray-700 font-medium">
+                            ₱{{ number_format((float) ($cutoff->total_basic_pay ?? 0), 2) }}
+                        </td>
+                        <td class="px-5 py-3 text-right text-red-600 font-medium">
+                            ₱{{ number_format((float) ($cutoff->total_deductions ?? 0), 2) }}
+                        </td>
+                        <td class="px-5 py-3 text-right text-green-700 font-semibold">
+                            ₱{{ number_format((float) ($cutoff->total_net_pay ?? 0), 2) }}
                         </td>
                         <td class="px-5 py-3 text-center">
                             <span @class([
@@ -94,7 +106,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-5 py-10 text-center text-gray-400">
+                        <td colspan="9" class="px-5 py-10 text-center text-gray-400">
                             No cutoffs found. <a href="{{ route('payroll.cutoffs.create') }}" class="text-indigo-600 hover:underline">Create one</a>.
                         </td>
                     </tr>
