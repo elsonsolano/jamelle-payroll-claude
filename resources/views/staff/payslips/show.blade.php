@@ -136,7 +136,19 @@
         </div>
 
         {{-- Acknowledgment --}}
-        @if($entry->acknowledged_at)
+        @if($entry->acknowledged_at && $entry->acknowledged_by === 'system')
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-700">Automatically confirmed</p>
+                    <p class="text-xs text-gray-500 mt-0.5">No response was received within 5 days of payroll finalization. Auto-confirmed on {{ $entry->acknowledged_at->format('M d, Y') }}.</p>
+                </div>
+            </div>
+        @elseif($entry->acknowledged_at)
             <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                     <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,6 +161,9 @@
                 </div>
             </div>
         @else
+            @php
+                $autoConfirmDate = $entry->payrollCutoff->finalized_at?->addDays(5);
+            @endphp
             <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
                 <div>
                     <p class="text-sm font-semibold text-gray-800">Confirm Salary Receipt</p>
@@ -171,6 +186,12 @@
                         Confirm Receipt
                     </button>
                 </form>
+
+                @if($autoConfirmDate)
+                    <p class="text-xs text-center text-gray-400">
+                        If not confirmed, this will be automatically stamped on {{ $autoConfirmDate->format('M d, Y') }}.
+                    </p>
+                @endif
             </div>
         @endif
 

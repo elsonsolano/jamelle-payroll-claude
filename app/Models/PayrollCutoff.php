@@ -15,11 +15,13 @@ class PayrollCutoff extends Model
         'end_date',
         'status',
         'void_reason',
+        'finalized_at',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date'  => 'date',
+        'end_date'    => 'date',
+        'finalized_at'=> 'datetime',
     ];
 
     public function branch(): BelongsTo

@@ -25,6 +25,7 @@ class PayrollEntry extends Model
         'total_overtime_hours',
         'acknowledged_at',
         'acknowledged_ip',
+        'acknowledged_by',
     ];
 
     protected $casts = [

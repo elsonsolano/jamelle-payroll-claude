@@ -180,6 +180,7 @@ class PayrollComputationService
             'total_overtime_hours'  => round($totalOvertimeHours, 2),
             'acknowledged_at'       => null,
             'acknowledged_ip'       => null,
+            'acknowledged_by'       => null,
         ]);
         $entry->save();
 

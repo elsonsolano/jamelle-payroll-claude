@@ -65,6 +65,7 @@ class PayslipController extends Controller
             $entry->update([
                 'acknowledged_at' => now(),
                 'acknowledged_ip' => request()->ip(),
+                'acknowledged_by' => 'staff',
             ]);
         }
 

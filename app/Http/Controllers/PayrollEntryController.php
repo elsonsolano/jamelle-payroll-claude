@@ -221,7 +221,7 @@ class PayrollEntryController extends Controller
                 ->with('error', 'Only a payroll in preview (Processing) state can be finalized.');
         }
 
-        $cutoff->update(['status' => 'finalized']);
+        $cutoff->update(['status' => 'finalized', 'finalized_at' => now()]);
 
         // Notify each staff member who has an entry in this cutoff
         $cutoff->payrollEntries()
@@ -245,7 +245,7 @@ class PayrollEntryController extends Controller
                 ->with('error', 'Cannot regenerate a voided payroll cutoff.');
         }
 
-        $cutoff->update(['status' => 'processing']);
+        $cutoff->update(['status' => 'processing', 'finalized_at' => null]);
 
         $employees = Employee::where('branch_id', $cutoff->branch_id)
             ->where('active', true)

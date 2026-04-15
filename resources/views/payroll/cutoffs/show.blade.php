@@ -230,8 +230,14 @@
                                     <td class="px-5 py-3 text-right font-bold text-indigo-600">₱{{ number_format($entry->net_pay, 2) }}</td>
                                     @if($cutoff->status === 'finalized')
                                     <td class="px-5 py-3 text-center">
-                                        @if($entry->acknowledged_at)
-                                            <span title="{{ $entry->acknowledged_at->format('M d, Y h:i A') }}">
+                                        @if($entry->acknowledged_at && $entry->acknowledged_by === 'system')
+                                            <span title="Auto-confirmed on {{ $entry->acknowledged_at->format('M d, Y h:i A') }}">
+                                                <svg class="w-5 h-5 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </span>
+                                        @elseif($entry->acknowledged_at)
+                                            <span title="Confirmed by staff on {{ $entry->acknowledged_at->format('M d, Y h:i A') }}">
                                                 <svg class="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                                 </svg>
