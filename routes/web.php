@@ -45,10 +45,12 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
     Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");
+    Route::post("/profile/signature", [\App\Http\Controllers\Staff\ProfileController::class, "updateSignature"])->name("profile.signature");
     Route::get("/schedule", [\App\Http\Controllers\Staff\ScheduleController::class, "index"])->name("schedule");
     Route::get("/payslips", [\App\Http\Controllers\Staff\PayslipController::class, "index"])->name("payslips.index");
     Route::get("/payslips/{entry}", [\App\Http\Controllers\Staff\PayslipController::class, "show"])->name("payslips.show");
     Route::get("/payslips/{entry}/pdf", [\App\Http\Controllers\Staff\PayslipController::class, "downloadPdf"])->name("payslips.pdf");
+    Route::post("/payslips/{entry}/acknowledge", [\App\Http\Controllers\Staff\PayslipController::class, "acknowledge"])->name("payslips.acknowledge");
 });
 
 Route::middleware(["auth", "admin"])->group(function () {

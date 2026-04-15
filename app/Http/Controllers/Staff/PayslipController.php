@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\PayrollEntry;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -30,7 +31,7 @@ class PayslipController extends Controller
 
         abort_if($entry->employee_id !== $employee->id, 403);
 
-        $entry->load('employee.branch', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
+        $entry->load('employee.branch', 'employee.user', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
 
         return view('staff.payslips.show', compact('entry'));
     }
@@ -41,7 +42,7 @@ class PayslipController extends Controller
 
         abort_if($entry->employee_id !== $employee->id, 403);
 
-        $entry->load('employee.branch', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
+        $entry->load('employee.branch', 'employee.user', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
 
         $cutoff = $entry->payrollCutoff;
 
@@ -51,5 +52,22 @@ class PayslipController extends Controller
         $filename = 'payslip-' . str($entry->employee->full_name)->slug() . '-' . $cutoff->start_date->format('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    public function acknowledge(PayrollEntry $entry): RedirectResponse
+    {
+        $employee = Auth::user()->employee;
+
+        abort_if($entry->employee_id !== $employee->id, 403);
+        abort_if($entry->payrollCutoff->status !== 'finalized', 403);
+
+        if (! $entry->acknowledged_at) {
+            $entry->update([
+                'acknowledged_at' => now(),
+                'acknowledged_ip' => request()->ip(),
+            ]);
+        }
+
+        return back()->with('acknowledged', true);
     }
 }

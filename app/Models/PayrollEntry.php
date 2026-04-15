@@ -23,6 +23,8 @@ class PayrollEntry extends Model
         'working_days',
         'total_hours_worked',
         'total_overtime_hours',
+        'acknowledged_at',
+        'acknowledged_ip',
     ];
 
     protected $casts = [
@@ -36,6 +38,7 @@ class PayrollEntry extends Model
         'total_deductions'    => 'decimal:2',
         'net_pay'             => 'decimal:2',
         'total_hours_worked'  => 'decimal:2',
+        'acknowledged_at'     => 'datetime',
     ];
 
     public function payrollCutoff(): BelongsTo

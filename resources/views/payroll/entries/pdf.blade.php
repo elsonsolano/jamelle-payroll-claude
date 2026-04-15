@@ -310,9 +310,22 @@
     </table>
 
     {{-- Signature Block --}}
-    <div style="margin-top:40px; text-align:center; width:45%;">
-        <div style="border-top:1px solid #374151; padding-top:4px; font-size:10px; color:#374151;">
+    @php
+        $signature = $entry->employee->user?->signature ?? null;
+    @endphp
+    <div style="margin-top:40px; width:45%;">
+        @if($entry->acknowledged_at && $signature)
+            <div style="text-align:center; margin-bottom:4px;">
+                <img src="{{ $signature }}" style="height:48px; width:auto; max-width:180px;">
+            </div>
+        @else
+            <div style="height:52px;"></div>
+        @endif
+        <div style="border-top:1px solid #374151; padding-top:4px; font-size:10px; color:#374151; text-align:center;">
             Received by: {{ $entry->employee->full_name }}
+            @if($entry->acknowledged_at)
+                <br><span style="font-size:9px; color:#6b7280;">Acknowledged {{ $entry->acknowledged_at->format('M d, Y h:i A') }}</span>
+            @endif
         </div>
     </div>
 

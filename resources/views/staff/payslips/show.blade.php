@@ -135,5 +135,44 @@
             <p class="text-white font-bold text-2xl">PHP {{ number_format($entry->net_pay, 2) }}</p>
         </div>
 
+        {{-- Acknowledgment --}}
+        @if($entry->acknowledged_at)
+            <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-green-800">Salary received and acknowledged</p>
+                    <p class="text-xs text-green-600 mt-0.5">{{ $entry->acknowledged_at->format('M d, Y \a\t h:i A') }}</p>
+                </div>
+            </div>
+        @else
+            <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">Confirm Salary Receipt</p>
+                    <p class="text-xs text-gray-500 mt-1">By tapping <strong>Confirm Receipt</strong> below, you acknowledge that you have received your salary for this payroll period.</p>
+                </div>
+
+                @if($entry->employee->user?->signature)
+                    <div class="flex flex-col items-center gap-1">
+                        <p class="text-xs text-gray-400">Your signature on file</p>
+                        <img src="{{ $entry->employee->user->signature }}"
+                             alt="Signature"
+                             class="h-16 w-auto object-contain border border-gray-100 rounded-lg bg-gray-50 px-4 py-2">
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('staff.payslips.acknowledge', $entry) }}">
+                    @csrf
+                    <button type="submit"
+                            class="w-full py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition">
+                        Confirm Receipt
+                    </button>
+                </form>
+            </div>
+        @endif
+
     </div>
 </x-staff-layout>

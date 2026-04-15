@@ -178,6 +178,8 @@ class PayrollComputationService
             'working_days'          => $workingDays,
             'total_hours_worked'    => round($totalHoursWorked, 2),
             'total_overtime_hours'  => round($totalOvertimeHours, 2),
+            'acknowledged_at'       => null,
+            'acknowledged_ip'       => null,
         ]);
         $entry->save();
 

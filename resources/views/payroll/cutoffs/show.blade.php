@@ -141,7 +141,7 @@
 
         @if($summary['total_employees'] > 0)
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="bg-white rounded-xl border border-gray-200 p-4">
                 <p class="text-xs text-gray-500 mb-1">Employees</p>
                 <p class="text-2xl font-bold text-gray-900">{{ $summary['total_employees'] }}</p>
@@ -158,6 +158,14 @@
                 <p class="text-xs text-gray-500 mb-1">Total Net Pay</p>
                 <p class="text-2xl font-bold text-indigo-600">₱{{ number_format($summary['total_net_pay'], 2) }}</p>
             </div>
+            @if($cutoff->status === 'finalized')
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500 mb-1">Acknowledged</p>
+                <p class="text-2xl font-bold {{ $summary['total_acknowledged'] === $summary['total_employees'] ? 'text-green-600' : 'text-amber-500' }}">
+                    {{ $summary['total_acknowledged'] }}<span class="text-base font-normal text-gray-400">/{{ $summary['total_employees'] }}</span>
+                </p>
+            </div>
+            @endif
         </div>
         @endif
 
@@ -188,6 +196,9 @@
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Gross Pay</th>
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Deductions</th>
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Net Pay</th>
+                                @if($cutoff->status === 'finalized')
+                                <th class="px-5 py-3 font-semibold text-gray-600 text-center">Acknowledged</th>
+                                @endif
                                 <th class="px-5 py-3 font-semibold text-gray-600"></th>
                             </tr>
                         </thead>
@@ -217,6 +228,19 @@
                                         @endif
                                     </td>
                                     <td class="px-5 py-3 text-right font-bold text-indigo-600">₱{{ number_format($entry->net_pay, 2) }}</td>
+                                    @if($cutoff->status === 'finalized')
+                                    <td class="px-5 py-3 text-center">
+                                        @if($entry->acknowledged_at)
+                                            <span title="{{ $entry->acknowledged_at->format('M d, Y h:i A') }}">
+                                                <svg class="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </span>
+                                        @else
+                                            <span class="text-gray-300">—</span>
+                                        @endif
+                                    </td>
+                                    @endif
                                     <td class="px-5 py-3">
                                         <a href="{{ route('payroll.cutoffs.entries.show', [$cutoff, $entry]) }}"
                                            class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View</a>
@@ -232,6 +256,9 @@
                                 <td class="px-5 py-3 text-right font-semibold text-gray-800">₱{{ number_format($summary['total_basic_pay'] + $summary['total_overtime'], 2) }}</td>
                                 <td class="px-5 py-3 text-right font-semibold text-red-500">₱{{ number_format($summary['total_deductions'], 2) }}</td>
                                 <td class="px-5 py-3 text-right font-bold text-indigo-600">₱{{ number_format($summary['total_net_pay'], 2) }}</td>
+                                @if($cutoff->status === 'finalized')
+                                <td></td>
+                                @endif
                                 <td></td>
                             </tr>
                         </tfoot>

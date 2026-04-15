@@ -82,11 +82,12 @@ class PayrollCutoffController extends Controller
             ->paginate(30);
 
         $summary = [
-            'total_employees' => $cutoff->payrollEntries()->count(),
-            'total_basic_pay' => $cutoff->payrollEntries()->sum('basic_pay'),
-            'total_overtime'  => $cutoff->payrollEntries()->sum('overtime_pay'),
-            'total_deductions'=> $cutoff->payrollEntries()->sum('total_deductions'),
-            'total_net_pay'   => $cutoff->payrollEntries()->sum('net_pay'),
+            'total_employees'   => $cutoff->payrollEntries()->count(),
+            'total_basic_pay'   => $cutoff->payrollEntries()->sum('basic_pay'),
+            'total_overtime'    => $cutoff->payrollEntries()->sum('overtime_pay'),
+            'total_deductions'  => $cutoff->payrollEntries()->sum('total_deductions'),
+            'total_net_pay'     => $cutoff->payrollEntries()->sum('net_pay'),
+            'total_acknowledged'=> $cutoff->payrollEntries()->whereNotNull('acknowledged_at')->count(),
         ];
 
         return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary'));
