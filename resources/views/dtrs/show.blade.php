@@ -42,8 +42,86 @@
         </div>
 
         {{-- Schedule --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Schedule</h3>
+        <div class="bg-white rounded-xl border border-gray-200 p-6" x-data="{ open: false }">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Schedule</h3>
+                <button type="button" @click="open = true"
+                        class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                    Edit Schedule
+                </button>
+            </div>
+
+            {{-- Edit Schedule Modal --}}
+            <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                 @keydown.escape.window="open = false">
+                <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-gray-800">Edit Schedule</h4>
+                        <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500">
+                        Daily override for <strong>{{ $dtr->employee->full_name }}</strong>
+                        on <strong>{{ $dtr->date->format('M d, Y') }}</strong>.
+                        This creates or updates a Daily Schedule for this specific date.
+                    </p>
+
+                    @php
+                        $scheduleAction = $dailySchedule
+                            ? route('employees.daily-schedules.update', [$dtr->employee, $dailySchedule])
+                            : route('employees.daily-schedules.store', $dtr->employee);
+                    @endphp
+
+                    <form action="{{ $scheduleAction }}" method="POST" x-data="{ isDayOff: {{ $dailySchedule?->is_day_off ? 'true' : 'false' }} }">
+                        @csrf
+                        @if($dailySchedule)
+                            @method('PUT')
+                        @endif
+                        <input type="hidden" name="date" value="{{ $dtr->date->format('Y-m-d') }}">
+                        <input type="hidden" name="redirect_to" value="{{ route('dtr.show', $dtr) }}">
+
+                        <div class="space-y-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="is_day_off" value="1" x-model="isDayOff"
+                                       {{ $dailySchedule?->is_day_off ? 'checked' : '' }}
+                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm font-medium text-gray-700">Mark as Day Off</span>
+                            </label>
+
+                            <div x-show="!isDayOff" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Work Start</label>
+                                    <input type="time" name="work_start_time"
+                                           value="{{ $dailySchedule?->work_start_time ? \Carbon\Carbon::parse($dailySchedule->work_start_time)->format('H:i') : '' }}"
+                                           class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Work End</label>
+                                    <input type="time" name="work_end_time"
+                                           value="{{ $dailySchedule?->work_end_time ? \Carbon\Carbon::parse($dailySchedule->work_end_time)->format('H:i') : '' }}"
+                                           class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3 pt-2">
+                                <button type="submit"
+                                        class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition">
+                                    Save
+                                </button>
+                                <button type="button" @click="open = false"
+                                        class="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
             @if($dailySchedule)
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">

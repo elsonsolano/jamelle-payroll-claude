@@ -164,8 +164,10 @@ class EmployeeScheduleController extends Controller
 
         $this->recomputeDtr($employee, $validated['date']);
 
-        return redirect()->route('employees.schedules.index', $employee)
-            ->with('success', 'Daily schedule added.');
+        $redirectTo = $request->input('redirect_to');
+
+        return redirect($redirectTo ?: route('employees.schedules.index', $employee))
+            ->with('success', 'Daily schedule saved.');
     }
 
     public function updateDaily(Request $request, Employee $employee, DailySchedule $daily): RedirectResponse
@@ -192,7 +194,9 @@ class EmployeeScheduleController extends Controller
 
         $this->recomputeDtr($employee, $validated['date']);
 
-        return redirect()->route('employees.schedules.index', $employee)
+        $redirectTo = $request->input('redirect_to');
+
+        return redirect($redirectTo ?: route('employees.schedules.index', $employee))
             ->with('success', 'Daily schedule updated.');
     }
 
