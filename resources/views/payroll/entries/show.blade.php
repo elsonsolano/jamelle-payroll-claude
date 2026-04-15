@@ -24,7 +24,12 @@
                     {{ strtoupper(substr($entry->employee->first_name, 0, 1) . substr($entry->employee->last_name, 0, 1)) }}
                 </div>
                 <div class="flex-1">
-                    <h2 class="text-lg font-bold text-gray-900">{{ $entry->employee->full_name }}</h2>
+                    <h2>
+                        <a href="{{ route('employees.show', $entry->employee) }}"
+                           class="text-lg font-bold text-gray-900 hover:text-indigo-600 transition">
+                            {{ $entry->employee->full_name }}
+                        </a>
+                    </h2>
                     <p class="text-sm text-gray-500">
                         {{ $entry->employee->position ?? 'No position' }} · {{ $entry->employee->branch->name }}
                     </p>
