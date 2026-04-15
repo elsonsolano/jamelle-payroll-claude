@@ -204,10 +204,10 @@ class PayrollEntryController extends Controller
 
     public function generate(Request $request, PayrollCutoff $cutoff): RedirectResponse
     {
-        $mode = $request->input('mode', 'default');
+        $mode = $request->input('mode', 'sheet');
 
-        if (! in_array($mode, ['default', 'sheet'], true)) {
-            $mode = 'default';
+        if (! in_array($mode, ['sheet'], true)) {
+            $mode = 'sheet';
         }
 
         return $this->generateForMode($cutoff, $mode);
@@ -254,9 +254,7 @@ class PayrollEntryController extends Controller
             $this->payrollService->computeEntry($cutoff, $employee, ['mode' => $mode]);
         }
 
-        $message = $mode === 'sheet'
-            ? 'Payroll recomputed using sheet logic for '
-            : 'Payroll computed for ';
+        $message = 'Payroll recomputed using sheet logic for ';
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
             ->with('success', $message . $employees->count() . ' employee(s). Review the numbers, then click Finalize when ready.');

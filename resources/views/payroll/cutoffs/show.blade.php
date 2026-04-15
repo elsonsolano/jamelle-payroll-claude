@@ -18,12 +18,7 @@
                         'finalized'   => 'Regenerate Payroll',
                     };
                     $generateConfirm = match($cutoff->status) {
-                        'draft'      => 'Generate payroll for all active employees in this branch?',
-                        'processing' => 'Recalculate payroll? Existing preview entries will be overwritten. Continue?',
-                        'finalized'  => 'This will move the payroll back to Preview and recalculate all entries. Manually added variable deductions will be deleted and must be re-entered. Continue?',
-                    };
-                    $sheetConfirm = match($cutoff->status) {
-                        'draft'      => 'Recompute this payroll using sheet logic for all active employees in this branch?',
+                        'draft'      => 'Generate payroll using sheet logic for all active employees in this branch?',
                         'processing' => 'Recompute this preview using sheet logic? Existing preview entries will be overwritten. Continue?',
                         'finalized'  => 'This will move the payroll back to Preview and recompute all entries using sheet logic. Continue?',
                     };
@@ -37,19 +32,6 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
                         {{ $generateLabel }}
-                    </button>
-                </form>
-
-                <form method="POST" action="{{ route('payroll.cutoffs.generate', $cutoff) }}"
-                      onsubmit="return confirm('{{ $sheetConfirm }}')">
-                    @csrf
-                    <input type="hidden" name="mode" value="sheet">
-                    <button type="submit"
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
-                        </svg>
-                        Use Sheet Logic
                     </button>
                 </form>
             @endif
