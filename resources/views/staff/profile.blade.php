@@ -3,6 +3,12 @@
 
     <div class="space-y-4">
 
+        @if(session('success'))
+        <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 text-sm font-medium text-green-700">
+            {{ session('success') }}
+        </div>
+        @endif
+
         {{-- Identity card --}}
         <div class="bg-green-500 rounded-2xl p-5 text-white">
             <div class="flex items-center gap-4">
@@ -93,6 +99,134 @@
             @endif
         </div>
         @endif
+
+        {{-- Signature --}}
+        <script>
+        function signatureCard() {
+            return {
+                isOpen: false,
+                ctx: null,
+                drawing: false,
+                lastX: 0,
+                lastY: 0,
+
+                open() {
+                    this.isOpen = true;
+                    this.$nextTick(() => this.initCanvas());
+                },
+
+                close() {
+                    this.isOpen = false;
+                },
+
+                initCanvas() {
+                    const canvas = document.getElementById('update-sig-canvas');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    this.ctx = ctx;
+
+                    const rect = canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+                    ctx.strokeStyle = '#1a1a2e';
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    const getPos = (e) => {
+                        const r = canvas.getBoundingClientRect();
+                        if (e.touches) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+                        return { x: e.clientX - r.left, y: e.clientY - r.top };
+                    };
+
+                    canvas.addEventListener('mousedown',  (e) => { e.preventDefault(); this.drawing = true; const p = getPos(e); this.lastX = p.x; this.lastY = p.y; });
+                    canvas.addEventListener('mousemove',  (e) => { if (!this.drawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(this.lastX, this.lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); this.lastX = p.x; this.lastY = p.y; });
+                    canvas.addEventListener('mouseup',    () => { this.drawing = false; });
+                    canvas.addEventListener('mouseleave', () => { this.drawing = false; });
+                    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); this.drawing = true; const p = getPos(e); this.lastX = p.x; this.lastY = p.y; }, { passive: false });
+                    canvas.addEventListener('touchmove',  (e) => { if (!this.drawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(this.lastX, this.lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); this.lastX = p.x; this.lastY = p.y; }, { passive: false });
+                    canvas.addEventListener('touchend',   () => { this.drawing = false; });
+
+                    document.getElementById('update-clear-btn').onclick = () => {
+                        const r = canvas.getBoundingClientRect();
+                        ctx.clearRect(0, 0, r.width, r.height);
+                    };
+
+                    document.getElementById('update-sig-form').onsubmit = (e) => {
+                        const data = canvas.toDataURL('image/png');
+                        const blank = document.createElement('canvas');
+                        blank.width = canvas.width;
+                        blank.height = canvas.height;
+                        if (data === blank.toDataURL('image/png')) {
+                            e.preventDefault();
+                            alert('Please draw your signature before saving.');
+                            return;
+                        }
+                        document.getElementById('update-signature-data').value = data;
+                    };
+                },
+            };
+        }
+        </script>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5" x-data="signatureCard()">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">My Signature</p>
+                <button type="button" @click="open"
+                        class="text-xs font-semibold text-green-600 hover:text-green-700">
+                    Update
+                </button>
+            </div>
+            @if(Auth::user()->signature)
+                <div class="flex justify-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <img src="{{ Auth::user()->signature }}" alt="Your signature" class="h-14 w-auto object-contain">
+                </div>
+            @else
+                <p class="text-sm text-gray-400 text-center py-2">No signature on file.</p>
+            @endif
+
+            {{-- Bottom sheet --}}
+            <div x-show="isOpen" x-cloak
+                 class="fixed inset-0 z-50 flex flex-col justify-end"
+                 @keydown.escape.window="close">
+
+                {{-- Backdrop --}}
+                <div class="absolute inset-0 bg-black/40" @click="close"></div>
+
+                {{-- Sheet --}}
+                <div class="relative bg-white rounded-t-2xl p-5 space-y-4 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <p class="font-semibold text-gray-800">Update Signature</p>
+                        <button type="button" @click="close" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500">Draw your new signature below. This will replace your current one.</p>
+
+                    <form method="POST" action="{{ route('staff.profile.signature') }}" id="update-sig-form">
+                        @csrf
+                        <input type="hidden" name="signature" id="update-signature-data">
+
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative" style="touch-action: none;">
+                            <canvas id="update-sig-canvas" class="w-full rounded-xl" style="height: 200px; display: block;"></canvas>
+                            <button type="button" id="update-clear-btn"
+                                    class="absolute top-2 right-2 text-xs bg-white border border-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">
+                                Clear
+                            </button>
+                        </div>
+
+                        <button type="submit"
+                                class="mt-4 w-full py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition">
+                            Save Signature
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         {{-- My Payslips --}}
         <a href="{{ route('staff.payslips.index') }}"

@@ -31,6 +31,11 @@ php artisan dtr:recompute
 # Recompute with filters (all options are optional and combinable)
 php artisan dtr:recompute --employee=13 --branch=3 --from=2026-03-30 --to=2026-04-13
 php artisan dtr:recompute --dry-run   # preview without saving
+
+# Recompute one payroll cutoff using the normal app logic or the Google Sheet-compatible logic
+php artisan payroll:recompute 7 --mode=default --dry-run
+php artisan payroll:recompute 7 --mode=sheet --dry-run
+php artisan payroll:recompute 7 --mode=sheet
 ```
 
 > **After importing a Railway DB dump locally**, always run `php artisan dtr:recompute` — the production DB may have DTR `total_hours` values computed with older code or before schedules were set up.
@@ -142,7 +147,7 @@ All manually entered DTRs go through `DtrComputationService::compute(Employee, d
 
 **Overnight shift handling:** Time values are stored as bare time strings (e.g. `01:00:00`) with no date component. When `time_out <= time_in`, the service infers the employee clocked out past midnight and adds one day to `time_out` before computing the diff. The same logic applies to break end time and to the scheduled `work_end_time` undertime check. A visible orange **(+1 day)** indicator is shown next to the time_out value on all display surfaces (admin DTR index, admin DTR show, staff DTR list, staff dashboard event rows, staff dashboard recent DTRs, and the PDF export).
 
-**DTR recomputation on schedule save:** Whenever a `DailySchedule` is created or updated — either via `EmployeeScheduleController::storeDaily()`/`updateDaily()` or via `ScheduleUploadController::apply()` — any existing `Dtr` for that employee+date is immediately recomputed (`late_mins`, `undertime_mins`, `is_rest_day` updated). This ensures the admin `/dtr` page reflects the correct late data without waiting for payroll regeneration.
+**DTR recomputation on schedule save:** Schedule changes immediately refresh existing DTR computed fields, including `total_hours`. `DailySchedule` create/update/delete recomputes the matching employee+date DTR right away, `ScheduleUploadController::apply()` does the same for uploaded daily schedules, and weekly `EmployeeSchedule` create/update/delete recomputes affected DTRs from that schedule's `week_start_date` onward. This keeps the admin `/dtr` page accurate without waiting for payroll regeneration.
 
 **Batch recompute command:** `php artisan dtr:recompute` (in `app/Console/Commands/RecomputeDtrHours.php`) reruns `DtrComputationService::compute()` on every DTR with a `time_in` and saves all four computed fields (`total_hours`, `late_mins`, `undertime_mins`, `is_rest_day`). Supports `--employee`, `--branch`, `--from`, `--to`, `--dry-run` filters. Run this after importing a production DB dump or after bulk schedule changes.
 
@@ -153,6 +158,8 @@ Note: in the UI, `am_out` is labelled **Start Break** and `pm_in` is labelled **
 `DtrComputationService::getOtApprovers(Employee, User $submitter)` returns the collection of users who should be notified/can approve a given OT submission (see OT Approval Hierarchy below).
 
 ### Payroll Computation (`app/Services/PayrollComputationService.php`)
+
+Current code signature: `computeEntry(PayrollCutoff, Employee, array $options = []): PayrollEntry`.
 
 Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — uses `firstOrNew` to avoid duplicates.
 
@@ -180,6 +187,8 @@ Single entry point: `computeEntry(PayrollCutoff, Employee): PayrollEntry` — us
 For monthly employees the premium is calculated using `monthly_rate / 22` as the daily equivalent.
 
 Payroll uses `dtr.overtime_hours` directly. If a DTR has `ot_status = pending`, overtime IS included in payroll but a flag is visible on the payroll entry — OT is not withheld pending approval.
+
+**Sheet mode payroll:** `computeEntry(..., ['mode' => 'sheet'])` is used by `php artisan payroll:recompute {cutoff} --mode=sheet`, and the normal cutoff page **Generate Payroll / Regenerate** flow now uses this sheet-compatible mode by default. There is no longer a separate **Use Sheet Logic** button. In sheet mode, daily `working_days` are rounded to 2 decimals instead of truncated, and worked `regular` / `special_non_working` holidays with billable hours `>= 7.95` are treated as a full `8.0` hours for holiday premium computation to match the current Google Sheet.
 
 ### Schedule Upload Flow (`app/Services/ScheduleParserService.php`)
 
