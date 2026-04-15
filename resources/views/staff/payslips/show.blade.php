@@ -188,7 +188,7 @@
                 </form>
 
                 @if($autoConfirmDate)
-                    <p class="text-xs text-center text-gray-400">
+                    <p class="text-xs text-center text-red-400 italic">
                         If not confirmed, this will be automatically stamped on <strong>{{ $autoConfirmDate->format('M d, Y') }}</strong>.
                     </p>
                 @endif
