@@ -106,6 +106,7 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::post("account", [EmployeeController::class, "createAccount"])->name("account.create");
             Route::patch("account", [EmployeeController::class, "updateAccount"])->name("account.update");
             Route::post("account/reset-password", [EmployeeController::class, "resetPassword"])->name("account.reset-password");
+            Route::post("account/change-password", [EmployeeController::class, "changePassword"])->name("account.change-password");
             Route::post("impersonate", [ImpersonationController::class, "impersonate"])->name("impersonate");
             Route::get("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "index"])->name("deductions.index");
             Route::post("deductions", [\App\Http\Controllers\EmployeeStandingDeductionController::class, "store"])->name("deductions.store");

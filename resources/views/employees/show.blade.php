@@ -178,7 +178,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2" x-data="{ showPasswordModal: false }">
                     <form method="POST" action="{{ route('employees.account.update', $employee) }}">
                         @csrf @method('PATCH')
                         <input type="hidden" name="can_approve_ot" value="{{ $employee->user->can_approve_ot ? '0' : '1' }}">
@@ -187,14 +187,12 @@
                             {{ $employee->user->can_approve_ot ? 'Remove OT Approver' : 'Make OT Approver' }}
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('employees.account.reset-password', $employee) }}">
-                        @csrf
-                        <button type="submit"
-                                onclick="return confirm('Reset this employee\'s password?')"
-                                class="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
-                            Reset Password
-                        </button>
-                    </form>
+
+                    <button type="button" @click="showPasswordModal = true"
+                            class="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
+                        Set Password
+                    </button>
+
                     <form method="POST" action="{{ route('employees.impersonate', $employee) }}">
                         @csrf
                         <button type="submit"
@@ -203,6 +201,47 @@
                             Login as Employee
                         </button>
                     </form>
+
+                    {{-- Set Password Modal --}}
+                    <div x-show="showPasswordModal" x-cloak
+                         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                         @keydown.escape.window="showPasswordModal = false">
+                        <div class="absolute inset-0 bg-black/40" @click="showPasswordModal = false"></div>
+                        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+                            <h3 class="text-base font-semibold text-gray-900 mb-1">Set Password</h3>
+                            <p class="text-sm text-gray-500 mb-4">
+                                Setting a password for <strong>{{ $employee->full_name }}</strong>.
+                                They will be prompted to change it on next login.
+                            </p>
+
+                            <form method="POST" action="{{ route('employees.account.change-password', $employee) }}"
+                                  class="space-y-3">
+                                @csrf
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">New Password</label>
+                                    <input type="password" name="password" required minlength="6"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                           placeholder="Min. 6 characters">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Confirm Password</label>
+                                    <input type="password" name="password_confirmation" required
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                           placeholder="Re-enter password">
+                                </div>
+                                <div class="flex gap-2 pt-1">
+                                    <button type="submit"
+                                            class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition">
+                                        Save Password
+                                    </button>
+                                    <button type="button" @click="showPasswordModal = false"
+                                            class="flex-1 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             @else
                 <p class="text-sm text-gray-400 mb-4">No login account yet. Create one to allow this employee to log in.</p>

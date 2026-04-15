@@ -215,4 +215,22 @@ class EmployeeController extends Controller
 
         return back()->with('success', 'Password has been reset to: password');
     }
+
+    public function changePassword(Request $request, Employee $employee): RedirectResponse
+    {
+        if (!$employee->user) {
+            return back()->with('error', 'No account found for this employee.');
+        }
+
+        $request->validate([
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $employee->user->update([
+            'password'             => Hash::make($request->password),
+            'must_change_password' => true,
+        ]);
+
+        return back()->with('success', 'Password updated. Staff will be prompted to change it on next login.');
+    }
 }
