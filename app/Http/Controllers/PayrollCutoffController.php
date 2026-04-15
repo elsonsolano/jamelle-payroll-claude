@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\PayrollCutoff;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class PayrollCutoffController extends Controller
@@ -64,8 +66,12 @@ class PayrollCutoffController extends Controller
         return redirect()->route('payroll.cutoffs.index')->with('success', $label);
     }
 
-    public function show(PayrollCutoff $cutoff): View
+    public function show(Request $request, PayrollCutoff $cutoff): View|Response
     {
+        if ($request->query('export') === 'pdf') {
+            return $this->pdf($cutoff);
+        }
+
         $cutoff->load('branch');
         $entries = $cutoff->payrollEntries()
             ->with('employee')
@@ -84,6 +90,38 @@ class PayrollCutoffController extends Controller
         ];
 
         return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary'));
+    }
+
+    public function pdf(PayrollCutoff $cutoff): Response
+    {
+        $cutoff->load('branch');
+
+        $entries = $cutoff->payrollEntries()
+            ->with('employee', 'payrollRefunds')
+            ->join('employees', 'employees.id', '=', 'payroll_entries.employee_id')
+            ->orderBy('employees.last_name')
+            ->orderBy('employees.first_name')
+            ->select('payroll_entries.*')
+            ->get();
+
+        $summary = [
+            'total_employees'  => $entries->count(),
+            'total_basic_pay'  => $entries->sum('basic_pay'),
+            'total_overtime'   => $entries->sum('overtime_pay'),
+            'total_holiday'    => $entries->sum('holiday_pay'),
+            'total_allowance'  => $entries->sum('allowance_pay'),
+            'total_gross_pay'  => $entries->sum('gross_pay'),
+            'total_deductions' => $entries->sum('total_deductions'),
+            'total_refunds'    => $entries->sum(fn ($entry) => $entry->payrollRefunds->sum('amount')),
+            'total_net_pay'    => $entries->sum('net_pay'),
+        ];
+
+        $pdf = Pdf::loadView('payroll.cutoffs.pdf', compact('cutoff', 'entries', 'summary'))
+            ->setPaper('a4', 'landscape');
+
+        $filename = 'payroll-cutoff-' . str($cutoff->name)->slug() . '-' . $cutoff->id . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function edit(PayrollCutoff $cutoff): View
