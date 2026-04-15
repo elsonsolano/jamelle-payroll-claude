@@ -6,6 +6,10 @@
            class="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
             ← Back to DTR
         </a>
+        <a href="{{ route('dtr.edit', $dtr) }}"
+           class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">
+            Edit
+        </a>
     </x-slot>
 
     <div class="max-w-xl space-y-5">

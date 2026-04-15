@@ -69,6 +69,7 @@ class PayrollEntryController extends Controller
                 $holiday  = $holidays->get($dateStr);
 
                 $dtrRows[] = [
+                    'dtr_id'      => $dtr->id,
                     'date'       => $dtr->date->format('M d'),
                     'day'        => $dtr->date->format('D'),
                     'hours'      => (float) $dtr->total_hours,

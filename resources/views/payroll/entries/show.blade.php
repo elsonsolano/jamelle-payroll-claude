@@ -26,7 +26,7 @@
                 <div class="flex-1">
                     <h2>
                         <a href="{{ route('employees.show', $entry->employee) }}"
-                           class="text-lg font-bold text-gray-900 hover:text-indigo-600 transition">
+                           class="inline-flex items-center gap-1 text-lg font-bold text-indigo-700 underline decoration-indigo-300 underline-offset-4 hover:text-indigo-900 hover:decoration-indigo-600 transition">
                             {{ $entry->employee->full_name }}
                         </a>
                     </h2>
@@ -305,7 +305,11 @@
                                 @foreach($b['dtr_rows'] as $row)
                                 <tr class="{{ $row['is_rest'] ? 'text-amber-600' : 'text-gray-700' }}">
                                     <td class="py-0.5">
-                                        {{ $row['date'] }} <span class="text-gray-400">{{ $row['day'] }}</span>
+                                        <a href="{{ route('dtr.show', $row['dtr_id']) }}"
+                                           class="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900 hover:decoration-indigo-600 transition">
+                                            {{ $row['date'] }}
+                                        </a>
+                                        <span class="text-gray-400">{{ $row['day'] }}</span>
                                         @if($row['holiday']) <span class="text-green-600">*</span> @endif
                                         @if($row['late_mins'] > 0) <span class="text-red-400 text-[10px]">-{{ $row['late_mins'] }}m</span> @endif
                                     </td>
