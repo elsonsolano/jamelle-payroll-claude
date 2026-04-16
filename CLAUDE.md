@@ -201,6 +201,8 @@ Admin imports a date-specific schedule via `/schedule-uploads`:
 
 `DailySchedule.notes` stores annotations like `"OT1HR"` — informational only, no auto-DTR creation.
 
+**Shift cap on apply:** `ScheduleUploadController::apply()` checks every non-day-off row. If `work_end_time − work_start_time > 9 hours` (overnight-aware), `work_end_time` is silently capped to `start + 9h` and an OT note is appended to `notes` (e.g. `"OT 1h"`, `"OT 0.5h"` — rounded to nearest 0.25h). This keeps the schedule boundary meaningful for DTR computation (a 9h window = 8h effective after the mandatory 1h break). The review page shows an amber warning badge on any row that will be adjusted before the admin clicks Apply.
+
 ### OT Approval Hierarchy
 
 Three-tier hierarchy enforced in `DtrComputationService::getOtApprovers()` and `Staff\OtApprovalController`:
