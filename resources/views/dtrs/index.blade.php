@@ -261,6 +261,7 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Late</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">UT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Status</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT Approval</th>
                         <th class="px-4 py-3 font-semibold text-gray-600"></th>
                     </tr>
                 </thead>
@@ -371,9 +372,9 @@
                                     {{ $dtr->status }}
                                 </button>
                             </td>
-                            <td class="px-4 py-3">
-                                <div class="flex items-center gap-2 justify-end">
-                                    @if($dtr->ot_status === 'pending')
+                            <td class="px-4 py-3 text-center">
+                                @if($dtr->ot_status === 'pending')
+                                    <div class="flex items-center gap-1.5 justify-center">
                                         <form action="{{ route('dtr.approve-ot', $dtr) }}" method="POST">
                                             @csrf
                                             <button type="submit"
@@ -387,7 +388,13 @@
                                                 @click="$dispatch('open-reject', { action: '{{ route('dtr.reject-ot', $dtr) }}' })">
                                             Reject
                                         </button>
-                                    @endif
+                                    </div>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2 justify-end">
                                     <a href="{{ route('dtr.edit', $dtr) }}"
                                        class="text-sm text-gray-500 hover:text-gray-800 font-medium">Edit</a>
                                     <a href="{{ route('dtr.show', $dtr) }}"
@@ -397,7 +404,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="13" class="px-5 py-10 text-center text-gray-400">
+                            <td colspan="14" class="px-5 py-10 text-center text-gray-400">
                                 No DTR records found.
                             </td>
                         </tr>
