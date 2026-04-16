@@ -31,8 +31,40 @@
     </script>
 
     {{-- Filters --}}
+    @php
+        $todayStr     = today()->toDateString();
+        $yesterdayStr = today()->subDay()->toDateString();
+        $last7Str     = today()->subDays(6)->toDateString();
+        $baseParams   = array_filter(['branch_id' => request('branch_id'), 'employee_id' => request('employee_id')]);
+        $todayLink    = route('dtr.index', array_merge($baseParams, ['date_from' => $todayStr,     'date_to' => $todayStr]));
+        $yestLink     = route('dtr.index', array_merge($baseParams, ['date_from' => $yesterdayStr, 'date_to' => $yesterdayStr]));
+        $last7Link    = route('dtr.index', array_merge($baseParams, ['date_from' => $last7Str,     'date_to' => $todayStr]));
+        $isToday      = request('date_from') === $todayStr     && request('date_to') === $todayStr     && !request('cutoff_id');
+        $isYesterday  = request('date_from') === $yesterdayStr && request('date_to') === $yesterdayStr && !request('cutoff_id');
+        $isLast7      = request('date_from') === $last7Str     && request('date_to') === $todayStr     && !request('cutoff_id');
+    @endphp
+
     <form method="GET" action="{{ route('dtr.index') }}" class="bg-white rounded-xl border border-gray-200 p-4 mb-5">
-        <div class="flex flex-wrap gap-3 items-end">
+
+        {{-- Quick shortcuts --}}
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+            <span class="text-xs font-medium text-gray-400">Quick:</span>
+            <a href="{{ $todayLink }}"
+               class="px-3 py-1 rounded-full text-xs font-medium border transition {{ $isToday ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600' }}">
+                Today
+            </a>
+            <a href="{{ $yestLink }}"
+               class="px-3 py-1 rounded-full text-xs font-medium border transition {{ $isYesterday ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600' }}">
+                Yesterday
+            </a>
+            <a href="{{ $last7Link }}"
+               class="px-3 py-1 rounded-full text-xs font-medium border transition {{ $isLast7 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600' }}">
+                Last 7 Days
+            </a>
+        </div>
+
+        {{-- Row 1: Branch + Employee --}}
+        <div class="flex flex-wrap gap-3 items-end mb-3">
 
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-500">Branch</label>
@@ -88,50 +120,63 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500">Cutoff Period</label>
-                <select name="cutoff_id"
-                        class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-52">
-                    <option value="">— or select cutoff —</option>
-                    @foreach($cutoffs as $cutoff)
-                        <option value="{{ $cutoff->id }}" @selected(request('cutoff_id') == $cutoff->id)>
-                            {{ $cutoff->name }} ({{ $cutoff->branch->name }})
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500">Date From</label>
-                <input type="date" name="date_from" value="{{ request('date_from') }}"
-                       class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500">Date To</label>
-                <input type="date" name="date_to" value="{{ request('date_to') }}"
-                       class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-
-            <div class="flex flex-col gap-1 justify-end">
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                    <input type="checkbox" name="pending_ot" value="1"
-                           @checked(request()->boolean('pending_ot'))
-                           onchange="this.form.submit()"
-                           class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
-                    Pending OT only
-                </label>
-            </div>
-
-            <button type="submit"
-                    class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
-                Filter
-            </button>
-
-            @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to','pending_ot']))
-                <a href="{{ route('dtr.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800">Clear</a>
-            @endif
         </div>
+
+        {{-- Row 2: Date range OR Cutoff --}}
+        <div class="flex flex-wrap items-end gap-3 mb-4">
+
+            <div class="flex items-end gap-2">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-gray-500">Date From</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}"
+                           class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <span class="text-gray-400 text-sm pb-2">→</span>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-gray-500">Date To</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}"
+                           class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+
+            <div class="flex items-end gap-2">
+                <span class="text-xs text-gray-400 italic pb-2.5">or</span>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-gray-500">Cutoff Period</label>
+                    <select name="cutoff_id"
+                            class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-52">
+                        <option value="">— select cutoff —</option>
+                        @foreach($cutoffs as $cutoff)
+                            <option value="{{ $cutoff->id }}" @selected(request('cutoff_id') == $cutoff->id)>
+                                {{ $cutoff->name }} ({{ $cutoff->branch->name }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+        </div>
+
+        {{-- Row 3: Pending OT + actions --}}
+        <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input type="checkbox" name="pending_ot" value="1"
+                       @checked(request()->boolean('pending_ot'))
+                       onchange="this.form.submit()"
+                       class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
+                Pending OT only
+            </label>
+            <div class="flex items-center gap-2">
+                @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to','pending_ot']))
+                    <a href="{{ route('dtr.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 transition">Clear filters</a>
+                @endif
+                <button type="submit"
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
+                    Filter
+                </button>
+            </div>
+        </div>
+
     </form>
 
     {{-- Reject modal (Alpine) --}}
