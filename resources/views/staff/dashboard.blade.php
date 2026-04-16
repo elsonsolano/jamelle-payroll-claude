@@ -173,7 +173,7 @@
 
                         @if($yIsNext)
                             <button type="button"
-                                    @click="date = '{{ $yesterday->format('Y-m-d') }}'; dateLabel = '{{ $yLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = yesterdayNote; open = true"
+                                    @click="date = '{{ $yesterday->format('Y-m-d') }}'; dateLabel = '{{ $yLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = String(new Date().getHours()).padStart(2,'0') + ':' + String(new Date().getMinutes()).padStart(2,'0'); hasOt = false; otHours = ''; otError = ''; note = yesterdayNote; open = true"
                                     class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                     style="background-color:{{ $eColor }}">
                                 Tap to Log
@@ -251,7 +251,7 @@
 
                         @if($isNext)
                             <button type="button"
-                                    @click="date = '{{ $today->format('Y-m-d') }}'; dateLabel = '{{ $todayLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = todayNote; open = true"
+                                    @click="date = '{{ $today->format('Y-m-d') }}'; dateLabel = '{{ $todayLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = String(new Date().getHours()).padStart(2,'0') + ':' + String(new Date().getMinutes()).padStart(2,'0'); hasOt = false; otHours = ''; otError = ''; note = todayNote; open = true"
                                     class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
                                     style="background-color:{{ $eColor }}">
                                 Tap to Log
