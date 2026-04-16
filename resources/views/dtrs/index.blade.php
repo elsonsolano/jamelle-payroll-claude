@@ -158,7 +158,7 @@
         </div>
 
         {{-- Row 3: Pending OT + actions --}}
-        <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div class="flex items-center gap-4 pt-3 border-t border-gray-100">
             <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                 <input type="checkbox" name="pending_ot" value="1"
                        @checked(request()->boolean('pending_ot'))
@@ -166,15 +166,13 @@
                        class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
                 Pending OT only
             </label>
-            <div class="flex items-center gap-2">
-                @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to','pending_ot']))
-                    <a href="{{ route('dtr.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 transition">Clear filters</a>
-                @endif
-                <button type="submit"
-                        class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
-                    Filter
-                </button>
-            </div>
+            <button type="submit"
+                    class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
+                Filter
+            </button>
+            @if(request()->hasAny(['employee_id','branch_id','cutoff_id','date_from','date_to','pending_ot']))
+                <a href="{{ route('dtr.index') }}" class="px-2 py-2 text-sm text-gray-500 hover:text-gray-800 transition">Clear filters</a>
+            @endif
         </div>
 
     </form>
