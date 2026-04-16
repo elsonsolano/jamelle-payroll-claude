@@ -219,8 +219,14 @@
     <table>
         <tr>
             <td class="label">Basic Pay</td>
-            <td class="amount">PHP {{ number_format($entry->basic_pay, 2) }}</td>
+            <td class="amount">PHP {{ number_format($entry->basic_pay - $unworkedRegularHolidayPay, 2) }}</td>
         </tr>
+        @if($unworkedRegularHolidayPay > 0)
+        <tr>
+            <td class="label">Regular Holiday Pay</td>
+            <td class="amount">PHP {{ number_format($unworkedRegularHolidayPay, 2) }}</td>
+        </tr>
+        @endif
         <tr>
             <td class="label">Overtime Pay</td>
             <td class="amount">PHP {{ number_format($entry->overtime_pay, 2) }}</td>

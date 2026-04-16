@@ -33,7 +33,9 @@ class PayslipController extends Controller
 
         $entry->load('employee.branch', 'employee.user', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
 
-        return view('staff.payslips.show', compact('entry'));
+        $unworkedRegularHolidayPay = $entry->unworkedRegularHolidayPay();
+
+        return view('staff.payslips.show', compact('entry', 'unworkedRegularHolidayPay'));
     }
 
     public function downloadPdf(PayrollEntry $entry): \Illuminate\Http\Response
@@ -44,9 +46,10 @@ class PayslipController extends Controller
 
         $entry->load('employee.branch', 'employee.user', 'payrollCutoff', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
 
-        $cutoff = $entry->payrollCutoff;
+        $cutoff                    = $entry->payrollCutoff;
+        $unworkedRegularHolidayPay = $entry->unworkedRegularHolidayPay();
 
-        $pdf = Pdf::loadView('payroll.entries.pdf', compact('cutoff', 'entry'))
+        $pdf = Pdf::loadView('payroll.entries.pdf', compact('cutoff', 'entry', 'unworkedRegularHolidayPay'))
             ->setPaper('a4', 'portrait');
 
         $filename = 'payslip-' . str($entry->employee->full_name)->slug() . '-' . $cutoff->start_date->format('Y-m-d') . '.pdf';

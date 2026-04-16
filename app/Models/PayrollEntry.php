@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class PayrollEntry extends Model
 {
@@ -65,5 +66,45 @@ class PayrollEntry extends Model
     public function payrollVariableDeductions(): HasMany
     {
         return $this->hasMany(PayrollEntryVariableDeduction::class);
+    }
+
+    /**
+     * The portion of basic_pay that comes from unworked regular holidays.
+     * Daily employees receive 100% daily rate for each unworked regular holiday
+     * (unless the holiday falls on a rest day). This amount is bundled into
+     * basic_pay in the DB; this method extracts it for transparent display.
+     */
+    public function unworkedRegularHolidayPay(): float
+    {
+        if ($this->employee->salary_type !== 'daily') {
+            return 0.0;
+        }
+
+        $cutoff    = $this->payrollCutoff;
+        $dailyRate = (float) $this->employee->rate;
+
+        $regularHolidays = Holiday::where('type', 'regular')
+            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
+            ->get();
+
+        if ($regularHolidays->isEmpty()) {
+            return 0.0;
+        }
+
+        $dtrs = Dtr::where('employee_id', $this->employee_id)
+            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
+            ->get()
+            ->keyBy(fn($d) => Carbon::parse($d->date)->toDateString());
+
+        $total = 0.0;
+        foreach ($regularHolidays as $holiday) {
+            $dateStr = $holiday->date->toDateString();
+            $dtr     = $dtrs->get($dateStr);
+            if (! $dtr?->time_in && ! ($dtr?->is_rest_day ?? false)) {
+                $total += $dailyRate;
+            }
+        }
+
+        return round($total, 2);
     }
 }

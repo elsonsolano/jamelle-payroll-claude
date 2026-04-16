@@ -55,8 +55,14 @@
             </div>
             <div class="px-5 py-3 flex justify-between text-sm">
                 <span class="text-gray-600">Basic Pay</span>
-                <span class="font-medium text-gray-900">PHP {{ number_format($entry->basic_pay, 2) }}</span>
+                <span class="font-medium text-gray-900">PHP {{ number_format($entry->basic_pay - $unworkedRegularHolidayPay, 2) }}</span>
             </div>
+            @if($unworkedRegularHolidayPay > 0)
+            <div class="px-5 py-3 flex justify-between text-sm">
+                <span class="text-gray-600">Regular Holiday Pay</span>
+                <span class="font-medium text-gray-900">PHP {{ number_format($unworkedRegularHolidayPay, 2) }}</span>
+            </div>
+            @endif
             @if($entry->overtime_pay > 0)
             <div class="px-5 py-3 flex justify-between text-sm">
                 <span class="text-gray-600">Overtime Pay</span>

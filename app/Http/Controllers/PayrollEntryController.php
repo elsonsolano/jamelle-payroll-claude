@@ -195,7 +195,9 @@ class PayrollEntryController extends Controller
     {
         $entry->load('employee.branch', 'payrollDeductions', 'payrollVariableDeductions', 'payrollRefunds');
 
-        $pdf = Pdf::loadView('payroll.entries.pdf', compact('cutoff', 'entry'))
+        $unworkedRegularHolidayPay = $entry->unworkedRegularHolidayPay();
+
+        $pdf = Pdf::loadView('payroll.entries.pdf', compact('cutoff', 'entry', 'unworkedRegularHolidayPay'))
             ->setPaper('a4', 'portrait');
 
         $filename = 'payslip-' . str($entry->employee->full_name)->slug() . '-' . $cutoff->start_date->format('Y-m-d') . '.pdf';
