@@ -42,7 +42,7 @@
                     };
                 @endphp
                 <form method="POST" action="{{ route('payroll.cutoffs.generate', $cutoff) }}"
-                      onsubmit="return confirm('{{ $generateConfirm }}')">
+                      onsubmit="return confirmGenerate({{ $pendingDtrCount }}, '{{ addslashes($generateConfirm) }}')">
                     @csrf
                     <button type="submit"
                             class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
@@ -313,5 +313,19 @@
             </form>
         </div>
     </div>
+
+
+@push('scripts')
+<script>
+function confirmGenerate(pendingCount, baseMsg) {
+    var msg = baseMsg;
+    if (pendingCount > 0) {
+        var label = pendingCount === 1 ? 'is 1 unapproved DTR' : 'are ' + pendingCount + ' unapproved DTRs';
+        msg = '\u26a0\ufe0f There ' + label + ' in this cutoff period.\n\n' + baseMsg;
+    }
+    return confirm(msg);
+}
+</script>
+@endpush
 
 </x-app-layout>

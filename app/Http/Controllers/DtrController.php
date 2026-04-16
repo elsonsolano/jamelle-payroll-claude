@@ -17,6 +17,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,6 +54,10 @@ class DtrController extends Controller
 
         if ($request->boolean('pending_ot')) {
             $query->where('ot_status', 'pending');
+        }
+
+        if ($request->boolean('pending_dtr')) {
+            $query->where('status', 'Pending');
         }
 
         $dtrs      = $query->orderByDesc('date')->orderBy('employee_id')->paginate(30)->withQueryString();
@@ -307,7 +312,7 @@ class DtrController extends Controller
 
     public function show(Dtr $dtr): View
     {
-        $dtr->load('employee.branch', 'approvedBy');
+        $dtr->load('employee.branch', 'approvedBy', 'statusChangedBy');
 
         // Resolve schedule for this DTR's date — DailySchedule takes priority
         $dailySchedule = DailySchedule::where('employee_id', $dtr->employee_id)
@@ -328,6 +333,23 @@ class DtrController extends Controller
         return view('dtrs.edit', compact('dtr'));
     }
 
+    public function toggleStatus(Dtr $dtr): JsonResponse
+    {
+        $newStatus = $dtr->status === 'Approved' ? 'Pending' : 'Approved';
+
+        $dtr->update([
+            'status'            => $newStatus,
+            'status_changed_by' => Auth::id(),
+            'status_changed_at' => now(),
+        ]);
+
+        return response()->json([
+            'status'   => $newStatus,
+            'by'       => Auth::user()->name,
+            'at'       => now()->format('M d, Y h:i A'),
+        ]);
+    }
+
     public function update(Request $request, Dtr $dtr): RedirectResponse
     {
         $validated = $request->validate([
@@ -337,6 +359,7 @@ class DtrController extends Controller
             'time_out' => 'nullable|date_format:H:i',
             'ot_hours' => 'nullable|numeric|min:0.25|max:24',
             'notes'    => 'nullable|string|max:500',
+            'status'   => 'nullable|in:Pending,Approved',
         ]);
 
         $otHours = !empty($validated['ot_hours']) ? (float) $validated['ot_hours'] : null;
@@ -368,14 +391,20 @@ class DtrController extends Controller
             $newOtStatus = 'none';
         }
 
+        $newStatus = $validated['status'] ?? $dtr->status;
+        $statusChanged = $newStatus !== $dtr->status;
+
         $dtr->update([
-            'time_in'    => $validated['time_in'] ?? null,
-            'am_out'     => $validated['am_out'] ?? null,
-            'pm_in'      => $validated['pm_in'] ?? null,
-            'time_out'   => $validated['time_out'] ?? null,
-            'ot_end_time' => $otEndTime,
-            'ot_status'  => $newOtStatus,
-            'notes'      => $validated['notes'] ?? null,
+            'time_in'           => $validated['time_in'] ?? null,
+            'am_out'            => $validated['am_out'] ?? null,
+            'pm_in'             => $validated['pm_in'] ?? null,
+            'time_out'          => $validated['time_out'] ?? null,
+            'ot_end_time'       => $otEndTime,
+            'ot_status'         => $newOtStatus,
+            'notes'             => $validated['notes'] ?? null,
+            'status'            => $newStatus,
+            'status_changed_by' => $statusChanged ? Auth::id() : $dtr->status_changed_by,
+            'status_changed_at' => $statusChanged ? now()       : $dtr->status_changed_at,
             ...$computed,
         ]);
 

@@ -27,14 +27,17 @@ class Dtr extends Model
         'ot_approved_at',
         'ot_rejection_reason',
         'notes',
+        'status_changed_by',
+        'status_changed_at',
     ];
 
     protected $casts = [
-        'date'           => 'date',
-        'is_rest_day'    => 'boolean',
-        'total_hours'    => 'decimal:2',
-        'overtime_hours' => 'decimal:2',
-        'ot_approved_at' => 'datetime',
+        'date'               => 'date',
+        'is_rest_day'        => 'boolean',
+        'total_hours'        => 'decimal:2',
+        'overtime_hours'     => 'decimal:2',
+        'ot_approved_at'     => 'datetime',
+        'status_changed_at'  => 'datetime',
     ];
 
     public function employee(): BelongsTo
@@ -45,6 +48,11 @@ class Dtr extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'ot_approved_by');
+    }
+
+    public function statusChangedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'status_changed_by');
     }
 
     public function hasOt(): bool

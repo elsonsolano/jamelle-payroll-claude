@@ -149,6 +149,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         Route::get("dtr/export-excel", [DtrController::class, "exportExcel"])->name("dtr.export-excel");
         Route::get("dtr/{dtr}/edit", [DtrController::class, "edit"])->name("dtr.edit");
         Route::put("dtr/{dtr}", [DtrController::class, "update"])->name("dtr.update");
+        Route::patch("dtr/{dtr}/toggle-status", [DtrController::class, "toggleStatus"])->name("dtr.toggle-status");
         Route::get("dtr/{dtr}", [DtrController::class, "show"])->name("dtr.show");
         Route::post("dtr/{dtr}/approve-ot", [DtrController::class, "approveOt"])->name("dtr.approve-ot");
         Route::post("dtr/{dtr}/reject-ot", [DtrController::class, "rejectOt"])->name("dtr.reject-ot");

@@ -84,7 +84,7 @@ class DtrController extends Controller
             'ot_end_time'    => $otEndTime,
             'ot_status'      => $hasOt ? 'pending' : 'none',
             'source'         => 'manual',
-            'status'         => 'Approved',
+            'status'         => 'Pending',
             'notes'          => $validated['notes'] ?? null,
             ...$computed,
         ]);
@@ -122,7 +122,7 @@ class DtrController extends Controller
 
         if (!$dtr->exists) {
             $dtr->source    = 'manual';
-            $dtr->status    = 'Approved';
+            $dtr->status    = 'Pending';
             $dtr->ot_status = 'none';
         }
 

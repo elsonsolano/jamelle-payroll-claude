@@ -95,7 +95,12 @@ class PayrollCutoffController extends Controller
             'total_acknowledged'=> $cutoff->payrollEntries()->whereNotNull('acknowledged_at')->count(),
         ];
 
-        return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary'));
+        $pendingDtrCount = \App\Models\Dtr::where('status', 'Pending')
+            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
+            ->whereHas('employee', fn ($q) => $q->where('branch_id', $cutoff->branch_id))
+            ->count();
+
+        return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary', 'pendingDtrCount'));
     }
 
     public function pdf(PayrollCutoff $cutoff): Response

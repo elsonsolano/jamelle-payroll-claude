@@ -164,7 +164,7 @@
 
         </div>
 
-        {{-- Row 3: Pending OT + actions --}}
+        {{-- Row 3: Filters + actions --}}
         <div class="flex items-center gap-4 pt-3 border-t border-gray-100">
             <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                 <input type="checkbox" name="pending_ot" value="1"
@@ -172,6 +172,13 @@
                        onchange="this.form.submit()"
                        class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
                 Pending OT only
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input type="checkbox" name="pending_dtr" value="1"
+                       @checked(request()->boolean('pending_dtr'))
+                       onchange="this.form.submit()"
+                       class="rounded border-gray-300 text-rose-500 focus:ring-rose-400">
+                Pending DTR only
             </label>
             <button type="submit"
                     class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition">
@@ -253,6 +260,7 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">OT</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">Late</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 text-center">UT</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 text-center">Status</th>
                         <th class="px-4 py-3 font-semibold text-gray-600"></th>
                     </tr>
                 </thead>
@@ -351,6 +359,18 @@
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-center">
+                                <button
+                                    data-dtr-id="{{ $dtr->id }}"
+                                    onclick="toggleDtrStatus(this)"
+                                    title="Click to toggle"
+                                    class="text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition
+                                        {{ $dtr->status === 'Approved'
+                                            ? 'text-green-700 bg-green-100 hover:bg-green-200'
+                                            : 'text-rose-700 bg-rose-100 hover:bg-rose-200' }}">
+                                    {{ $dtr->status }}
+                                </button>
+                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     @if($dtr->ot_status === 'pending')
@@ -377,7 +397,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-5 py-10 text-center text-gray-400">
+                            <td colspan="13" class="px-5 py-10 text-center text-gray-400">
                                 No DTR records found.
                             </td>
                         </tr>
@@ -402,6 +422,32 @@
         placement: 'top',
         theme: 'light-border',
     });
+
+    async function toggleDtrStatus(btn) {
+        const dtrId = btn.dataset.dtrId;
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        try {
+            const res = await fetch(`/dtr/${dtrId}/toggle-status`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await res.json();
+            const isApproved = data.status === 'Approved';
+            btn.textContent = data.status;
+            btn.className = `text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition ${
+                isApproved
+                    ? 'text-green-700 bg-green-100 hover:bg-green-200'
+                    : 'text-rose-700 bg-rose-100 hover:bg-rose-200'
+            }`;
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
 </script>
 @endpush
 

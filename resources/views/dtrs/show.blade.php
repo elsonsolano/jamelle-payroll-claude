@@ -27,13 +27,26 @@
                         @endif
                     </p>
                 </div>
-                <span @class([
-                    'text-sm font-medium px-3 py-1 rounded-full',
-                    'bg-green-100 text-green-700'  => $dtr->status === 'Approved',
-                    'bg-amber-100 text-amber-700'  => $dtr->status === 'Pending',
-                    'bg-red-100 text-red-700'      => $dtr->status === 'Rejected',
-                ])>{{ $dtr->status }}</span>
+                <button id="dtr-status-badge"
+                        data-dtr-id="{{ $dtr->id }}"
+                        onclick="toggleDtrStatus(this)"
+                        title="Click to toggle"
+                        class="text-sm font-medium px-3 py-1 rounded-full cursor-pointer transition
+                            {{ $dtr->status === 'Approved'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-rose-100 text-rose-700 hover:bg-rose-200' }}">
+                    {{ $dtr->status }}
+                </button>
             </div>
+
+            @if($dtr->status_changed_by && $dtr->statusChangedBy)
+                <p id="dtr-status-meta" class="text-xs text-gray-400 mt-1 text-right">
+                    {{ $dtr->status }} by {{ $dtr->statusChangedBy->name }}
+                    · {{ $dtr->status_changed_at->format('M d, Y h:i A') }}
+                </p>
+            @else
+                <p id="dtr-status-meta" class="text-xs text-gray-400 mt-1 text-right"></p>
+            @endif
 
             <div class="mt-4 pt-4 border-t border-gray-100">
                 <p class="text-sm font-semibold text-gray-800">{{ $dtr->employee->full_name }}</p>
@@ -335,5 +348,37 @@
         @endif
 
     </div>
+
+@push('scripts')
+<script>
+async function toggleDtrStatus(btn) {
+    const dtrId = btn.dataset.dtrId;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    try {
+        const res = await fetch(`/dtr/${dtrId}/toggle-status`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+        const isApproved = data.status === 'Approved';
+        btn.textContent = data.status;
+        btn.className = `text-sm font-medium px-3 py-1 rounded-full cursor-pointer transition ${
+            isApproved
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+        }`;
+        document.getElementById('dtr-status-meta').textContent =
+            `${data.status} by ${data.by} · ${data.at}`;
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+}
+</script>
+@endpush
 
 </x-app-layout>
