@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class PayrollCutoffController extends Controller
 {
@@ -182,6 +185,54 @@ class PayrollCutoffController extends Controller
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
             ->with('success', 'Payroll cutoff has been reinstated.');
+    }
+
+    public function bdoExport(PayrollCutoff $cutoff): Response
+    {
+        $entries = $cutoff->payrollEntries()
+            ->with('employee')
+            ->join('employees', 'employees.id', '=', 'payroll_entries.employee_id')
+            ->orderBy('employees.last_name')
+            ->orderBy('employees.first_name')
+            ->select('payroll_entries.*')
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('BDO Payroll');
+
+        $row = 1;
+        foreach ($entries as $entry) {
+            $employee = $entry->employee;
+            $name     = strtoupper(trim($employee->first_name . ' ' . $employee->last_name));
+
+            $sheet->setCellValue('A' . $row, $employee->bdo_account_number ?? '');
+            $sheet->setCellValue('B' . $row, round((float) $entry->net_pay, 2));
+            $sheet->setCellValue('C' . $row, $name);
+            $sheet->setCellValue('D' . $row, ''); // REMARKS — left blank
+
+            // Format amount as plain decimal number (no currency symbol)
+            $sheet->getStyle('B' . $row)
+                ->getNumberFormat()
+                ->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED2);
+
+            $row++;
+        }
+
+        // Auto-size columns
+        foreach (['A', 'B', 'C', 'D'] as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'BDO-' . str_replace(' ', '-', $cutoff->name) . '-' . now()->format('Y-m-d') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function destroy(PayrollCutoff $cutoff): RedirectResponse

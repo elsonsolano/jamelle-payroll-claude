@@ -11,6 +11,13 @@
             @endif
 
             @if($summary['total_employees'] > 0)
+                <a href="{{ route('payroll.cutoffs.bdo-export', $cutoff) }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M7 20h10a2 2 0 002-2v-3a2 2 0 00-.586-1.414l-2-2A2 2 0 0015 11h-1V7a2 2 0 00-2-2h-2a2 2 0 00-2 2v4H7a2 2 0 00-1.414.586l-2 2A2 2 0 003 15v3a2 2 0 002 2z"/>
+                    </svg>
+                    BDO Export
+                </a>
                 <a href="{{ route('payroll.cutoffs.show', ['cutoff' => $cutoff, 'export' => 'pdf']) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-lg transition">

@@ -138,6 +138,7 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::delete("entries/{entry}/variable-deductions/{variableDeduction}", [PayrollEntryVariableDeductionController::class, "destroy"])->name("entries.variable-deductions.destroy");
             Route::post("generate", [PayrollEntryController::class, "generate"])->name("generate");
             Route::post("finalize", [PayrollEntryController::class, "finalize"])->name("finalize");
+            Route::get("bdo-export", [PayrollCutoffController::class, "bdoExport"])->name("bdo-export");
             Route::post("void", [PayrollCutoffController::class, "void"])->name("void");
             Route::post("unvoid", [PayrollCutoffController::class, "unvoid"])->name("unvoid");
         });
