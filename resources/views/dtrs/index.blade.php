@@ -1,6 +1,35 @@
 <x-app-layout>
     <x-slot name="title">DTR Records</x-slot>
 
+    <script>
+    function employeeSelect(employees, initialId) {
+        return {
+            employees,
+            search: '',
+            open: false,
+            selectedId: initialId ? String(initialId) : '',
+            selectedName: '',
+            init() {
+                if (this.selectedId) {
+                    const found = this.employees.find(e => String(e.id) === this.selectedId);
+                    this.selectedName = found ? found.name : '';
+                }
+            },
+            get filtered() {
+                if (!this.search) return this.employees;
+                const q = this.search.toLowerCase();
+                return this.employees.filter(e => e.name.toLowerCase().includes(q));
+            },
+            select(id, name) {
+                this.selectedId = id ? String(id) : '';
+                this.selectedName = name;
+                this.open = false;
+                this.search = '';
+            },
+        };
+    }
+    </script>
+
     {{-- Filters --}}
     <form method="GET" action="{{ route('dtr.index') }}" class="bg-white rounded-xl border border-gray-200 p-4 mb-5">
         <div class="flex flex-wrap gap-3 items-end">
@@ -17,15 +46,46 @@
                 </select>
             </div>
 
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1"
+                 x-data="employeeSelect({{ json_encode($employees->map(fn($e) => ['id' => $e->id, 'name' => $e->full_name])->values()) }}, '{{ request('employee_id') }}')"
+                 @click.outside="open = false">
                 <label class="text-xs font-medium text-gray-500">Employee</label>
-                <select name="employee_id"
-                        class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-48">
-                    <option value="">All Employees</option>
-                    @foreach($employees as $emp)
-                        <option value="{{ $emp->id }}" @selected(request('employee_id') == $emp->id)>{{ $emp->full_name }}</option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="employee_id" :value="selectedId">
+                <div class="relative">
+                    <button type="button"
+                            @click="open = !open; if (open) $nextTick(() => $refs.searchInput.focus())"
+                            class="w-48 flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm text-left hover:border-gray-400 transition">
+                        <span class="truncate" :class="selectedId ? 'text-gray-800' : 'text-gray-400'"
+                              x-text="selectedId ? selectedName : 'All Employees'"></span>
+                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="open" x-cloak
+                         class="absolute z-20 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                        <div class="p-2 border-b border-gray-100">
+                            <input type="text" x-model="search" x-ref="searchInput"
+                                   @click.stop @keydown.escape="open = false"
+                                   placeholder="Search employee…"
+                                   class="w-full rounded-md border-gray-300 text-sm px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <ul class="max-h-60 overflow-y-auto py-1">
+                            <li @click="select('', 'All Employees')"
+                                class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                                :class="!selectedId ? 'font-medium text-indigo-600' : 'text-gray-500'">
+                                All Employees
+                            </li>
+                            <template x-for="emp in filtered" :key="emp.id">
+                                <li @click="select(emp.id, emp.name)"
+                                    class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 truncate"
+                                    :class="selectedId == emp.id ? 'font-medium text-indigo-600 bg-indigo-50' : 'text-gray-700'"
+                                    x-text="emp.name"></li>
+                            </template>
+                            <li x-show="filtered.length === 0"
+                                class="px-3 py-2 text-sm text-gray-400 italic">No employees found</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="flex flex-col gap-1">
