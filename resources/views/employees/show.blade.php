@@ -97,6 +97,10 @@
                     <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->tin_no ?: '—' }}</dd>
                 </div>
                 <div>
+                    <dt class="text-gray-500">BDO Account#</dt>
+                    <dd class="font-mono font-medium text-gray-900 mt-0.5">{{ $employee->bdo_account_number ?: '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-gray-500">Contact Number</dt>
                     <dd class="font-medium text-gray-900 mt-0.5">{{ $employee->contact_number ?: '—' }}</dd>
                 </div>

@@ -186,6 +186,13 @@
                    placeholder="xxx-xxx-xxx-xxx">
             @error('tin_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
         </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">BDO Account#</label>
+            <input type="text" name="bdo_account_number" value="{{ old('bdo_account_number', $employee->bdo_account_number ?? '') }}"
+                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="xxxx-xxxx-xxxx">
+            @error('bdo_account_number')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
     </div>
 
     {{-- Active --}}
