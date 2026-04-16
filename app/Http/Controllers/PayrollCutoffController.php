@@ -187,7 +187,7 @@ class PayrollCutoffController extends Controller
             ->with('success', 'Payroll cutoff has been reinstated.');
     }
 
-    public function bdoExport(PayrollCutoff $cutoff): Response
+    public function bdoExport(PayrollCutoff $cutoff): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $entries = $cutoff->payrollEntries()
             ->with('employee')
