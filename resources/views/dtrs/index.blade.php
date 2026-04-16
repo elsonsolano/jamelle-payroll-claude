@@ -35,13 +35,16 @@
         $todayStr     = today()->toDateString();
         $yesterdayStr = today()->subDay()->toDateString();
         $last7Str     = today()->subDays(6)->toDateString();
+        $last15Str    = today()->subDays(14)->toDateString();
         $baseParams   = array_filter(['branch_id' => request('branch_id'), 'employee_id' => request('employee_id')]);
         $todayLink    = route('dtr.index', array_merge($baseParams, ['date_from' => $todayStr,     'date_to' => $todayStr]));
         $yestLink     = route('dtr.index', array_merge($baseParams, ['date_from' => $yesterdayStr, 'date_to' => $yesterdayStr]));
         $last7Link    = route('dtr.index', array_merge($baseParams, ['date_from' => $last7Str,     'date_to' => $todayStr]));
+        $last15Link   = route('dtr.index', array_merge($baseParams, ['date_from' => $last15Str,    'date_to' => $todayStr]));
         $isToday      = request('date_from') === $todayStr     && request('date_to') === $todayStr     && !request('cutoff_id');
         $isYesterday  = request('date_from') === $yesterdayStr && request('date_to') === $yesterdayStr && !request('cutoff_id');
         $isLast7      = request('date_from') === $last7Str     && request('date_to') === $todayStr     && !request('cutoff_id');
+        $isLast15     = request('date_from') === $last15Str    && request('date_to') === $todayStr     && !request('cutoff_id');
     @endphp
 
     <form method="GET" action="{{ route('dtr.index') }}" class="bg-white rounded-xl border border-gray-200 p-4 mb-5">
@@ -60,6 +63,10 @@
             <a href="{{ $last7Link }}"
                class="px-3 py-1 rounded-full text-xs font-medium border transition {{ $isLast7 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600' }}">
                 Last 7 Days
+            </a>
+            <a href="{{ $last15Link }}"
+               class="px-3 py-1 rounded-full text-xs font-medium border transition {{ $isLast15 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600' }}">
+                Last 15 Days
             </a>
         </div>
 
