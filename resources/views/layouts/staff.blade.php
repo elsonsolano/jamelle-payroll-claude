@@ -21,11 +21,27 @@
 <div class="min-h-screen flex flex-col max-w-lg mx-auto bg-white shadow-lg">
 
     {{-- Top Bar --}}
-    <header class="bg-green-500 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shadow">
-        <div class="flex-1">
-            <h1 class="text-base font-semibold leading-tight">{{ $title ?? 'Dashboard' }}</h1>
-            <p class="text-xs text-green-100 leading-tight">{{ Auth::user()->employee->branch->name ?? '' }}</p>
-        </div>
+    <header class="bg-green-600 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shadow">
+        @if(request()->routeIs('staff.dashboard'))
+            @php
+                $emp      = Auth::user()->employee;
+                $initials = strtoupper(substr($emp->first_name ?? '', 0, 1) . substr($emp->last_name ?? '', 0, 1));
+            @endphp
+            <div class="flex-1 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center shrink-0">
+                    <span class="text-white font-bold text-sm leading-none">{{ $initials }}</span>
+                </div>
+                <div>
+                    <p class="text-green-200 text-xs leading-tight">Hello,</p>
+                    <p class="text-white font-semibold text-sm leading-tight">{{ $emp->first_name }}</p>
+                </div>
+            </div>
+        @else
+            <div class="flex-1">
+                <h1 class="text-base font-semibold leading-tight">{{ $title ?? 'Dashboard' }}</h1>
+                <p class="text-xs text-green-100 leading-tight">{{ Auth::user()->employee->branch->name ?? '' }}</p>
+            </div>
+        @endif
         <div class="flex items-center gap-2">
             {{-- Notification bell --}}
             <a href="{{ route('staff.notifications.index') }}" class="relative p-1">
@@ -127,7 +143,7 @@
     </div>
 
     {{-- Page content --}}
-    <main class="flex-1 p-4 pb-24">
+    <main class="{{ request()->routeIs('staff.dashboard') ? 'flex-1 pb-24 bg-green-600' : 'flex-1 p-4 pb-24' }}">
         {{ $slot }}
     </main>
 
@@ -154,7 +170,7 @@
                         <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white"></span>
                     @endif
                 </div>
-                <span class="text-xs font-medium">DTR</span>
+                <span class="text-xs font-medium">Logs</span>
             </a>
 
             <a href="{{ route('staff.schedule') }}"

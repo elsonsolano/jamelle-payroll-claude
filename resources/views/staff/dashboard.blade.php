@@ -1,97 +1,107 @@
 <x-staff-layout title="Dashboard">
 
-    {{-- Welcome card --}}
-    <div class="bg-green-600 text-white rounded-2xl p-4 mb-4">
-        <p class="text-sm text-green-200">Welcome back,</p>
-        <h2 class="text-xl font-bold">{{ Auth::user()->employee->first_name }}</h2>
-        <p class="text-xs text-green-300 mt-0.5">{{ Auth::user()->employee->position }}</p>
-    </div>
+@php
+    $hour     = now()->hour;
+    $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
 
-    {{-- Daily quote --}}
-    <div class="border-l-4 border-green-400 bg-green-50 rounded-r-2xl px-4 py-3 mb-4">
-        <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Be Inspired</p>
-        <p class="text-sm text-gray-700 leading-snug italic">"{{ $quote['text'] }}"</p>
-        <p class="text-xs text-gray-400 mt-1.5 font-medium">— {{ $quote['author'] }}</p>
-    </div>
+    $today      = today();
+    $yesterday  = today()->subDay();
+    $todayLabel = $today->format('D, M d Y');
+    $yLabel     = $yesterday->format('D, M d Y');
 
-    {{-- Today's schedule snippet --}}
-    <a href="{{ route('staff.schedule') }}"
-       class="block bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4 shadow-sm hover:border-green-200 transition">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 font-medium">Today's Schedule</p>
-                    @if($todaySchedule['source'] === 'none')
-                        <p class="text-sm font-semibold text-gray-400">No schedule set</p>
-                    @elseif($todaySchedule['is_day_off'])
-                        <p class="text-sm font-semibold text-orange-500">Rest Day</p>
-                    @else
-                        <p class="text-sm font-semibold text-gray-800">
-                            {{ $todaySchedule['start'] ? \Carbon\Carbon::parse($todaySchedule['start'])->format('g:i A') : '—' }}
-                            –
-                            {{ $todaySchedule['end'] ? \Carbon\Carbon::parse($todaySchedule['end'])->format('g:i A') : '—' }}
-                        </p>
-                    @endif
-                </div>
-            </div>
-            <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-        </div>
-    </a>
+    $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : null;
 
-    {{-- OT Approvals waiting (approvers only) --}}
-    @if($pendingApprovalCount > 0)
-    <div class="bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm mb-4">
-        <p class="text-xs text-amber-700 mb-1">Staff is waiting for your approval</p>
-        <div class="flex items-center justify-between">
-            <p class="text-2xl font-bold text-amber-600">{{ $pendingApprovalCount }}</p>
-            <a href="{{ route('staff.ot-approvals.index') }}" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">Review</a>
-        </div>
-    </div>
-    @endif
+    // Next loggable event — Yesterday (overnight)
+    $yesterdayNextEvent = null;
+    if ($yesterdayDtr) {
+        if      (!$yesterdayDtr->am_out) $yesterdayNextEvent = 'am_out';
+        elseif  (!$yesterdayDtr->pm_in)  $yesterdayNextEvent = 'pm_in';
+        else                             $yesterdayNextEvent = 'time_out';
+    }
 
-    {{-- DTR Cards + shared bottom sheet --}}
-    @php
-        $today      = today();
-        $yesterday  = today()->subDay();
-        $todayLabel = $today->format('D, M d Y');
-        $events = [
-            'time_in'  => ['label' => 'Time In',    'color' => '#04AA48'],
-            'am_out'   => ['label' => 'Start Break', 'color' => '#E0A400'],
-            'pm_in'    => ['label' => 'End Break',   'color' => '#E26E17'],
-            'time_out' => ['label' => 'Time Out',    'color' => '#026DEF'],
-        ];
-        $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : null;
+    // Shift state
+    $shiftState = 'not_started';
+    if ($todayDtr) {
+        if      ($todayDtr->time_out) $shiftState = 'complete';
+        elseif  ($todayDtr->pm_in)    $shiftState = 'back_from_break';
+        elseif  ($todayDtr->am_out)   $shiftState = 'on_break';
+        elseif  ($todayDtr->time_in)  $shiftState = 'working';
+    }
 
-        // Next loggable event — Today
-        $nextEvent = null;
-        if ($todayDtr) {
-            if (!$todayDtr->time_out) {
-                if      (!$todayDtr->time_in) $nextEvent = 'time_in';
-                elseif  (!$todayDtr->am_out)  $nextEvent = 'am_out';
-                elseif  (!$todayDtr->pm_in)   $nextEvent = 'pm_in';
-                else                          $nextEvent = 'time_out';
-            }
-        } else {
-            $nextEvent = 'time_in';
+    // Late indicator — only when not yet timed in and schedule exists
+    $isLate      = false;
+    $lateMinutes = 0;
+    if ($todaySchedule['source'] !== 'none'
+        && !$todaySchedule['is_day_off']
+        && $todaySchedule['start']
+        && !$todayDtr?->time_in)
+    {
+        $scheduledStart = \Carbon\Carbon::parse($todaySchedule['start']);
+        if (now()->gt($scheduledStart)) {
+            $lateMinutes = (int) now()->diffInMinutes($scheduledStart);
+            $isLate      = $lateMinutes > 0;
         }
+    }
+@endphp
 
-        // Next loggable event — Yesterday (overnight continuation)
-        $yesterdayNextEvent = null;
-        if ($yesterdayDtr) {
-            if      (!$yesterdayDtr->am_out) $yesterdayNextEvent = 'am_out';
-            elseif  (!$yesterdayDtr->pm_in)  $yesterdayNextEvent = 'pm_in';
-            else                             $yesterdayNextEvent = 'time_out';
+<script>
+function liveClock() {
+    return {
+        now: new Date(),
+        init() { setInterval(() => { this.now = new Date(); }, 1000); },
+        get hourMin() {
+            const h = this.now.getHours() % 12 || 12;
+            const m = String(this.now.getMinutes()).padStart(2, '0');
+            return h + ':' + m;
+        },
+        get ampm() {
+            return this.now.getHours() >= 12 ? 'PM' : 'AM';
         }
-    @endphp
+    };
+}
+</script>
 
-    {{-- Shared Alpine component wrapping both cards and the single bottom sheet --}}
+{{-- White card floating on the green main background --}}
+<div class="bg-white rounded-t-3xl pt-7 px-5 pb-28">
+
+    {{-- Clock --}}
+    <div x-data="liveClock()" class="text-center mb-1">
+        <div class="flex items-end justify-center gap-1.5">
+            <span class="text-6xl font-bold text-gray-900 tabular-nums leading-none" x-text="hourMin"></span>
+            <span class="text-2xl font-semibold text-gray-400 mb-1.5" x-text="ampm"></span>
+        </div>
+        <p class="text-sm text-gray-400 mt-2">{{ now()->format('l, F j, Y') }}</p>
+    </div>
+
+    {{-- Schedule pill + late badge --}}
+    <div class="flex items-center justify-center gap-2 mt-3 mb-7">
+        @if($todaySchedule['source'] === 'none')
+            <span class="text-xs text-gray-400">No schedule set today</span>
+        @elseif($todaySchedule['is_day_off'])
+            <span class="inline-flex items-center gap-1.5 text-xs text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full font-medium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+                Rest Day
+            </span>
+        @else
+            <span class="inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-full font-medium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {{ \Carbon\Carbon::parse($todaySchedule['start'])->format('g:i A') }}
+                –
+                {{ \Carbon\Carbon::parse($todaySchedule['end'])->format('g:i A') }}
+            </span>
+            @if($isLate && $lateMinutes > 0)
+                <span class="inline-flex items-center text-xs bg-red-500 text-white px-2.5 py-1 rounded-full font-bold">
+                    {{ $lateMinutes }}{{ $lateMinutes === 1 ? 'min' : 'mins' }} late
+                </span>
+            @endif
+        @endif
+    </div>
+
+    {{-- Alpine wrapper: action button + bottom sheet --}}
     <div x-data="{
             open: false,
             date: '{{ $today->format('Y-m-d') }}',
@@ -104,173 +114,183 @@
             otError: '',
             note: '',
             todayNote: '{{ addslashes($todayDtr?->notes ?? '') }}',
-            yesterdayNote: '{{ addslashes($yesterdayDtr?->notes ?? '') }}'
-         }">
+            yesterdayNote: '{{ addslashes($yesterdayDtr?->notes ?? '') }}',
+            openSheet(evt, lbl, dateStr, dateL, noteVal) {
+                const n = new Date();
+                this.time      = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+                this.event     = evt;
+                this.label     = lbl;
+                this.date      = dateStr;
+                this.dateLabel = dateL;
+                this.hasOt     = false;
+                this.otHours   = '';
+                this.otError   = '';
+                this.note      = noteVal;
+                this.open      = true;
+            }
+        }">
 
-        {{-- ── Yesterday Incomplete Shift Card ── --}}
+        {{-- Open Shift (yesterday overnight) --}}
         @if($yesterdayDtr)
         @php
-            $yLabel = $yesterday->format('D, M d Y');
+            $yNextLabel = match($yesterdayNextEvent) {
+                'am_out'   => 'Start Break',
+                'pm_in'    => 'End Break',
+                'time_out' => 'Time Out',
+                default    => null,
+            };
+            $yNextStyle = match($yesterdayNextEvent) {
+                'am_out'   => 'bg-amber-500 hover:bg-amber-600',
+                'pm_in'    => 'bg-orange-500 hover:bg-orange-600',
+                'time_out' => 'bg-blue-600 hover:bg-blue-700',
+                default    => 'bg-gray-400',
+            };
         @endphp
-        <div class="bg-amber-50 border border-amber-300 rounded-2xl shadow-sm mb-4">
-            <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
+            <div class="flex items-start justify-between mb-2">
                 <div>
-                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Open Shift</p>
-                    <p class="text-sm font-semibold text-gray-800">{{ $yLabel }}</p>
+                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Open Shift — Yesterday</p>
+                    <p class="text-xs text-amber-700 mt-0.5">Timed in at <span class="font-bold">{{ $fmt12($yesterdayDtr->time_in) }}</span></p>
                 </div>
-                <a href="{{ route('staff.dtr.edit', $yesterdayDtr) }}"
-                   class="flex items-center gap-1 text-xs text-indigo-600 font-medium">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Edit
-                </a>
+                <a href="{{ route('staff.dtr.edit', $yesterdayDtr) }}" class="text-xs text-indigo-600 font-medium shrink-0 ml-3">Edit</a>
             </div>
-
-            <div class="px-4 pb-3 space-y-2">
-                @foreach($events as $field => $event)
-                    @php
-                        $yLoggedTime = $yesterdayDtr->{$field} ?? null;
-                        $yIsLogged   = !is_null($yLoggedTime);
-                        $yIsNext     = $yesterdayNextEvent === $field;
-                        $yIsLocked   = !$yIsLogged && !$yIsNext;
-                        $eLabel      = $event['label'];
-                        $eColor      = $event['color'];
-                    @endphp
-                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
-                         style="{{ $yIsLocked ? 'background-color:#fffbeb' : 'background-color:' . $eColor . '18' }}">
-                        <div class="flex items-center gap-2.5">
-                            @if($yIsLogged)
-                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                     style="background-color:{{ $eColor }}">
-                                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
-                            @elseif($yIsNext)
-                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                     style="background-color:{{ $eColor }}">
-                                    <div class="w-2 h-2 rounded-full bg-white"></div>
-                                </div>
-                            @else
-                                <div class="w-6 h-6 rounded-full border-2 border-amber-200 flex-shrink-0"></div>
-                            @endif
-
-                            <div>
-                                <p class="text-sm font-medium {{ $yIsLocked ? 'text-amber-300' : '' }}"
-                                   @if(!$yIsLocked) style="color:{{ $eColor }}" @endif>{{ $eLabel }}</p>
-                                @if($yIsLogged)
-                                    <p class="text-xs" style="color:{{ $eColor }}">
-                                        {{ $fmt12($yLoggedTime) }}
-                                        @if($field === 'time_out' && $yesterdayDtr->time_in && strtotime($yLoggedTime) <= strtotime($yesterdayDtr->time_in))
-                                            <span class="text-orange-500 font-semibold">(+1 day)</span>
-                                        @endif
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-
-                        @if($yIsNext)
-                            <button type="button"
-                                    @click="date = '{{ $yesterday->format('Y-m-d') }}'; dateLabel = '{{ $yLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = yesterdayNote; open = true"
-                                    class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
-                                    style="background-color:{{ $eColor }}">
-                                Tap to Log
-                            </button>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
+            @if($yesterdayNextEvent && $yNextLabel)
+            <button type="button"
+                    @click="openSheet('{{ $yesterdayNextEvent }}', '{{ $yNextLabel }}', '{{ $yesterday->format('Y-m-d') }}', '{{ $yLabel }}', yesterdayNote)"
+                    class="w-full {{ $yNextStyle }} text-white font-semibold py-2.5 rounded-xl text-sm transition">
+                {{ $yNextLabel }}
+            </button>
+            @endif
         </div>
         @endif
 
-        {{-- ── Today's DTR Card ── --}}
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4">
+        {{-- Big Circle Button --}}
+        <div class="flex flex-col items-center mb-7">
 
-            <div class="flex items-center justify-between px-4 pt-4 pb-2">
-                <div>
-                    <p class="text-xs text-gray-400">Today</p>
-                    <p class="text-sm font-semibold text-gray-800">{{ $todayLabel }}</p>
-                </div>
-                @if($todayDtr)
-                    <a href="{{ route('staff.dtr.edit', $todayDtr) }}"
-                       class="flex items-center gap-1 text-xs text-indigo-600 font-medium">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                        Edit
-                    </a>
-                @endif
+            @if(($todaySchedule['is_day_off'] ?? false) && $shiftState === 'not_started')
+            {{-- Rest Day --}}
+            <div class="w-44 h-44 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex flex-col items-center justify-center gap-2 shadow-inner">
+                <svg class="w-12 h-12 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+                <span class="text-orange-400 font-bold text-xs tracking-widest">REST DAY</span>
             </div>
+            <p class="text-xs text-gray-400 mt-3">Enjoy your day off!</p>
 
-            <div class="px-4 pb-3 space-y-2">
-                @foreach($events as $field => $event)
-                    @php
-                        $eLabel     = $event['label'];
-                        $eColor     = $event['color'];
-                        $loggedTime = $todayDtr?->{$field} ?? null;
-                        $isLogged   = !is_null($loggedTime);
-                        $isNext     = $nextEvent === $field;
-                        $isLocked   = !$isLogged && !$isNext;
-                    @endphp
+            @elseif($shiftState === 'not_started')
+            {{-- TIME IN --}}
+            <button type="button"
+                    @click="openSheet('time_in', 'Time In', '{{ $today->format('Y-m-d') }}', '{{ $todayLabel }}', todayNote)"
+                    class="w-44 h-44 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-2xl shadow-green-200 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-white font-bold text-sm tracking-widest">TIME IN</span>
+            </button>
+            <p class="text-xs text-gray-400 mt-3">Tap to start your shift</p>
 
-                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
-                         style="{{ $isLocked ? 'background-color:#f9fafb' : 'background-color:' . $eColor . '18' }}">
-                        <div class="flex items-center gap-2.5">
-                            @if($isLogged)
-                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                     style="background-color:{{ $eColor }}">
-                                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
-                            @elseif($isNext)
-                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                     style="background-color:{{ $eColor }}">
-                                    <div class="w-2 h-2 rounded-full bg-white"></div>
-                                </div>
-                            @else
-                                <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"></div>
-                            @endif
+            @elseif($shiftState === 'working')
+            {{-- START BREAK (primary) --}}
+            <button type="button"
+                    @click="openSheet('am_out', 'Start Break', '{{ $today->format('Y-m-d') }}', '{{ $todayLabel }}', todayNote)"
+                    class="w-44 h-44 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-2xl shadow-amber-200 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-white font-bold text-sm tracking-widest">START BREAK</span>
+            </button>
+            {{-- TIME OUT (secondary - skip break) --}}
+            <button type="button"
+                    @click="openSheet('time_out', 'Time Out', '{{ $today->format('Y-m-d') }}', '{{ $todayLabel }}', todayNote)"
+                    class="mt-3 text-xs text-gray-400 border border-gray-200 bg-white px-5 py-2 rounded-full shadow-sm hover:border-gray-300 hover:text-gray-600 transition">
+                Skip break → Time Out
+            </button>
 
-                            <div>
-                                <p class="text-sm font-medium {{ $isLocked ? 'text-gray-400' : '' }}"
-                                   @if(!$isLocked) style="color:{{ $eColor }}" @endif>{{ $eLabel }}</p>
-                                @if($isLogged)
-                                    <p class="text-xs" style="color:{{ $eColor }}">
-                                        {{ $fmt12($loggedTime) }}
-                                        @if($field === 'time_out' && $todayDtr->time_in && strtotime($loggedTime) <= strtotime($todayDtr->time_in))
-                                            <span class="text-orange-500 font-semibold">(+1 day)</span>
-                                        @endif
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
+            @elseif($shiftState === 'on_break')
+            {{-- END BREAK --}}
+            <button type="button"
+                    @click="openSheet('pm_in', 'End Break', '{{ $today->format('Y-m-d') }}', '{{ $todayLabel }}', todayNote)"
+                    class="w-44 h-44 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-2xl shadow-orange-200 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-white font-bold text-sm tracking-widest">END BREAK</span>
+            </button>
+            <p class="text-xs text-gray-400 mt-3">Break since {{ $fmt12($todayDtr->am_out) }}</p>
 
-                        @if($isNext)
-                            <button type="button"
-                                    @click="date = '{{ $today->format('Y-m-d') }}'; dateLabel = '{{ $todayLabel }}'; event = '{{ $field }}'; label = '{{ $eLabel }}'; time = ''; hasOt = false; otHours = ''; otError = ''; note = todayNote; open = true"
-                                    class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg transition"
-                                    style="background-color:{{ $eColor }}">
-                                Tap to Log
-                            </button>
-                        @endif
-                    </div>
-                @endforeach
+            @elseif($shiftState === 'back_from_break')
+            {{-- TIME OUT --}}
+            <button type="button"
+                    @click="openSheet('time_out', 'Time Out', '{{ $today->format('Y-m-d') }}', '{{ $todayLabel }}', todayNote)"
+                    class="w-44 h-44 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-2xl shadow-blue-200 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                <span class="text-white font-bold text-sm tracking-widest">TIME OUT</span>
+            </button>
 
-                @if($todayDtr && $todayDtr->time_in && $todayDtr->time_out)
-                    <div class="pt-1 flex justify-end">
-                        <span class="text-xs text-gray-500 font-medium">
-                            Total: <span class="text-gray-800">{{ $todayDtr->total_hours }}h</span>
-                        </span>
-                    </div>
+            @elseif($shiftState === 'complete')
+            {{-- SHIFT DONE --}}
+            <div class="w-44 h-44 rounded-full bg-gradient-to-br from-green-100 to-emerald-200 flex flex-col items-center justify-center gap-2 shadow-inner">
+                <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-green-600 font-bold text-xs tracking-widest">SHIFT DONE</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-3">
+                {{ $fmt12($todayDtr->time_in) }} – {{ $fmt12($todayDtr->time_out) }}
+                @if(strtotime($todayDtr->time_out) <= strtotime($todayDtr->time_in))
+                    <span class="text-orange-500">(+1 day)</span>
                 @endif
+            </p>
+            @if($todayDtr->ot_status !== 'none')
+            <span class="mt-1.5 text-xs px-2.5 py-0.5 rounded-full font-medium
+                {{ $todayDtr->ot_status === 'approved' ? 'bg-green-100 text-green-700' : '' }}
+                {{ $todayDtr->ot_status === 'pending'  ? 'bg-amber-100 text-amber-700'  : '' }}
+                {{ $todayDtr->ot_status === 'rejected' ? 'bg-red-100 text-red-700'      : '' }}">
+                OT {{ ucfirst($todayDtr->ot_status) }}
+            </span>
+            @endif
+            <a href="{{ route('staff.dtr.edit', $todayDtr) }}" class="mt-2 text-xs text-gray-300 underline underline-offset-2">Edit record</a>
+            @endif
+
+        </div>{{-- end circle button area --}}
+
+        {{-- Summary Row --}}
+        <div class="flex items-center justify-around py-4 border-t border-b border-gray-100">
+            <div class="text-center flex-1">
+                <p class="text-base font-bold text-gray-800 tabular-nums">{{ $fmt12($todayDtr?->time_in) ?? '—' }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Time In</p>
+            </div>
+            <div class="w-px h-8 bg-gray-200 shrink-0"></div>
+            <div class="text-center flex-1">
+                <p class="text-base font-bold text-gray-800 tabular-nums">{{ $fmt12($todayDtr?->time_out) ?? '—' }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Time Out</p>
+            </div>
+            <div class="w-px h-8 bg-gray-200 shrink-0"></div>
+            <div class="text-center flex-1">
+                <p class="text-base font-bold text-gray-800 tabular-nums">
+                    {{ $todayDtr?->total_hours ? $todayDtr->total_hours . 'h' : '—' }}
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">Hours</p>
             </div>
         </div>
 
-        {{-- ── Shared Bottom Sheet ── --}}
+        {{-- OT Approvals (approvers only) --}}
+        @if($pendingApprovalCount > 0)
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-amber-700">OT Approvals Pending</p>
+                <p class="text-xl font-bold text-amber-600">{{ $pendingApprovalCount }}</p>
+            </div>
+            <a href="{{ route('staff.ot-approvals.index') }}"
+               class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">
+                Review
+            </a>
+        </div>
+        @endif
+
+        {{-- Bottom Sheet --}}
         <div x-show="open" x-cloak
              class="fixed inset-0 z-50 flex flex-col justify-end"
              x-transition:enter="transition ease-out duration-200"
@@ -296,7 +316,7 @@
                     <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     </svg>
-                    <p class="text-xs text-red-700 font-medium">Make sure the times you enter match exactly what is recorded in your timemark.</p>
+                    <p class="text-xs text-red-700 font-medium">Make sure the time you enter matches what is recorded in your timemark.</p>
                 </div>
 
                 <p class="text-xs text-gray-400 mb-0.5" x-text="dateLabel"></p>
@@ -305,7 +325,7 @@
                 <form method="POST" action="{{ route('staff.dtr.log-event') }}"
                       @submit.prevent="if (hasOt && !otHours) { otError = 'Please enter your overtime hours.' } else { otError = ''; $el.submit() }">
                     @csrf
-                    <input type="hidden" name="date" :value="date">
+                    <input type="hidden" name="date"  :value="date">
                     <input type="hidden" name="event" :value="event">
 
                     <div class="mb-4">
@@ -318,7 +338,6 @@
                            x-text="time ? new Date('1970-01-01T' + time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''"></p>
                     </div>
 
-                    {{-- OT section — only shown for Time Out --}}
                     <div x-show="event === 'time_out'" x-cloak class="mb-5">
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
                             <label class="flex items-center gap-3 cursor-pointer">
@@ -339,13 +358,12 @@
                         </div>
                     </div>
 
-                    {{-- Notes --}}
                     <div class="mb-5">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Note <span class="text-gray-400 font-normal">(optional)</span>
                         </label>
                         <textarea name="notes" x-model="note" rows="2" maxlength="500"
-                                  placeholder="Note any reason here — late, early out, or anything else…"
+                                  placeholder="Late, early out, or anything else…"
                                   class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
                     </div>
 
@@ -356,53 +374,65 @@
                         </button>
                         <button type="submit"
                                 class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition">
-                            Save
+                            Confirm
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-    </div> {{-- end Alpine wrapper --}}
+    </div>{{-- end Alpine wrapper --}}
 
-    {{-- Recent DTRs --}}
+    {{-- Recent Logs --}}
     @if($recentDtrs->isNotEmpty())
-    <h3 class="text-sm font-semibold text-gray-700 mb-2">Recent DTRs</h3>
-    <div class="space-y-2">
-        @foreach($recentDtrs as $dtr)
-        <div class="bg-white rounded-xl border border-gray-100 p-3 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-sm font-medium text-gray-800">{{ $dtr->date->format('D, M d Y') }}</p>
-                <p class="text-xs text-gray-400">
-                    {{ $dtr->time_in ? date('g:i A', strtotime($dtr->time_in)) : '--' }}
-                    –
-                    {{ $dtr->time_out ? date('g:i A', strtotime($dtr->time_out)) : '--' }}
-                    @if($dtr->time_in && $dtr->time_out && strtotime($dtr->time_out) <= strtotime($dtr->time_in))
-                        <span class="text-orange-500 font-semibold">(+1 day)</span>
-                    @endif
-                    &nbsp;·&nbsp;{{ $dtr->total_hours }}h
-                </p>
-            </div>
-            <div class="flex items-center gap-2">
-                @if($dtr->ot_status !== 'none')
-                    <span class="text-xs px-2 py-0.5 rounded-full font-medium
-                        {{ $dtr->ot_status === 'approved' ? 'bg-green-100 text-green-700' : '' }}
-                        {{ $dtr->ot_status === 'pending' ? 'bg-amber-100 text-amber-700' : '' }}
-                        {{ $dtr->ot_status === 'rejected' ? 'bg-red-100 text-red-700' : '' }}">
-                        OT {{ ucfirst($dtr->ot_status) }}
-                    </span>
-                @endif
-                <a href="{{ route('staff.dtr.edit', $dtr) }}" class="text-gray-400 hover:text-green-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                </a>
-            </div>
+    <div class="mt-5">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-700">Recent Logs</h3>
+            <a href="{{ route('staff.dtr.index') }}" class="text-xs text-green-600 font-medium">View All</a>
         </div>
-        @endforeach
-        <a href="{{ route('staff.dtr.index') }}" class="block text-center text-green-600 text-sm mt-3 font-medium">View All DTRs</a>
+        <div class="divide-y divide-gray-100">
+            @foreach($recentDtrs as $dtr)
+            <div class="flex items-center justify-between py-3">
+                <div>
+                    <p class="text-sm font-medium text-gray-800">{{ $dtr->date->format('D, M d') }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        {{ $dtr->time_in ? date('g:i A', strtotime($dtr->time_in)) : '--' }}
+                        –
+                        {{ $dtr->time_out ? date('g:i A', strtotime($dtr->time_out)) : '--' }}
+                        @if($dtr->time_in && $dtr->time_out && strtotime($dtr->time_out) <= strtotime($dtr->time_in))
+                            <span class="text-orange-500">(+1 day)</span>
+                        @endif
+                        · {{ $dtr->total_hours }}h
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    @if($dtr->ot_status !== 'none')
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {{ $dtr->ot_status === 'approved' ? 'bg-green-100 text-green-700' : '' }}
+                            {{ $dtr->ot_status === 'pending'  ? 'bg-amber-100 text-amber-700'  : '' }}
+                            {{ $dtr->ot_status === 'rejected' ? 'bg-red-100 text-red-700'      : '' }}">
+                            OT {{ ucfirst($dtr->ot_status) }}
+                        </span>
+                    @endif
+                    <a href="{{ route('staff.dtr.edit', $dtr) }}" class="text-gray-300 hover:text-green-500 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            @endforeach
+        </div>
     </div>
     @endif
+
+    {{-- Quote --}}
+    <div class="mt-6 text-center px-2">
+        <p class="text-xs text-gray-300 italic leading-relaxed">"{{ $quote['text'] }}"</p>
+        <p class="text-xs text-gray-200 mt-0.5">— {{ $quote['author'] }}</p>
+    </div>
+
+</div>{{-- end white card --}}
 
 </x-staff-layout>
