@@ -122,6 +122,27 @@ class ScheduleUploadController extends Controller
                 $assignedBranchId = $branchCache[$key];
             }
 
+            // Auto-adjust shifts > 9h: cap end time to start + 9h, append OT note
+            $workStartTime = $row['work_start_time'] ?: null;
+            $workEndTime   = $row['work_end_time'] ?: null;
+            $notes         = $row['notes'] ?: null;
+
+            if ($workStartTime && $workEndTime && empty($row['is_day_off'])) {
+                $start = \Carbon\Carbon::parse('2000-01-01 ' . $workStartTime);
+                $end   = \Carbon\Carbon::parse('2000-01-01 ' . $workEndTime);
+                if ($end->lte($start)) {
+                    $end->addDay(); // overnight shift
+                }
+                $windowMinutes = (int) $start->diffInMinutes($end);
+                if ($windowMinutes > 540) {
+                    $otMinutes   = $windowMinutes - 540;
+                    $otHours     = round($otMinutes / 60 / 0.25) * 0.25;
+                    $otLabel     = 'OT ' . rtrim(rtrim(number_format($otHours, 2), '0'), '.') . 'h';
+                    $workEndTime = $start->copy()->addMinutes(540)->format('H:i:s');
+                    $notes       = $notes ? $notes . ', ' . $otLabel : $otLabel;
+                }
+            }
+
             DailySchedule::updateOrCreate(
                 [
                     'employee_id' => $employeeId,
@@ -129,11 +150,11 @@ class ScheduleUploadController extends Controller
                 ],
                 [
                     'schedule_upload_id' => $schedule->id,
-                    'work_start_time'    => $row['work_start_time'] ?: null,
-                    'work_end_time'      => $row['work_end_time'] ?: null,
+                    'work_start_time'    => $workStartTime,
+                    'work_end_time'      => $workEndTime,
                     'is_day_off'         => (bool) ($row['is_day_off'] ?? false),
                     'assigned_branch_id' => $assignedBranchId,
-                    'notes'              => $row['notes'] ?: null,
+                    'notes'              => $notes,
                 ]
             );
 

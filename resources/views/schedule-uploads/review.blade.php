@@ -145,7 +145,22 @@
                                     </select>
                                 </td>
                                 <td class="px-4 py-2.5 text-xs text-gray-600">
-                                    <span x-show="!row.is_day_off" x-text="(row.work_start_time || '—') + ' – ' + (row.work_end_time || '—')"></span>
+                                    <template x-if="!row.is_day_off">
+                                        <div>
+                                            <span x-text="(row.work_start_time || '—') + ' – ' + (row.work_end_time || '—')"></span>
+                                            <template x-if="shiftWarning(row)">
+                                                <div class="mt-1.5 flex items-start gap-1 text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 leading-snug">
+                                                    <svg class="w-3 h-3 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                                                    </svg>
+                                                    <span>
+                                                        Capped to <strong x-text="shiftWarning(row).cappedEnd"></strong>
+                                                        &mdash; <span x-text="'OT ' + shiftWarning(row).otLabel"></span> note will be added
+                                                    </span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
                                     <span x-show="row.is_day_off" class="text-gray-400">Day Off</span>
                                 </td>
                                 <td class="px-4 py-2.5 text-center">
@@ -222,6 +237,10 @@
                                                         <p x-show="getCell(person.name, date).notes"
                                                            class="text-amber-500 font-medium mt-0.5"
                                                            x-text="getCell(person.name, date).notes"></p>
+                                                        <template x-if="shiftWarning(getCell(person.name, date))">
+                                                            <p class="text-amber-600 font-semibold mt-0.5"
+                                                               x-text="'⚠ OT ' + shiftWarning(getCell(person.name, date)).otLabel"></p>
+                                                        </template>
                                                     </div>
                                                 </template>
                                             </div>
@@ -313,12 +332,45 @@
                 });
             },
 
+            shiftWarning(row) {
+                if (!row || row.is_day_off || !row.work_start_time || !row.work_end_time) return null;
+
+                const toMins = t => {
+                    const parts = t.split(':').map(Number);
+                    return parts[0] * 60 + (parts[1] || 0);
+                };
+
+                let startMins = toMins(row.work_start_time);
+                let endMins   = toMins(row.work_end_time);
+                if (endMins <= startMins) endMins += 1440; // overnight shift
+
+                const windowMins = endMins - startMins;
+                if (windowMins <= 540) return null; // 9h or under — no warning
+
+                const otMins  = windowMins - 540;
+                const otHours = Math.round(otMins / 15) * 0.25; // nearest 0.25h
+
+                const cappedTotalMins = startMins + 540;
+                const cappedH   = Math.floor(cappedTotalMins / 60) % 24;
+                const cappedM   = cappedTotalMins % 60;
+                const cappedEnd = String(cappedH).padStart(2, '0') + ':' + String(cappedM).padStart(2, '0');
+
+                return { cappedEnd, otHours, otLabel: otHours.toString() + 'h' };
+            },
+
             confirmApply(form) {
-                const skipped = this.assignments.filter(a => !a.employee_id).length;
+                const skipped  = this.assignments.filter(a => !a.employee_id).length;
+                const adjusted = this.assignments.filter(a => this.shiftWarning(a) !== null).length;
+
+                let msg = '';
                 if (skipped > 0) {
-                    const ok = confirm(
-                        `There are still ${skipped} unmatched entr${skipped === 1 ? 'y' : 'ies'} that will be skipped.\n\nAre you sure you want to apply this schedule?`
-                    );
+                    msg += `${skipped} unmatched entr${skipped === 1 ? 'y' : 'ies'} will be skipped.\n`;
+                }
+                if (adjusted > 0) {
+                    msg += `${adjusted} entr${adjusted === 1 ? 'y has' : 'ies have'} a shift over 9 hours and will be capped to 8h with an OT note added.\n`;
+                }
+                if (msg) {
+                    const ok = confirm(msg + '\nAre you sure you want to apply this schedule?');
                     if (!ok) return;
                 }
                 form.submit();
