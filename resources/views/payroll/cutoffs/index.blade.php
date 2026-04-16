@@ -12,7 +12,7 @@
     </x-slot>
 
     {{-- Filters --}}
-    <form method="GET" action="{{ route('payroll.cutoffs.index') }}" class="flex flex-wrap gap-3 mb-5">
+    <form method="GET" action="{{ route('payroll.cutoffs.index') }}" class="flex flex-wrap items-center gap-3 mb-5">
         <select name="branch_id"
                 class="rounded-lg border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 onchange="this.form.submit()">
@@ -29,11 +29,19 @@
             <option value="draft"      @selected(request('status') === 'draft')>Draft</option>
             <option value="processing" @selected(request('status') === 'processing')>Processing</option>
             <option value="finalized"  @selected(request('status') === 'finalized')>Finalized</option>
-            <option value="voided"     @selected(request('status') === 'voided')>Voided</option>
+            <option value="voided"     @selected(request('status') === 'voided')>Voided only</option>
         </select>
 
-        @if(request()->hasAny(['branch_id','status']))
-            <a href="{{ route('payroll.cutoffs.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-800">Clear</a>
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" name="show_voided" value="1"
+                   @checked(request()->boolean('show_voided'))
+                   onchange="this.form.submit()"
+                   class="rounded border-gray-300 text-red-500 focus:ring-red-400">
+            Show voided
+        </label>
+
+        @if(request()->hasAny(['branch_id','status','show_voided']))
+            <a href="{{ route('payroll.cutoffs.index') }}" class="px-2 py-2 text-sm text-gray-500 hover:text-gray-800 transition">Clear</a>
         @endif
     </form>
 

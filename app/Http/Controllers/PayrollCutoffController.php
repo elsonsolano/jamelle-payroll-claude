@@ -26,6 +26,8 @@ class PayrollCutoffController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        } elseif (! $request->boolean('show_voided')) {
+            $query->where('status', '!=', 'voided');
         }
 
         $cutoffs  = $query->orderByDesc('start_date')->paginate(20)->withQueryString();
