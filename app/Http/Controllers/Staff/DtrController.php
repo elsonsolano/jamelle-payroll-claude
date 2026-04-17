@@ -122,9 +122,14 @@ class DtrController extends Controller
 
         if (!$dtr->exists) {
             $dtr->source    = 'manual';
-            $dtr->status    = 'Pending';
             $dtr->ot_status = 'none';
+        } else {
+            // Staff is editing an existing DTR — clear any prior admin approval
+            $dtr->status_changed_by = null;
+            $dtr->status_changed_at = null;
         }
+
+        $dtr->status = 'Pending';
 
         $dtr->{$validated['event']} = $validated['time'];
 
@@ -240,6 +245,9 @@ class DtrController extends Controller
             'ot_approved_at'      => null,
             'ot_rejection_reason' => null,
             'notes'               => $validated['notes'] ?? null,
+            'status'              => 'Pending',
+            'status_changed_by'   => null,
+            'status_changed_at'   => null,
             ...$computed,
         ]);
 
