@@ -173,7 +173,7 @@
                         <p class="text-sm font-medium text-gray-900">{{ $employee->user->email }}</p>
                         <div class="flex items-center gap-2 mt-0.5">
                             @if($employee->user->can_approve_ot)
-                                <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Can Approve OT</span>
+                                <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Approver</span>
                             @endif
                             @if($employee->user->must_change_password)
                                 <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Password change required</span>
@@ -188,7 +188,7 @@
                         <input type="hidden" name="can_approve_ot" value="{{ $employee->user->can_approve_ot ? '0' : '1' }}">
                         <button type="submit"
                                 class="text-sm border border-gray-300 px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-                            {{ $employee->user->can_approve_ot ? 'Remove OT Approver' : 'Make OT Approver' }}
+                            {{ $employee->user->can_approve_ot ? 'Remove Approver' : 'Make Approver' }}
                         </button>
                     </form>
 
@@ -260,7 +260,7 @@
                     </div>
                     <label class="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" name="can_approve_ot" value="1" class="rounded border-gray-300 text-indigo-600">
-                        Can approve overtime
+                        Approver (OT &amp; schedule changes)
                     </label>
                     <button type="submit"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
