@@ -85,6 +85,12 @@ class ApprovalsController extends Controller
     {
         $this->ensureCanApproveSchedule($scheduleChangeRequest);
 
+        // Normalize times: strip seconds if present (DB returns HH:MM:SS, input sends HH:MM)
+        $request->merge([
+            'approved_start_time' => $request->approved_start_time ? substr($request->approved_start_time, 0, 5) : null,
+            'approved_end_time'   => $request->approved_end_time   ? substr($request->approved_end_time, 0, 5)   : null,
+        ]);
+
         $validated = $request->validate([
             'is_day_off'          => 'boolean',
             'approved_start_time' => 'nullable|date_format:H:i',

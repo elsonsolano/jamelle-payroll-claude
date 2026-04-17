@@ -103,8 +103,8 @@
                          showApprove: false,
                          showReject: false,
                          isDayOff: {{ $req->is_day_off ? 'true' : 'false' }},
-                         approvedStart: '{{ $req->requested_work_start_time ?? '' }}',
-                         approvedEnd: '{{ $req->requested_work_end_time ?? '' }}'
+                         approvedStart: '{{ $req->requested_work_start_time ? \Carbon\Carbon::parse($req->requested_work_start_time)->format('H:i') : '' }}',
+                         approvedEnd: '{{ $req->requested_work_end_time ? \Carbon\Carbon::parse($req->requested_work_end_time)->format('H:i') : '' }}'
                      }">
                     <div class="flex items-start justify-between mb-3">
                         <div>
