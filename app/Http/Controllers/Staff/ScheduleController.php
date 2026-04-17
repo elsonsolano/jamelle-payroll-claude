@@ -16,9 +16,9 @@ class ScheduleController extends Controller
     {
         $employee = Auth::user()->employee;
 
-        // Show 7 days back + today + 30 days ahead
-        $start = today()->subDays(7);
-        $end   = today()->addDays(30);
+        // Show 5 days back + today + 15 days ahead
+        $start = today()->subDays(5);
+        $end   = today()->addDays(15);
 
         $dailySchedules = DailySchedule::where('employee_id', $employee->id)
             ->whereBetween('date', [$start, $end])
