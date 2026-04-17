@@ -166,8 +166,8 @@
                                      data-tippy-content="Date-specific schedule"></div>
                             @endif
 
-                            {{-- Request / Edit / Re-submit button — future dates only --}}
-                            @if(!$isPast)
+                            {{-- Request / Edit / Re-submit button — future dates with a schedule only --}}
+                            @if(!$isPast && !$noSched)
                                 <button type="button"
                                         @click="openFor({{ $changeData }})"
                                         class="text-xs font-medium px-2.5 py-1.5 rounded-lg transition
