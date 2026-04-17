@@ -53,8 +53,8 @@
                     <label class="block text-sm font-medium text-amber-800 mb-1">Overtime Hours</label>
                     <input type="number" name="ot_hours"
                            value="{{ old('ot_hours', $dtr->overtime_hours > 0 ? $dtr->overtime_hours : '') }}"
-                           min="0.25" max="24" step="0.25"
-                           placeholder="e.g. 2, 1.5, or 0.75"
+                           min="0.5" max="24" step="any"
+                           placeholder="e.g. 2, 1.5, or 0.5"
                            class="w-full border border-amber-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 bg-white">
                     @if($dtr->ot_status === 'rejected')
                     <p class="text-xs text-red-600 mt-1">Previous rejection: {{ $dtr->ot_rejection_reason ?? 'No reason given' }}. Re-submitting will send for approval again.</p>

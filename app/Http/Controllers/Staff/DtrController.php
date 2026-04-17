@@ -38,7 +38,7 @@ class DtrController extends Controller
             'pm_in'    => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
-            'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
             'notes'    => 'nullable|string|max:500',
         ]);
 
@@ -107,7 +107,7 @@ class DtrController extends Controller
             'time'     => 'required|date_format:H:i',
             'date'     => 'required|date|before_or_equal:today',
             'has_ot'   => 'boolean',
-            'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
             'notes'    => 'nullable|string|max:500',
         ]);
 
@@ -206,7 +206,7 @@ class DtrController extends Controller
             'pm_in'    => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
             'has_ot'   => 'boolean',
-            'ot_hours' => 'nullable|numeric|min:0.25|max:24|required_if:has_ot,1',
+            'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
             'notes'    => 'nullable|string|max:500',
         ]);
 

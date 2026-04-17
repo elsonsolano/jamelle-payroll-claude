@@ -56,8 +56,8 @@
                 <div x-show="hasOt" x-cloak class="mt-3">
                     <label class="block text-sm font-medium text-amber-800 mb-1">Overtime Hours</label>
                     <input type="number" name="ot_hours" value="{{ old('ot_hours') }}"
-                           min="0.25" max="24" step="0.25"
-                           placeholder="e.g. 2, 1.5, or 0.75"
+                           min="0.5" max="24" step="any"
+                           placeholder="e.g. 2, 1.5, or 0.5"
                            class="w-full border border-amber-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 bg-white">
                     <p class="text-xs text-amber-600 mt-1">Your overtime will be sent for approval.</p>
                     @error('ot_hours') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
