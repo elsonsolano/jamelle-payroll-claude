@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
             $view->with([
-                'pendingOtCount'       => Dtr::where('ot_status', 'pending')->count(),
+                'pendingOtCount'       => Dtr::where('status', 'Pending')->orWhere('ot_status', 'pending')->count(),
                 'pendingScheduleCount' => ScheduleChangeRequest::where('status', 'pending')->count(),
             ]);
         });
