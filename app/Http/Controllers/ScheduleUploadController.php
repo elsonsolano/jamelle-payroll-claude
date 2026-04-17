@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
+use App\Models\ScheduleChangeRequest;
 use App\Models\ScheduleUpload;
 use App\Services\DtrComputationService;
 use App\Services\ScheduleParserService;
@@ -18,13 +19,36 @@ class ScheduleUploadController extends Controller
         private DtrComputationService $computer,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $activeTab = $request->get('tab', 'uploads');
+
         $uploads = ScheduleUpload::with('branch', 'uploader')
             ->latest()
             ->paginate(20);
 
-        return view('schedule-uploads.index', compact('uploads'));
+        $branches     = Branch::orderBy('name')->get();
+        $filterBranch = $request->get('branch');
+        $filterStatus = $request->get('status', 'pending');
+
+        $crQuery = ScheduleChangeRequest::with('employee.branch', 'reviewer')
+            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected', 'cancelled')")
+            ->orderBy('date', 'desc');
+
+        if ($filterBranch) {
+            $crQuery->whereHas('employee', fn($q) => $q->where('branch_id', $filterBranch));
+        }
+        if ($filterStatus && $filterStatus !== 'all') {
+            $crQuery->where('status', $filterStatus);
+        }
+
+        $changeRequests   = $crQuery->paginate(25)->appends($request->query());
+        $pendingChangeCount = ScheduleChangeRequest::where('status', 'pending')->count();
+
+        return view('schedule-uploads.index', compact(
+            'uploads', 'activeTab', 'changeRequests', 'branches',
+            'filterBranch', 'filterStatus', 'pendingChangeCount'
+        ));
     }
 
     public function create()

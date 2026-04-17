@@ -94,6 +94,10 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::post("schedule-uploads/{schedule}/assign-name", [ScheduleUploadController::class, "assignName"])->name("schedule-uploads.assign-name");
     Route::delete("schedule-uploads/{schedule}", [ScheduleUploadController::class, "destroy"])->name("schedule-uploads.destroy");
 
+    // Admin schedule change request approvals
+    Route::post("schedule-change-requests/{scheduleChangeRequest}/approve", [\App\Http\Controllers\AdminScheduleChangeRequestController::class, "approve"])->name("admin.schedule-change-requests.approve");
+    Route::post("schedule-change-requests/{scheduleChangeRequest}/reject",  [\App\Http\Controllers\AdminScheduleChangeRequestController::class, "reject"])->name("admin.schedule-change-requests.reject");
+
     // --- Super admin only ---
     Route::middleware("super-admin")->group(function () {
         Route::resource("admin-users", AdminUserController::class)->except(['show']);
