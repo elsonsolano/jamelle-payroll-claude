@@ -232,12 +232,12 @@
                         <div class="employee-meta">{{ $entry->employee->position ?? 'No position' }}</div>
                     </td>
                     <td>{{ ucfirst($entry->employee->salary_type) }}</td>
-                    <td class="text-right">{{ number_format($entry->working_days, 2) }}</td>
-                    <td class="text-right">{{ number_format($entry->total_hours_worked, 2) }}</td>
-                    <td class="text-right">{{ number_format($entry->total_overtime_hours, 2) }}</td>
+                    <td class="text-right">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->working_days, 2) : '—' }}</td>
+                    <td class="text-right">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->total_hours_worked, 2) : '—' }}</td>
+                    <td class="text-right">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->total_overtime_hours, 2) : '—' }}</td>
                     <td class="text-right">PHP {{ number_format($entry->basic_pay, 2) }}</td>
-                    <td class="text-right">PHP {{ number_format($entry->overtime_pay, 2) }}</td>
-                    <td class="text-right">PHP {{ number_format($entry->holiday_pay, 2) }}</td>
+                    <td class="text-right">{{ $entry->employee->salary_type !== 'monthly' ? 'PHP ' . number_format($entry->overtime_pay, 2) : '—' }}</td>
+                    <td class="text-right">{{ $entry->employee->salary_type !== 'monthly' ? 'PHP ' . number_format($entry->holiday_pay, 2) : '—' }}</td>
                     <td class="text-right">PHP {{ number_format($entry->allowance_pay, 2) }}</td>
                     <td class="text-right">PHP {{ number_format($entry->gross_pay, 2) }}</td>
                     <td class="text-right deductions">PHP {{ number_format($entry->total_deductions, 2) }}</td>

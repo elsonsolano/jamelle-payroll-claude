@@ -203,14 +203,14 @@
         <tr>
             <td class="summary-label">Salary Type</td>
             <td class="summary-value">{{ ucfirst($entry->employee->salary_type) }} Rate</td>
-            <td class="summary-label">Days Worked</td>
-            <td class="summary-value">{{ number_format($entry->working_days, 2) }} day(s)</td>
+            <td class="summary-label">{{ $entry->employee->salary_type !== 'monthly' ? 'Days Worked' : '' }}</td>
+            <td class="summary-value">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->working_days, 2) . ' day(s)' : '' }}</td>
         </tr>
         <tr>
             <td class="summary-label">Rate</td>
             <td class="summary-value">PHP {{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
-            <td class="summary-label">Total Hours</td>
-            <td class="summary-value">{{ number_format($entry->total_hours_worked, 2) }}h</td>
+            <td class="summary-label">{{ $entry->employee->salary_type !== 'monthly' ? 'Total Hours' : '' }}</td>
+            <td class="summary-value">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->total_hours_worked, 2) . 'h' : '' }}</td>
         </tr>
     </table>
 
@@ -221,6 +221,7 @@
             <td class="label">Basic Pay</td>
             <td class="amount">PHP {{ number_format($entry->basic_pay - $unworkedRegularHolidayPay, 2) }}</td>
         </tr>
+        @if($entry->employee->salary_type !== 'monthly')
         @if($unworkedRegularHolidayPay > 0)
         <tr>
             <td class="label">Regular Holiday Pay</td>
@@ -237,9 +238,10 @@
             <td class="amount">PHP {{ number_format($entry->holiday_pay, 2) }}</td>
         </tr>
         @endif
+        @endif
         @if($entry->allowance_pay > 0)
         <tr>
-            <td class="label">Allowance ({{ number_format($entry->working_days, 2) }} day(s) worked)</td>
+            <td class="label">Allowance{{ $entry->employee->salary_type !== 'monthly' ? ' (' . number_format($entry->working_days, 2) . ' day(s) worked)' : '' }}</td>
             <td class="amount">PHP {{ number_format($entry->allowance_pay, 2) }}</td>
         </tr>
         @endif

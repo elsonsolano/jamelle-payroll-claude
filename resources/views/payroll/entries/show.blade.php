@@ -51,18 +51,24 @@
                         {{ $cutoff->start_date->format('M d') }} – {{ $cutoff->end_date->format('M d, Y') }}
                     </p>
                 </div>
+                @if($entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Days Worked</p>
                     <p class="font-medium text-gray-800">{{ number_format($entry->working_days, 2) }} days</p>
                 </div>
+                @endif
+                @if($entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Regular Hours</p>
                     <p class="font-medium text-gray-800">{{ number_format($entry->total_hours_worked, 2) }}h</p>
                 </div>
+                @endif
+                @if($entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Overtime Hours</p>
                     <p class="font-medium {{ $entry->total_overtime_hours > 0 ? 'text-indigo-600' : 'text-gray-800' }}">{{ number_format($entry->total_overtime_hours, 2) }}h</p>
                 </div>
+                @endif
             </div>
         </div>
 
@@ -76,21 +82,25 @@
                     <span class="text-gray-600">Basic Pay</span>
                     <span class="font-medium text-gray-900">₱{{ number_format($entry->basic_pay, 2) }}</span>
                 </div>
+                @if($entry->employee->salary_type !== 'monthly')
                 <div class="px-5 py-3 flex justify-between text-sm">
                     <span class="text-gray-600">Overtime Pay</span>
                     <span class="font-medium {{ $entry->overtime_pay > 0 ? 'text-indigo-600' : 'text-gray-300' }}">
                         ₱{{ number_format($entry->overtime_pay, 2) }}
                     </span>
                 </div>
+                @endif
+                @if($entry->employee->salary_type !== 'monthly')
                 <div class="px-5 py-3 flex justify-between text-sm">
                     <span class="text-gray-600">Holiday Pay</span>
                     <span class="font-medium {{ $entry->holiday_pay > 0 ? 'text-green-600' : 'text-gray-300' }}">
                         ₱{{ number_format($entry->holiday_pay, 2) }}
                     </span>
                 </div>
+                @endif
                 <div class="px-5 py-3 flex justify-between text-sm">
                     <span class="text-gray-600">Allowance
-                        @if($entry->allowance_pay > 0)
+                        @if($entry->allowance_pay > 0 && $entry->employee->salary_type !== 'monthly')
                             <span class="text-xs text-gray-400">({{ $entry->working_days }} day(s) worked)</span>
                         @endif
                     </span>
@@ -363,6 +373,7 @@
         </div>
 
         {{-- Overtime Pay --}}
+        @if($entry->employee->salary_type !== 'monthly')
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                 <span class="font-semibold text-gray-700 text-xs uppercase tracking-wider">Overtime Pay</span>
@@ -399,8 +410,10 @@
                 @endif
             </div>
         </div>
+        @endif
 
         {{-- Holiday Pay --}}
+        @if($entry->employee->salary_type !== 'monthly')
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                 <span class="font-semibold text-gray-700 text-xs uppercase tracking-wider">Holiday Pay</span>
@@ -444,13 +457,18 @@
                 @endif
             </div>
         </div>
+        @endif
 
         {{-- Net Pay formula --}}
         <div class="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 text-xs space-y-1 text-gray-600">
             <p class="font-semibold text-gray-700 mb-1">Net Pay Formula</p>
             <div class="flex justify-between"><span>Basic Pay</span><span>₱{{ number_format($entry->basic_pay, 2) }}</span></div>
+            @if($entry->employee->salary_type !== 'monthly')
             <div class="flex justify-between"><span>+ Overtime Pay</span><span>₱{{ number_format($entry->overtime_pay, 2) }}</span></div>
+            @endif
+            @if($entry->employee->salary_type !== 'monthly')
             <div class="flex justify-between"><span>+ Holiday Pay</span><span>₱{{ number_format($entry->holiday_pay, 2) }}</span></div>
+            @endif
             <div class="flex justify-between"><span>+ Allowance</span><span>₱{{ number_format($entry->allowance_pay, 2) }}</span></div>
             <div class="flex justify-between font-semibold text-gray-800 border-t border-gray-200 pt-1"><span>= Gross Pay</span><span>₱{{ number_format($entry->gross_pay, 2) }}</span></div>
             <div class="flex justify-between text-red-500"><span>− Deductions</span><span>₱{{ number_format($entry->total_deductions, 2) }}</span></div>

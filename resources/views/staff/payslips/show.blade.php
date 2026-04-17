@@ -31,15 +31,19 @@
                 {{ $entry->payrollCutoff->start_date->format('M d') }} – {{ $entry->payrollCutoff->end_date->format('M d, Y') }}
             </p>
             <div class="mt-4 pt-4 border-t border-white/20 flex gap-6 text-sm">
+                @if($entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-green-200 text-xs">Days Worked</p>
                     <p class="font-semibold">{{ number_format($entry->working_days, 2) }}</p>
                 </div>
+                @endif
+                @if($entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-green-200 text-xs">Total Hours</p>
                     <p class="font-semibold">{{ number_format($entry->total_hours_worked, 2) }}h</p>
                 </div>
-                @if($entry->total_overtime_hours > 0)
+                @endif
+                @if($entry->total_overtime_hours > 0 && $entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-green-200 text-xs">OT Hours</p>
                     <p class="font-semibold">{{ number_format($entry->total_overtime_hours, 2) }}h</p>
@@ -57,6 +61,7 @@
                 <span class="text-gray-600">Basic Pay</span>
                 <span class="font-medium text-gray-900">PHP {{ number_format($entry->basic_pay - $unworkedRegularHolidayPay, 2) }}</span>
             </div>
+            @if($entry->employee->salary_type !== 'monthly')
             @if($unworkedRegularHolidayPay > 0)
             <div class="px-5 py-3 flex justify-between text-sm">
                 <span class="text-gray-600">Regular Holiday Pay</span>
@@ -74,6 +79,7 @@
                 <span class="text-gray-600">Holiday Pay</span>
                 <span class="font-medium text-gray-900">PHP {{ number_format($entry->holiday_pay, 2) }}</span>
             </div>
+            @endif
             @endif
             @if($entry->allowance_pay > 0)
             <div class="px-5 py-3 flex justify-between text-sm">
