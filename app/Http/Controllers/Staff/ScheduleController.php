@@ -16,22 +16,22 @@ class ScheduleController extends Controller
     {
         $employee = Auth::user()->employee;
 
-        // Fetch daily schedules for the next 42 days (6 weeks)
-        $start = today();
-        $end   = today()->addDays(41);
+        // Show 7 days back + today + 30 days ahead
+        $start = today()->subDays(7);
+        $end   = today()->addDays(30);
 
         $dailySchedules = DailySchedule::where('employee_id', $employee->id)
             ->whereBetween('date', [$start, $end])
             ->get()
             ->keyBy(fn($d) => $d->date->toDateString());
 
-        // Get the most recent weekly schedule (fallback)
+        // Get the most recent weekly schedule that covers the start of our window
         $weeklySchedule = $employee->employeeSchedules()
-            ->where('week_start_date', '<=', $start)
+            ->where('week_start_date', '<=', $start->toDateString())
             ->orderByDesc('week_start_date')
             ->first();
 
-        // Build a day-by-day schedule for the 6-week window
+        // Build a day-by-day schedule for the window
         $days = [];
         foreach (CarbonPeriod::create($start, $end) as $date) {
             $dateStr = $date->toDateString();
@@ -48,8 +48,8 @@ class ScheduleController extends Controller
                     'branch'     => $daily->assignedBranch?->name,
                 ];
             } elseif ($weeklySchedule) {
-                $restDays   = $weeklySchedule->rest_days ?? ['Sunday'];
-                $isRestDay  = in_array($date->format('l'), $restDays);
+                $restDays  = $weeklySchedule->rest_days ?? ['Sunday'];
+                $isRestDay = in_array($date->format('l'), $restDays);
                 $days[$dateStr] = [
                     'date'       => $date->copy(),
                     'source'     => 'weekly',
@@ -72,13 +72,7 @@ class ScheduleController extends Controller
             }
         }
 
-        // Split into weeks starting from Monday
-        $weeks = collect($days)->chunk(7)->values();
-
-        // Today's schedule for the dashboard snippet
-        $today = $days[today()->toDateString()] ?? null;
-
-        // Pending/rejected schedule change requests in this window (prioritise pending over rejected per date)
+        // Pending/rejected change requests in this window (pending takes priority per date)
         $allChangeRequests = ScheduleChangeRequest::where('employee_id', $employee->id)
             ->whereBetween('date', [$start, $end])
             ->whereIn('status', ['pending', 'rejected'])
@@ -89,6 +83,6 @@ class ScheduleController extends Controller
             ->unique(fn($r) => $r->date->toDateString())
             ->keyBy(fn($r) => $r->date->toDateString());
 
-        return view('staff.schedule', compact('days', 'weeks', 'today', 'employee', 'changeRequests'));
+        return view('staff.schedule', compact('days', 'employee', 'changeRequests'));
     }
 }
