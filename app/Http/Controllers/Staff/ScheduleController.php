@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\DailySchedule;
+use App\Models\ScheduleChangeRequest;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Auth;
@@ -77,6 +78,17 @@ class ScheduleController extends Controller
         // Today's schedule for the dashboard snippet
         $today = $days[today()->toDateString()] ?? null;
 
-        return view('staff.schedule', compact('days', 'weeks', 'today', 'employee'));
+        // Pending/rejected schedule change requests in this window (prioritise pending over rejected per date)
+        $allChangeRequests = ScheduleChangeRequest::where('employee_id', $employee->id)
+            ->whereBetween('date', [$start, $end])
+            ->whereIn('status', ['pending', 'rejected'])
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC")
+            ->get();
+
+        $changeRequests = $allChangeRequests
+            ->unique(fn($r) => $r->date->toDateString())
+            ->keyBy(fn($r) => $r->date->toDateString());
+
+        return view('staff.schedule', compact('days', 'weeks', 'today', 'employee', 'changeRequests'));
     }
 }

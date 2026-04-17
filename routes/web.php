@@ -39,9 +39,17 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::post("/dtr", [\App\Http\Controllers\Staff\DtrController::class, "store"])->name("dtr.store");
     Route::get("/dtr/{dtr}/edit", [\App\Http\Controllers\Staff\DtrController::class, "edit"])->name("dtr.edit");
     Route::put("/dtr/{dtr}", [\App\Http\Controllers\Staff\DtrController::class, "update"])->name("dtr.update");
-    Route::get("/ot-approvals", [\App\Http\Controllers\Staff\OtApprovalController::class, "index"])->name("ot-approvals.index");
-    Route::post("/ot-approvals/{dtr}/approve", [\App\Http\Controllers\Staff\OtApprovalController::class, "approve"])->name("ot-approvals.approve");
-    Route::post("/ot-approvals/{dtr}/reject", [\App\Http\Controllers\Staff\OtApprovalController::class, "reject"])->name("ot-approvals.reject");
+    // Approvals hub (OT + Schedule Changes)
+    Route::get("/approvals", [\App\Http\Controllers\Staff\ApprovalsController::class, "index"])->name("approvals.index");
+    Route::post("/approvals/ot/{dtr}/approve", [\App\Http\Controllers\Staff\ApprovalsController::class, "approveOt"])->name("approvals.ot.approve");
+    Route::post("/approvals/ot/{dtr}/reject", [\App\Http\Controllers\Staff\ApprovalsController::class, "rejectOt"])->name("approvals.ot.reject");
+    Route::post("/approvals/schedule/{scheduleChangeRequest}/approve", [\App\Http\Controllers\Staff\ApprovalsController::class, "approveSchedule"])->name("approvals.schedule.approve");
+    Route::post("/approvals/schedule/{scheduleChangeRequest}/reject", [\App\Http\Controllers\Staff\ApprovalsController::class, "rejectSchedule"])->name("approvals.schedule.reject");
+
+    // Schedule change requests (staff submitting)
+    Route::post("/schedule-change-requests", [\App\Http\Controllers\Staff\ScheduleChangeRequestController::class, "store"])->name("schedule-change-requests.store");
+    Route::put("/schedule-change-requests/{scheduleChangeRequest}", [\App\Http\Controllers\Staff\ScheduleChangeRequestController::class, "update"])->name("schedule-change-requests.update");
+    Route::delete("/schedule-change-requests/{scheduleChangeRequest}", [\App\Http\Controllers\Staff\ScheduleChangeRequestController::class, "cancel"])->name("schedule-change-requests.cancel");
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
     Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");

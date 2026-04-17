@@ -37,7 +37,7 @@ class OtSubmitted extends Notification
         return [
             'title' => 'OT Request',
             'body'  => "{$employee->full_name} filed OT for {$this->dtr->date->format('M d, Y')}.",
-            'url'   => '/staff/ot-approvals',
+            'url'   => '/staff/approvals',
         ];
     }
 }

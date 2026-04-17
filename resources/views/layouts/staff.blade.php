@@ -157,11 +157,23 @@
                 <span class="text-xs font-medium">DTR</span>
             </a>
 
+            @php
+                $pendingScheduleChangeCount = Auth::user()->employee
+                    ? \App\Models\ScheduleChangeRequest::where('employee_id', Auth::user()->employee->id)
+                        ->whereIn('status', ['pending', 'rejected'])
+                        ->count()
+                    : 0;
+            @endphp
             <a href="{{ route('staff.schedule') }}"
                class="flex flex-col items-center gap-0.5 px-4 py-1 {{ request()->routeIs('staff.schedule') ? 'text-green-600' : 'text-gray-400' }}">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
+                <div class="relative">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    @if($pendingScheduleChangeCount > 0)
+                        <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white"></span>
+                    @endif
+                </div>
                 <span class="text-xs font-medium">Schedule</span>
             </a>
 

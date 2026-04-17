@@ -128,29 +128,47 @@ class DashboardController extends Controller
         $isHeadOffice = strtolower(trim($branch->name)) === 'head office';
 
         if ($user->isAdmin()) {
-            // Admin approves Head Office can_approve_ot employees
-            return \App\Models\Dtr::where('ot_status', 'pending')
-                ->whereHas('employee', function ($q) {
-                    $headOffice = \App\Models\Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
+            $headOffice = \App\Models\Branch::whereRaw('LOWER(TRIM(name)) = ?', ['head office'])->first();
+
+            $otCount = \App\Models\Dtr::where('ot_status', 'pending')
+                ->whereHas('employee', function ($q) use ($headOffice) {
                     if ($headOffice) {
                         $q->where('branch_id', $headOffice->id)
                           ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
                     }
                 })->count();
+
+            $scheduleCount = \App\Models\ScheduleChangeRequest::where('status', 'pending')
+                ->whereHas('employee', function ($q) use ($headOffice) {
+                    if ($headOffice) {
+                        $q->where('branch_id', $headOffice->id)
+                          ->whereHas('user', fn($u) => $u->where('can_approve_ot', true));
+                    }
+                })->count();
+
+            return $otCount + $scheduleCount;
         }
 
         if ($user->can_approve_ot && $isHeadOffice) {
-            // HO approver → approves all pending OT across all branches
-            return \App\Models\Dtr::where('ot_status', 'pending')->count();
+            $otCount       = \App\Models\Dtr::where('ot_status', 'pending')->count();
+            $scheduleCount = \App\Models\ScheduleChangeRequest::where('status', 'pending')->count();
+            return $otCount + $scheduleCount;
         }
 
         if ($user->can_approve_ot && !$isHeadOffice) {
-            // Branch approver → approves all staff in same branch except themselves
-            return \App\Models\Dtr::where('ot_status', 'pending')
+            $otCount = \App\Models\Dtr::where('ot_status', 'pending')
                 ->whereHas('employee', function ($q) use ($branch, $employee) {
                     $q->where('branch_id', $branch->id)
                       ->where('id', '!=', $employee->id);
                 })->count();
+
+            $scheduleCount = \App\Models\ScheduleChangeRequest::where('status', 'pending')
+                ->whereHas('employee', function ($q) use ($branch, $employee) {
+                    $q->where('branch_id', $branch->id)
+                      ->where('id', '!=', $employee->id);
+                })->count();
+
+            return $otCount + $scheduleCount;
         }
 
         return 0;

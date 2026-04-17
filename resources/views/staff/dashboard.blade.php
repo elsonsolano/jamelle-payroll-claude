@@ -45,13 +45,13 @@
         </div>
     </a>
 
-    {{-- OT Approvals waiting (approvers only) --}}
+    {{-- Approvals waiting (approvers only) --}}
     @if($pendingApprovalCount > 0)
     <div class="bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm mb-4">
         <p class="text-xs text-amber-700 mb-1">Staff is waiting for your approval</p>
         <div class="flex items-center justify-between">
             <p class="text-2xl font-bold text-amber-600">{{ $pendingApprovalCount }}</p>
-            <a href="{{ route('staff.ot-approvals.index') }}" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">Review</a>
+            <a href="{{ route('staff.approvals.index') }}" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">Review</a>
         </div>
     </div>
     @endif
