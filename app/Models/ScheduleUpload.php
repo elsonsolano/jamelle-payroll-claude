@@ -11,6 +11,7 @@ class ScheduleUpload extends Model
     protected $fillable = [
         'branch_id',
         'uploaded_by',
+        'name',
         'label',
         'ai_response',
         'status',

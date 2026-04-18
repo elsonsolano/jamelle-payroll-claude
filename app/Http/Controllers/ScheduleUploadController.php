@@ -61,6 +61,7 @@ class ScheduleUploadController extends Controller
     {
         $request->validate([
             'branch_id'     => 'required|exists:branches,id',
+            'name'          => 'nullable|string|max:100',
             'schedule_json' => 'required|string',
         ]);
 
@@ -74,6 +75,7 @@ class ScheduleUploadController extends Controller
         $upload = ScheduleUpload::create([
             'branch_id'   => $request->branch_id,
             'uploaded_by' => auth()->id(),
+            'name'        => $request->input('name') ?: null,
             'label'       => $matched['month'] ?? null,
             'ai_response' => $matched,
             'status'      => 'review',

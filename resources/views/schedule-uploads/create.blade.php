@@ -40,6 +40,14 @@
                     </select>
                 </div>
 
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" name="name" maxlength="100" value="{{ old('name') }}"
+                           placeholder="e.g. Week 3 NCCC, April Full Month..."
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <p class="mt-1 text-xs text-gray-400">A label to help identify this upload in the list.</p>
+                </div>
+
                 <div class="mb-5">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Schedule JSON <span class="text-red-500">*</span></label>
                     <textarea name="schedule_json" rows="12" required

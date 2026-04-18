@@ -74,7 +74,12 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($uploads as $upload)
                             <tr class="hover:bg-gray-50 transition">
-                                <td class="px-5 py-3 font-medium text-gray-900">{{ $upload->label ?? '—' }}</td>
+                                <td class="px-5 py-3">
+                                    <span class="font-medium text-gray-900">{{ $upload->label ?? '—' }}</span>
+                                    @if($upload->name)
+                                        <p class="text-xs text-gray-400 mt-0.5">{{ $upload->name }}</p>
+                                    @endif
+                                </td>
                                 <td class="px-5 py-3 text-gray-600">{{ $upload->branch->name }}</td>
                                 <td class="px-5 py-3 text-gray-600">{{ $upload->uploader->name }}</td>
                                 <td class="px-5 py-3 text-gray-500 text-xs">{{ $upload->created_at->format('M d, Y h:i A') }}</td>
