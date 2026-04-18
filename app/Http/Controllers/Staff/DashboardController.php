@@ -39,20 +39,55 @@ class DashboardController extends Controller
             $pendingApprovalCount = $this->pendingApprovalCount($user, $employee);
         }
 
-        $quote         = $this->dailyQuote();
-        $todaySchedule = $this->todaySchedule($employee);
+        $quote             = $this->dailyQuote();
+        $todaySchedule     = $this->resolveSchedule($employee, today());
+        $tomorrowSchedule  = $this->resolveSchedule($employee, today()->addDay());
+
+        // Clock state derived from today's DTR
+        $clockState = 'none';
+        if ($todayDtr) {
+            if ($todayDtr->time_out) {
+                $clockState = 'out';
+            } elseif ($todayDtr->am_out && !$todayDtr->pm_in) {
+                $clockState = 'break';
+            } elseif ($todayDtr->time_in) {
+                $clockState = 'in';
+            }
+        }
+
+        // Next loggable event for today
+        $nextEvent = null;
+        if ($clockState === 'none') {
+            $nextEvent = 'time_in';
+        } elseif ($clockState === 'in') {
+            $nextEvent = ($todayDtr->am_out && $todayDtr->pm_in) ? 'time_out' : 'am_out';
+        } elseif ($clockState === 'break') {
+            $nextEvent = 'pm_in';
+        }
+
+        // Next loggable event for yesterday's open shift
+        $yesterdayNextEvent = null;
+        if ($yesterdayDtr) {
+            if (! $yesterdayDtr->am_out) {
+                $yesterdayNextEvent = 'am_out';
+            } elseif (! $yesterdayDtr->pm_in) {
+                $yesterdayNextEvent = 'pm_in';
+            } else {
+                $yesterdayNextEvent = 'time_out';
+            }
+        }
 
         return view('staff.dashboard', compact(
-            'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount', 'quote', 'todaySchedule'
+            'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount',
+            'quote', 'todaySchedule', 'tomorrowSchedule',
+            'clockState', 'nextEvent', 'yesterdayNextEvent'
         ));
     }
 
-    private function todaySchedule(\App\Models\Employee $employee): array
+    private function resolveSchedule(\App\Models\Employee $employee, \Carbon\Carbon $date): array
     {
-        $today = today();
-
         $daily = DailySchedule::where('employee_id', $employee->id)
-            ->where('date', $today->toDateString())
+            ->where('date', $date->toDateString())
             ->first();
 
         if ($daily) {
@@ -65,13 +100,13 @@ class DashboardController extends Controller
         }
 
         $weekly = $employee->employeeSchedules()
-            ->where('week_start_date', '<=', $today->toDateString())
+            ->where('week_start_date', '<=', $date->toDateString())
             ->orderByDesc('week_start_date')
             ->first();
 
         if ($weekly) {
             $restDays  = $weekly->rest_days ?? ['Sunday'];
-            $isRestDay = in_array($today->format('l'), $restDays);
+            $isRestDay = in_array($date->format('l'), $restDays);
             return [
                 'is_day_off' => $isRestDay,
                 'start'      => $isRestDay ? null : $weekly->work_start_time,

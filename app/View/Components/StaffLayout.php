@@ -7,7 +7,10 @@ use Illuminate\View\View;
 
 class StaffLayout extends Component
 {
-    public function __construct(public ?string $title = null) {}
+    public function __construct(
+        public ?string $title = null,
+        public bool $hideHeader = false,
+    ) {}
 
     public function render(): View
     {

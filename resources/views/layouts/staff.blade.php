@@ -13,7 +13,9 @@
     <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=source-serif-4:ital,wght@1,400;1,500&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
 </head>
 <body class="font-sans antialiased bg-gray-100 text-gray-900">
 
@@ -21,6 +23,7 @@
 <div class="min-h-screen flex flex-col max-w-lg mx-auto bg-white shadow-lg">
 
     {{-- Top Bar --}}
+    @if(!$hideHeader)
     <header class="bg-green-500 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shadow">
         <div class="flex-1">
             <h1 class="text-base font-semibold leading-tight">{{ $title ?? 'Dashboard' }}</h1>
@@ -41,6 +44,7 @@
             </a>
         </div>
     </header>
+    @endif
 
     {{-- Impersonation banner --}}
     @if(session()->has('impersonator_id'))
