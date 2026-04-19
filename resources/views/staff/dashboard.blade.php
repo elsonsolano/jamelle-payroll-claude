@@ -422,9 +422,6 @@
     <p class="quote-serif text-sm leading-relaxed" style="color:#4a5748; font-style:italic;">
         "{{ $quote['text'] }}"
     </p>
-    <span class="block mt-1.5 text-xs font-semibold tracking-widest uppercase" style="color:#8d9889; letter-spacing:.06em;">
-        — {{ $quote['author'] }} · Daily
-    </span>
 </div>
 
 {{-- ── Bottom Sheet ── --}}
