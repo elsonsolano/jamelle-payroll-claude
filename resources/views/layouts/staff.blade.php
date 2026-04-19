@@ -24,7 +24,7 @@
 
     {{-- Top Bar --}}
     @if(!$hideHeader)
-    <header class="bg-green-500 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shadow">
+    <header class="text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shadow" style="background:#6ea830;">
         <div class="flex-1">
             <h1 class="text-base font-semibold leading-tight">{{ $title ?? 'Dashboard' }}</h1>
             <p class="text-xs text-green-100 leading-tight">{{ Auth::user()->employee->branch->name ?? '' }}</p>
