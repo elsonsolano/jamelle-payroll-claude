@@ -167,6 +167,7 @@ class DashboardController extends Controller
             'Hindi natin kailangan maging pinaka-mabilis na branch—basta solid ang galaw, automatic panalo.',
             'Yung teamwork na tahimik pero efficient—yan yung hindi napapansin, pero pinaka-malakas.',
             'Hindi man laging perfect ang araw—pero pwedeng maging proud ka sa effort mo.',
+            'Sorry ha, pero hindi ka nya mahal, mag move on ka na. Bye ka!',
         ];
 
         return ['text' => $quotes[array_rand($quotes)]];
