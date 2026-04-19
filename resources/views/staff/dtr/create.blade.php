@@ -2,7 +2,7 @@
 
 {{-- ── Back-nav header ── --}}
 <div class="-mx-4 -mt-4">
-    <div class="flex items-center justify-between gap-2 px-4 py-3" style="background:#6ea830;">
+    <div class="flex items-center justify-between gap-2 px-4 py-3 bg-green-500">
         <a href="{{ route('staff.dtr.index') }}"
            class="inline-flex items-center gap-[6px] text-[13px] font-semibold text-white rounded-[10px] px-[10px] py-[6px]"
            style="background:rgba(255,255,255,.15);">
@@ -145,7 +145,7 @@ function dtrCreateForm() {
     </a>
     <button form="dtr-form" type="submit"
             class="text-[13px] font-bold py-[11px] rounded-xl text-white"
-            style="background:#6ea830; box-shadow:0 4px 10px -4px rgba(110,168,48,.5);">
+            class="bg-green-600" style="box-shadow:0 4px 10px -4px rgba(34,197,94,.4);">
         Submit DTR
     </button>
 </div>
