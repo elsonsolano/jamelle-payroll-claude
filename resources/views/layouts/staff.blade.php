@@ -59,18 +59,6 @@
         </div>
     @endif
 
-    {{-- Flash messages --}}
-    @if(session('success'))
-        <div class="mx-4 mt-3 px-4 py-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="mx-4 mt-3 px-4 py-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm">
-            {{ session('error') }}
-        </div>
-    @endif
-
     {{-- iOS Notification Permission Banner (shown after PWA install, requires user tap) --}}
     <div id="notif-permission-banner" class="hidden mx-4 mt-3 rounded-xl border border-amber-200 overflow-hidden text-sm">
         <div class="flex items-center gap-3 px-4 py-3 bg-amber-50">
@@ -132,6 +120,18 @@
 
     {{-- Page content --}}
     <main class="flex-1 p-4 pb-24">
+        {{-- Flash messages (rendered here so they appear below the header) --}}
+        @if(session('success'))
+            <div class="mb-3 px-4 py-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="mb-3 px-4 py-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm">
+                {{ session('error') }}
+            </div>
+        @endif
+
         {{ $slot }}
     </main>
 

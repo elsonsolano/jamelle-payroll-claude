@@ -1,17 +1,17 @@
-<x-staff-layout title="My DTR" :hide-header="true">
+<x-staff-layout title="My DTR">
 
 @push('head')
 <style>
     .dtr-pulse { animation: dtr-blink 2s ease-in-out infinite; }
     @keyframes dtr-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
-    .week-header-sticky { position:sticky; top:44px; z-index:9; }
+    /* 60px = layout sticky header height; 44px = list header height */
+    .week-header-sticky { position:sticky; top:104px; z-index:9; }
 </style>
 @endpush
 
 @php
     $today    = today();
     $todayStr = $today->format('Y-m-d');
-    $unread   = Auth::user()->unreadNotifications()->count();
     $fmt12    = fn($t) => $t ? date('g:i A', strtotime($t)) : null;
 
     $dtrStatus = function($dtr) use ($todayStr) {
@@ -26,33 +26,8 @@
         ->sortKeysDesc();
 @endphp
 
-{{-- ── Custom app header (scrolls with content) ── --}}
-<div class="-mx-4 -mt-4">
-    <div class="flex items-center justify-between gap-3 px-4 py-3" style="background:#6ea830;">
-        <div>
-            <div class="text-[17px] font-bold text-white leading-tight">My DTR</div>
-            <div class="text-[11px] font-medium leading-tight" style="color:rgba(255,255,255,.7);">
-                {{ Auth::user()->employee->branch->name ?? '' }}
-            </div>
-        </div>
-        <a href="{{ route('staff.notifications.index') }}"
-           class="relative flex items-center justify-center w-[34px] h-[34px] rounded-full shrink-0"
-           style="background:rgba(255,255,255,.15);">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="1.8"
-                 stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                <path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 8H4c0-2 2-3 2-8Z"/>
-                <path d="M10 21a2 2 0 0 0 4 0"/>
-            </svg>
-            @if($unread > 0)
-                <span class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2"
-                      style="background:#f4a53c; border-color:#6ea830;">{{ $unread > 9 ? '9+' : $unread }}</span>
-            @endif
-        </a>
-    </div>
-</div>
-
 {{-- ── Sticky list header ── --}}
-<div class="-mx-4 sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b"
+<div class="-mx-4 sticky top-[60px] z-10 flex items-center justify-between px-4 py-2.5 border-b"
      style="background:rgba(247,248,245,.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-color:#d9ddd6;">
     <h2 class="text-[14px] font-bold" style="color:#0f1410;">All DTR records</h2>
     <a href="{{ route('staff.dtr.create') }}"
