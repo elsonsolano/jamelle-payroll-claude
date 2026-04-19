@@ -35,7 +35,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('staff.dashboard');
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $intended = session()->pull('url.intended');
+        if ($intended && str_contains($intended, '/staff/')) {
+            $intended = null;
+        }
+
+        return redirect()->to($intended ?? route('dashboard', absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse

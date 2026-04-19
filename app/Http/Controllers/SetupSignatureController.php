@@ -22,6 +22,7 @@ class SetupSignatureController extends Controller
 
         Auth::user()->update(['signature' => $request->signature]);
 
-        return redirect()->route('staff.dashboard')->with('success', 'Signature saved successfully.');
+        return redirect()->route(Auth::user()->isStaff() ? 'staff.dashboard' : 'dashboard')
+            ->with('success', 'Signature saved successfully.');
     }
 }
