@@ -62,8 +62,8 @@
                     <div x-show="hasOt" x-cloak class="mt-2">
                         <input type="number" name="ot_hours"
                                value="{{ old('ot_hours', $dtr->overtime_hours > 0 ? $dtr->overtime_hours : '') }}"
-                               min="0.25" max="24" step="0.25"
-                               placeholder="Hours (e.g. 1, 1.5, 2.25)"
+                               min="0.5" max="24" step="0.01"
+                               placeholder="Hours (e.g. 0.5, 1, 1.5)"
                                class="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-amber-500 focus:border-amber-500">
                         @error('ot_hours') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                         @if($dtr->ot_status !== 'none')
