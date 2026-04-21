@@ -132,6 +132,13 @@
                 Overtime
             </x-sidebar-link>
 
+            <x-sidebar-link :href="route('reports.thirteenth-month')" :active="request()->routeIs('reports.thirteenth-month')" @click="sidebarOpen = false">
+                <x-slot name="icon">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                </x-slot>
+                13th Month
+            </x-sidebar-link>
+
             <div class="pt-3 pb-1 px-3">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Developer</p>
             </div>
