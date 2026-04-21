@@ -148,7 +148,7 @@
 
         @if($summary['total_employees'] > 0)
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-white rounded-xl border border-gray-200 p-4">
                 <p class="text-xs text-gray-500 mb-1">Employees</p>
                 <p class="text-2xl font-bold text-gray-900">{{ $summary['total_employees'] }}</p>
@@ -164,6 +164,14 @@
             <div class="bg-white rounded-xl border border-gray-200 p-4">
                 <p class="text-xs text-gray-500 mb-1">Total Net Pay</p>
                 <p class="text-2xl font-bold text-indigo-600">₱{{ number_format($summary['total_net_pay'], 2) }}</p>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500 mb-1">Total Retirement Alloc.</p>
+                <p class="text-2xl font-bold text-teal-600">₱{{ number_format($summary['total_retirement_pay'], 2) }}</p>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <p class="text-xs text-gray-500 mb-1">Total 13th Month Alloc.</p>
+                <p class="text-2xl font-bold text-teal-600">₱{{ number_format($summary['total_thirteenth_month'], 2) }}</p>
             </div>
             @if($cutoff->status === 'finalized')
             <div class="bg-white rounded-xl border border-gray-200 p-4">
@@ -203,6 +211,8 @@
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Gross Pay</th>
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Deductions</th>
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-right">Net Pay</th>
+                                <th class="px-5 py-3 font-semibold text-teal-600 text-right">Retirement Alloc.</th>
+                                <th class="px-5 py-3 font-semibold text-teal-600 text-right">13th Month Alloc.</th>
                                 @if($cutoff->status === 'finalized')
                                 <th class="px-5 py-3 font-semibold text-gray-600 text-center">Acknowledged</th>
                                 @endif
@@ -235,6 +245,15 @@
                                         @endif
                                     </td>
                                     <td class="px-5 py-3 text-right font-bold text-indigo-600">₱{{ number_format($entry->net_pay, 2) }}</td>
+                                    @php
+                                        $entryDailyRate = $entry->employee->salary_type === 'monthly'
+                                            ? $entry->employee->rate / 22
+                                            : $entry->employee->rate;
+                                        $entryRetirementPay   = $entryDailyRate * 22.5 / 12 / 2;
+                                        $entryThirteenthMonth = $entry->basic_pay / 12;
+                                    @endphp
+                                    <td class="px-5 py-3 text-right text-teal-700">₱{{ number_format($entryRetirementPay, 2) }}</td>
+                                    <td class="px-5 py-3 text-right text-teal-700">₱{{ number_format($entryThirteenthMonth, 2) }}</td>
                                     @if($cutoff->status === 'finalized')
                                     <td class="px-5 py-3 text-center">
                                         @if($entry->acknowledged_at && $entry->acknowledged_by === 'system')
@@ -269,6 +288,8 @@
                                 <td class="px-5 py-3 text-right font-semibold text-gray-800">₱{{ number_format($summary['total_basic_pay'] + $summary['total_overtime'], 2) }}</td>
                                 <td class="px-5 py-3 text-right font-semibold text-red-500">₱{{ number_format($summary['total_deductions'], 2) }}</td>
                                 <td class="px-5 py-3 text-right font-bold text-indigo-600">₱{{ number_format($summary['total_net_pay'], 2) }}</td>
+                                <td class="px-5 py-3 text-right font-bold text-teal-600">₱{{ number_format($summary['total_retirement_pay'], 2) }}</td>
+                                <td class="px-5 py-3 text-right font-bold text-teal-600">₱{{ number_format($summary['total_thirteenth_month'], 2) }}</td>
                                 @if($cutoff->status === 'finalized')
                                 <td></td>
                                 @endif

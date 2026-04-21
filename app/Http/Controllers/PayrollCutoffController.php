@@ -86,13 +86,22 @@ class PayrollCutoffController extends Controller
             ->select('payroll_entries.*')
             ->paginate(30);
 
+        $allEntries = $cutoff->payrollEntries()->with('employee')->get();
+
         $summary = [
-            'total_employees'   => $cutoff->payrollEntries()->count(),
-            'total_basic_pay'   => $cutoff->payrollEntries()->sum('basic_pay'),
-            'total_overtime'    => $cutoff->payrollEntries()->sum('overtime_pay'),
-            'total_deductions'  => $cutoff->payrollEntries()->sum('total_deductions'),
-            'total_net_pay'     => $cutoff->payrollEntries()->sum('net_pay'),
-            'total_acknowledged'=> $cutoff->payrollEntries()->whereNotNull('acknowledged_at')->count(),
+            'total_employees'        => $allEntries->count(),
+            'total_basic_pay'        => $allEntries->sum('basic_pay'),
+            'total_overtime'         => $allEntries->sum('overtime_pay'),
+            'total_deductions'       => $allEntries->sum('total_deductions'),
+            'total_net_pay'          => $allEntries->sum('net_pay'),
+            'total_acknowledged'     => $allEntries->whereNotNull('acknowledged_at')->count(),
+            'total_retirement_pay'   => $allEntries->sum(function ($entry) {
+                $dailyRate = $entry->employee->salary_type === 'monthly'
+                    ? $entry->employee->rate / 22
+                    : $entry->employee->rate;
+                return $dailyRate * 22.5 / 12 / 2;
+            }),
+            'total_thirteenth_month' => $allEntries->sum(fn ($e) => $e->basic_pay / 12),
         ];
 
         $pendingDtrCount = \App\Models\Dtr::where('status', 'Pending')
@@ -116,15 +125,22 @@ class PayrollCutoffController extends Controller
             ->get();
 
         $summary = [
-            'total_employees'  => $entries->count(),
-            'total_basic_pay'  => $entries->sum('basic_pay'),
-            'total_overtime'   => $entries->sum('overtime_pay'),
-            'total_holiday'    => $entries->sum('holiday_pay'),
-            'total_allowance'  => $entries->sum('allowance_pay'),
-            'total_gross_pay'  => $entries->sum('gross_pay'),
-            'total_deductions' => $entries->sum('total_deductions'),
-            'total_refunds'    => $entries->sum(fn ($entry) => $entry->payrollRefunds->sum('amount')),
-            'total_net_pay'    => $entries->sum('net_pay'),
+            'total_employees'        => $entries->count(),
+            'total_basic_pay'        => $entries->sum('basic_pay'),
+            'total_overtime'         => $entries->sum('overtime_pay'),
+            'total_holiday'          => $entries->sum('holiday_pay'),
+            'total_allowance'        => $entries->sum('allowance_pay'),
+            'total_gross_pay'        => $entries->sum('gross_pay'),
+            'total_deductions'       => $entries->sum('total_deductions'),
+            'total_refunds'          => $entries->sum(fn ($entry) => $entry->payrollRefunds->sum('amount')),
+            'total_net_pay'          => $entries->sum('net_pay'),
+            'total_retirement_pay'   => $entries->sum(function ($entry) {
+                $dailyRate = $entry->employee->salary_type === 'monthly'
+                    ? $entry->employee->rate / 22
+                    : $entry->employee->rate;
+                return $dailyRate * 22.5 / 12 / 2;
+            }),
+            'total_thirteenth_month' => $entries->sum(fn ($e) => $e->basic_pay / 12),
         ];
 
         $pdf = Pdf::loadView('payroll.cutoffs.pdf', compact('cutoff', 'entries', 'summary'))

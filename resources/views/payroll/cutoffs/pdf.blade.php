@@ -97,7 +97,7 @@
         .entries-table th,
         .entries-table td {
             border: 1px solid #d1d5db;
-            padding: 6px 7px;
+            padding: 5px 5px;
         }
 
         .entries-table th {
@@ -203,6 +203,16 @@
                 <div class="summary-value">PHP {{ number_format($summary['total_net_pay'], 2) }}</div>
             </td>
         </tr>
+        <tr>
+            <td colspan="2">
+                <div class="summary-label">Retirement Allocation</div>
+                <div class="summary-value">PHP {{ number_format($summary['total_retirement_pay'], 2) }}</div>
+            </td>
+            <td colspan="2">
+                <div class="summary-label">13th Month Allocation</div>
+                <div class="summary-value">PHP {{ number_format($summary['total_thirteenth_month'], 2) }}</div>
+            </td>
+        </tr>
     </table>
 
     <div class="section-title">Employee Entries</div>
@@ -222,6 +232,8 @@
                 <th class="text-right">Deductions</th>
                 <th class="text-right">Refunds</th>
                 <th class="text-right">Net Pay</th>
+                <th class="text-right">Retirement</th>
+                <th class="text-right">13th Mo.</th>
             </tr>
         </thead>
         <tbody>
@@ -243,6 +255,13 @@
                     <td class="text-right deductions">PHP {{ number_format($entry->total_deductions, 2) }}</td>
                     <td class="text-right">PHP {{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</td>
                     <td class="text-right net-pay">PHP {{ number_format($entry->net_pay, 2) }}</td>
+                    @php
+                        $pdfDailyRate = $entry->employee->salary_type === 'monthly'
+                            ? $entry->employee->rate / 22
+                            : $entry->employee->rate;
+                    @endphp
+                    <td class="text-right">PHP {{ number_format($pdfDailyRate * 22.5 / 12 / 2, 2) }}</td>
+                    <td class="text-right">PHP {{ number_format($entry->basic_pay / 12, 2) }}</td>
                 </tr>
             @endforeach
             <tr class="totals-row">
@@ -255,6 +274,8 @@
                 <td class="text-right deductions">PHP {{ number_format($summary['total_deductions'], 2) }}</td>
                 <td class="text-right">PHP {{ number_format($summary['total_refunds'], 2) }}</td>
                 <td class="text-right net-pay">PHP {{ number_format($summary['total_net_pay'], 2) }}</td>
+                <td class="text-right">PHP {{ number_format($summary['total_retirement_pay'], 2) }}</td>
+                <td class="text-right">PHP {{ number_format($summary['total_thirteenth_month'], 2) }}</td>
             </tr>
         </tbody>
     </table>
