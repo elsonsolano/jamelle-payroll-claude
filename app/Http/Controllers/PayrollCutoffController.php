@@ -96,12 +96,20 @@ class PayrollCutoffController extends Controller
             'total_net_pay'          => $allEntries->sum('net_pay'),
             'total_acknowledged'     => $allEntries->whereNotNull('acknowledged_at')->count(),
             'total_retirement_pay'   => $allEntries->sum(function ($entry) {
+                if ($entry->is_imported) {
+                    return (float) $entry->retirement_pay;
+                }
                 $dailyRate = $entry->employee->salary_type === 'monthly'
                     ? $entry->employee->rate / 22
                     : $entry->employee->rate;
                 return $dailyRate * 22.5 / 12 / 2;
             }),
-            'total_thirteenth_month' => $allEntries->sum(fn ($e) => $e->basic_pay / 12),
+            'total_thirteenth_month' => $allEntries->sum(function ($entry) {
+                if ($entry->is_imported) {
+                    return (float) $entry->thirteenth_month_allocation;
+                }
+                return $entry->basic_pay / 12;
+            }),
         ];
 
         $pendingDtrCount = \App\Models\Dtr::where('status', 'Pending')
@@ -135,12 +143,20 @@ class PayrollCutoffController extends Controller
             'total_refunds'          => $entries->sum(fn ($entry) => $entry->payrollRefunds->sum('amount')),
             'total_net_pay'          => $entries->sum('net_pay'),
             'total_retirement_pay'   => $entries->sum(function ($entry) {
+                if ($entry->is_imported) {
+                    return (float) $entry->retirement_pay;
+                }
                 $dailyRate = $entry->employee->salary_type === 'monthly'
                     ? $entry->employee->rate / 22
                     : $entry->employee->rate;
                 return $dailyRate * 22.5 / 12 / 2;
             }),
-            'total_thirteenth_month' => $entries->sum(fn ($e) => $e->basic_pay / 12),
+            'total_thirteenth_month' => $entries->sum(function ($entry) {
+                if ($entry->is_imported) {
+                    return (float) $entry->thirteenth_month_allocation;
+                }
+                return $entry->basic_pay / 12;
+            }),
         ];
 
         $pdf = Pdf::loadView('payroll.cutoffs.pdf', compact('cutoff', 'entries', 'summary'))

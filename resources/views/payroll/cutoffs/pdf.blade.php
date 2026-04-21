@@ -256,12 +256,19 @@
                     <td class="text-right">PHP {{ number_format($entry->payrollRefunds->sum('amount'), 2) }}</td>
                     <td class="text-right net-pay">PHP {{ number_format($entry->net_pay, 2) }}</td>
                     @php
-                        $pdfDailyRate = $entry->employee->salary_type === 'monthly'
-                            ? $entry->employee->rate / 22
-                            : $entry->employee->rate;
+                        if ($entry->is_imported) {
+                            $pdfRetirementPay   = (float) $entry->retirement_pay;
+                            $pdfThirteenthMonth = (float) $entry->thirteenth_month_allocation;
+                        } else {
+                            $pdfDailyRate = $entry->employee->salary_type === 'monthly'
+                                ? $entry->employee->rate / 22
+                                : $entry->employee->rate;
+                            $pdfRetirementPay   = $pdfDailyRate * 22.5 / 12 / 2;
+                            $pdfThirteenthMonth = $entry->basic_pay / 12;
+                        }
                     @endphp
-                    <td class="text-right">PHP {{ number_format($pdfDailyRate * 22.5 / 12 / 2, 2) }}</td>
-                    <td class="text-right">PHP {{ number_format($entry->basic_pay / 12, 2) }}</td>
+                    <td class="text-right">PHP {{ number_format($pdfRetirementPay, 2) }}</td>
+                    <td class="text-right">PHP {{ number_format($pdfThirteenthMonth, 2) }}</td>
                 </tr>
             @endforeach
             <tr class="totals-row">

@@ -9,6 +9,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollCutoffController;
+use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PayrollEntryRefundController;
 use App\Http\Controllers\PayrollEntryVariableDeductionController;
@@ -153,6 +154,8 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::get("bdo-export", [PayrollCutoffController::class, "bdoExport"])->name("bdo-export");
             Route::post("void", [PayrollCutoffController::class, "void"])->name("void");
             Route::post("unvoid", [PayrollCutoffController::class, "unvoid"])->name("unvoid");
+            Route::get("import-excel", [PayrollImportController::class, "create"])->name("import-excel");
+            Route::post("import-excel", [PayrollImportController::class, "store"])->name("import-excel.store");
         });
 
         // DTR admin view
@@ -169,6 +172,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         // Reports
         Route::get("reports/lates", [\App\Http\Controllers\ReportsController::class, "lates"])->name("reports.lates");
         Route::get("reports/overtime", [\App\Http\Controllers\ReportsController::class, "overtime"])->name("reports.overtime");
+        Route::get("reports/thirteenth-month", [\App\Http\Controllers\ReportsController::class, "thirteenthMonth"])->name("reports.thirteenth-month");
 
         // Holidays
         Route::get("holidays", [HolidayController::class, "index"])->name("holidays.index");
