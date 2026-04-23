@@ -6,6 +6,8 @@ use App\Models\Employee;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollEntry;
 use App\Notifications\PayslipAvailable;
+use App\Services\AttendanceBadgeService;
+use App\Services\AttendanceScoringService;
 use App\Services\PayrollComputationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -14,7 +16,11 @@ use Illuminate\View\View;
 
 class PayrollEntryController extends Controller
 {
-    public function __construct(protected PayrollComputationService $payrollService)
+    public function __construct(
+        protected PayrollComputationService $payrollService,
+        protected AttendanceScoringService $attendanceScoringService,
+        protected AttendanceBadgeService $attendanceBadgeService,
+    )
     {
     }
 
@@ -225,6 +231,10 @@ class PayrollEntryController extends Controller
 
         $cutoff->update(['status' => 'finalized', 'finalized_at' => now()]);
 
+        $cutoff = $cutoff->fresh();
+        $this->attendanceScoringService->scoreCutoff($cutoff);
+        $this->attendanceBadgeService->awardBadgesForCutoff($cutoff);
+
         // Notify each staff member who has an entry in this cutoff
         $cutoff->payrollEntries()
             ->with('employee.user')
@@ -237,7 +247,7 @@ class PayrollEntryController extends Controller
             });
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)
-            ->with('success', 'Payroll finalized. Staff DTRs in this period are now locked.');
+            ->with('success', 'Payroll finalized. Attendance scores were calculated and staff DTRs in this period are now locked.');
     }
 
     private function generateForMode(PayrollCutoff $cutoff, string $mode): RedirectResponse

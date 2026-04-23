@@ -3,12 +3,21 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\AttendanceScore;
 use App\Models\DailySchedule;
+use App\Models\EmployeeAttendanceBadge;
+use App\Models\PayrollCutoff;
+use App\Services\AttendanceScoringService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    public function __construct(protected AttendanceScoringService $attendanceScoringService)
+    {
+    }
+
     public function index(): View
     {
         $user     = Auth::user();
@@ -42,6 +51,7 @@ class DashboardController extends Controller
         $quote             = $this->dailyQuote();
         $todaySchedule     = $this->resolveSchedule($employee, today());
         $tomorrowSchedule  = $this->resolveSchedule($employee, today()->addDay());
+        $attendanceProgress = $this->attendanceProgress($employee, $todayDtr);
 
         // Clock state derived from today's DTR
         $clockState = 'none';
@@ -80,8 +90,108 @@ class DashboardController extends Controller
         return view('staff.dashboard', compact(
             'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount',
             'quote', 'todaySchedule', 'tomorrowSchedule',
-            'clockState', 'nextEvent', 'yesterdayNextEvent'
+            'clockState', 'nextEvent', 'yesterdayNextEvent', 'attendanceProgress'
         ));
+    }
+
+    private function attendanceProgress(\App\Models\Employee $employee, ?\App\Models\Dtr $todayDtr): array
+    {
+        $currentCutoff = PayrollCutoff::where('branch_id', $employee->branch_id)
+            ->where('status', '!=', 'voided')
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->orderByDesc('start_date')
+            ->orderByDesc('end_date')
+            ->orderByDesc('id')
+            ->first();
+
+        $estimatePeriod = $currentCutoff ?? $this->virtualAttendanceCutoff($employee);
+        $estimate = $this->attendanceScoringService->estimateEmployeeForCutoff($estimatePeriod, $employee);
+
+        $latestOfficialScore = AttendanceScore::with('payrollCutoff')
+            ->where('employee_id', $employee->id)
+            ->whereHas('payrollCutoff', fn ($query) => $query->where('status', 'finalized'))
+            ->latest('finalized_at')
+            ->latest('id')
+            ->first();
+
+        $latestBadgeCutoffId = $latestOfficialScore?->payroll_cutoff_id;
+        $recentBadges = EmployeeAttendanceBadge::with('badge', 'payrollCutoff')
+            ->where('employee_id', $employee->id)
+            ->whereHas('badge', fn ($query) => $query->where('active', true))
+            ->when($latestBadgeCutoffId, fn ($query) => $query->where('payroll_cutoff_id', $latestBadgeCutoffId))
+            ->latest('awarded_at')
+            ->latest('id')
+            ->limit(4)
+            ->get();
+
+        $totalBadgeCount = EmployeeAttendanceBadge::where('employee_id', $employee->id)
+            ->whereHas('badge', fn ($query) => $query->where('active', true))
+            ->count();
+
+        $streak = $this->attendanceScoringService->completeDtrStreak(
+            $employee,
+            today(),
+            $estimatePeriod->start_date,
+        );
+
+        $todayMessage = match (true) {
+            ! $todayDtr || ! $todayDtr->time_in => 'Time in today to earn no-absence and no-late points.',
+            ! ($todayDtr->time_in && $todayDtr->am_out && $todayDtr->pm_in && $todayDtr->time_out) => 'Finish today\'s DTR today to earn same-day points.',
+            $this->attendanceScoringService->wasCompletedPromptly($todayDtr) => 'Nice. Today\'s DTR earned same-day points.',
+            default => 'DTR complete, but same-day points are missed.',
+        };
+
+        return [
+            'current_cutoff'         => $currentCutoff,
+            'estimate_period'        => $estimatePeriod,
+            'is_virtual_period'      => ! $currentCutoff,
+            'estimate'               => $estimate,
+            'latest_official_score'  => $latestOfficialScore,
+            'complete_dtr_streak'    => $streak,
+            'today_message'          => $todayMessage,
+            'recent_badges'          => $recentBadges,
+            'total_badge_count'      => $totalBadgeCount,
+        ];
+    }
+
+    private function virtualAttendanceCutoff(\App\Models\Employee $employee): PayrollCutoff
+    {
+        [$startDate, $endDate] = $this->currentAttendancePeriod(today());
+
+        return new PayrollCutoff([
+            'branch_id'   => $employee->branch_id,
+            'name'        => 'Current attendance period',
+            'start_date'  => $startDate,
+            'end_date'    => $endDate,
+            'status'      => 'draft',
+        ]);
+    }
+
+    private function currentAttendancePeriod(Carbon $date): array
+    {
+        $day = (int) $date->format('j');
+
+        if ($day >= 14 && $day <= 29) {
+            return [
+                $date->copy()->day(14)->startOfDay(),
+                $date->copy()->day(29)->startOfDay(),
+            ];
+        }
+
+        if ($day >= 30) {
+            return [
+                $date->copy()->day(30)->startOfDay(),
+                $date->copy()->addMonthNoOverflow()->day(13)->startOfDay(),
+            ];
+        }
+
+        $previousMonth = $date->copy()->subMonthNoOverflow();
+
+        return [
+            $previousMonth->copy()->day(min(30, $previousMonth->daysInMonth))->startOfDay(),
+            $date->copy()->day(13)->startOfDay(),
+        ];
     }
 
     private function resolveSchedule(\App\Models\Employee $employee, \Carbon\Carbon $date): array

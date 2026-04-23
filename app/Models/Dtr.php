@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Dtr extends Model
 {
@@ -53,6 +54,11 @@ class Dtr extends Model
     public function statusChangedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'status_changed_by');
+    }
+
+    public function logEvents(): HasMany
+    {
+        return $this->hasMany(DtrLogEvent::class);
     }
 
     public function hasOt(): bool

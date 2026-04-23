@@ -401,6 +401,113 @@
 
 </div>{{-- /agenda --}}
 
+{{-- ── Private attendance progress ── --}}
+@php
+    $estimateTotals = $attendanceProgress['estimate']['totals'] ?? null;
+    $officialScore = $attendanceProgress['latest_official_score'];
+    $currentCutoff = $attendanceProgress['current_cutoff'];
+    $estimatePeriod = $attendanceProgress['estimate_period'];
+    $recentBadges = $attendanceProgress['recent_badges'];
+@endphp
+<div class="mt-3 rounded-2xl border overflow-hidden"
+     style="background:linear-gradient(180deg,#fff9ec 0%,#ffffff 100%); border-color:#f2d28a; box-shadow:0 8px 18px -14px rgba(146,64,14,.35);">
+    <div class="px-4 pt-4 pb-3">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-xs font-bold tracking-widest uppercase" style="color:#b7791f; letter-spacing:.08em;">Attendance Progress</p>
+                <h2 class="text-lg font-bold tracking-tight mt-0.5" style="color:#0f1410;">Live estimate this cutoff</h2>
+            </div>
+            <div class="text-right shrink-0">
+                <p class="text-3xl font-bold leading-none" style="color:#d97706;">
+                    {{ $estimateTotals ? number_format($estimateTotals['total_points']) : '—' }}
+                </p>
+                <p class="text-[11px] font-semibold mt-1" style="color:#b7791f;">points</p>
+            </div>
+        </div>
+
+        <div class="mt-3 rounded-xl px-3 py-2" style="background:#fff7df; border:1px solid #f2d28a;">
+            <p class="text-xs font-medium" style="color:#92400e;">
+                {{ $attendanceProgress['today_message'] }}
+            </p>
+            <p class="text-[11px] mt-1" style="color:#a16207;">
+                Final points are locked when payroll is finalized.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-3">
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['on_time_days']) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">No late</p>
+            </div>
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['same_day_complete_days']) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">Same-day complete</p>
+            </div>
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['no_absent_days'] ?? 0) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">No absent</p>
+            </div>
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#b91c1c;">{{ $estimateTotals ? number_format($estimateTotals['late_days'] ?? 0) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">Late days</p>
+            </div>
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['late_minutes']) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">Late mins</p>
+            </div>
+            <div>
+                <p class="text-lg font-bold leading-none" style="color:#b91c1c;">{{ $estimateTotals ? number_format(($estimateTotals['late_days'] ?? 0) * -5) : '—' }}</p>
+                <p class="text-[11px] mt-1" style="color:#6b7768;">Late penalty</p>
+            </div>
+        </div>
+
+        <div class="mt-3 pt-3" style="border-top:1px dashed #f2d28a;">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-xs font-bold tracking-widest uppercase" style="color:#b7791f; letter-spacing:.08em;">Recent Badges</p>
+                <p class="text-[11px] font-semibold" style="color:#6b7768;">{{ number_format($attendanceProgress['total_badge_count']) }} total</p>
+            </div>
+
+            @if($recentBadges->isNotEmpty())
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach($recentBadges as $award)
+                        <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                              style="background:#fff; color:#92400e; border:1px solid #f2d28a;">
+                            <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] text-white" style="background:#d97706;">
+                                {{ str($award->badge->name)->substr(0, 1)->upper() }}
+                            </span>
+                            {{ $award->badge->name }}
+                        </span>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-xs" style="color:#8d9889;">No badges yet. Keep completing your DTRs and your first one will show here.</p>
+            @endif
+        </div>
+    </div>
+
+    <div class="px-4 py-3 flex items-center justify-between gap-3" style="background:#fff; border-top:1px solid #f2d28a;">
+        <div class="min-w-0">
+            <p class="text-xs font-semibold" style="color:#6b7768;">Official last cutoff</p>
+            @if($officialScore)
+                <p class="text-sm font-bold truncate" style="color:#0f1410;">
+                    {{ number_format($officialScore->total_points) }} points
+                    <span class="font-medium" style="color:#8d9889;">· {{ $officialScore->payrollCutoff?->name }}</span>
+                </p>
+            @else
+                <p class="text-sm font-bold" style="color:#8d9889;">No finalized score yet</p>
+            @endif
+        </div>
+        <div class="shrink-0 text-right">
+            <p class="text-[11px] font-semibold" style="color:#b7791f;">
+                {{ $estimatePeriod->start_date->format('M j') . ' - ' . $estimatePeriod->end_date->format('M j') }}
+            </p>
+            @if($attendanceProgress['is_virtual_period'])
+                <p class="text-[10px] font-medium mt-0.5" style="color:#8d9889;">estimated period</p>
+            @endif
+        </div>
+    </div>
+</div>
+
 {{-- ── Approvals waiting (approvers only) ── --}}
 @if($pendingApprovalCount > 0)
 <div class="mt-3 rounded-2xl border px-4 py-3 flex items-center justify-between"

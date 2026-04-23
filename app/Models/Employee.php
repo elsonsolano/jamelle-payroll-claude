@@ -66,6 +66,23 @@ class Employee extends Model
         return $this->hasMany(PayrollEntry::class);
     }
 
+    public function attendanceScores(): HasMany
+    {
+        return $this->hasMany(AttendanceScore::class);
+    }
+
+    public function employeeAttendanceBadges(): HasMany
+    {
+        return $this->hasMany(EmployeeAttendanceBadge::class);
+    }
+
+    public function attendanceBadges()
+    {
+        return $this->belongsToMany(AttendanceBadge::class, 'employee_attendance_badges')
+            ->withPivot(['payroll_cutoff_id', 'attendance_score_id', 'awarded_at', 'metadata'])
+            ->withTimestamps();
+    }
+
     public function employeeSchedules(): HasMany
     {
         return $this->hasMany(EmployeeSchedule::class);

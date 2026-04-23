@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BranchSeeder::class,
             AdminUserSeeder::class,
+            AttendanceBadgeSeeder::class,
             PayrollCutoffSeeder::class,
             EmployeeSeeder::class,
             HolidaySeeder::class,

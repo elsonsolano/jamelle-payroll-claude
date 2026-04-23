@@ -33,4 +33,14 @@ class PayrollCutoff extends Model
     {
         return $this->hasMany(PayrollEntry::class);
     }
+
+    public function attendanceScores(): HasMany
+    {
+        return $this->hasMany(AttendanceScore::class);
+    }
+
+    public function employeeAttendanceBadges(): HasMany
+    {
+        return $this->hasMany(EmployeeAttendanceBadge::class);
+    }
 }

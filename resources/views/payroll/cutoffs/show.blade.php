@@ -11,6 +11,15 @@
             @endif
 
             @if($summary['total_employees'] > 0)
+                @if($cutoff->status === 'finalized')
+                <a href="{{ route('payroll.cutoffs.attendance-scores.index', $cutoff) }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.956a1 1 0 00.95.69h4.16c.969 0 1.371 1.24.588 1.81l-3.366 2.445a1 1 0 00-.364 1.118l1.286 3.956c.3.921-.755 1.688-1.539 1.118l-3.366-2.445a1 1 0 00-1.176 0L8.044 18.02c-.783.57-1.838-.197-1.539-1.118l1.286-3.956a1 1 0 00-.364-1.118L4.061 9.383c-.783-.57-.38-1.81.588-1.81h4.16a1 1 0 00.95-.69l1.29-3.956z"/>
+                    </svg>
+                    Attendance Scores
+                </a>
+                @endif
                 <a href="{{ route('payroll.cutoffs.bdo-export', $cutoff) }}"
                    class="inline-flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

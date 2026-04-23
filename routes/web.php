@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AttendanceScoreController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\DtrController;
@@ -141,6 +142,8 @@ Route::middleware(["auth", "admin"])->group(function () {
             "destroy" => "payroll.cutoffs.destroy",
         ]);
         Route::prefix("payroll/cutoffs/{cutoff}")->name("payroll.cutoffs.")->group(function () {
+            Route::get("attendance-scores", [AttendanceScoreController::class, "index"])->name("attendance-scores.index");
+            Route::get("attendance-scores/{attendanceScore}", [AttendanceScoreController::class, "show"])->name("attendance-scores.show");
             Route::get("entries", [PayrollEntryController::class, "index"])->name("entries.index");
             Route::get("entries/{entry}", [PayrollEntryController::class, "show"])->name("entries.show");
             Route::get("entries/{entry}/pdf", [PayrollEntryController::class, "pdf"])->name("entries.pdf");

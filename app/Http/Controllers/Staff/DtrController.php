@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dtr;
+use App\Models\DtrLogEvent;
 use App\Models\PayrollEntry;
 use App\Notifications\OtSubmitted;
 use App\Services\DtrComputationService;
@@ -89,6 +90,12 @@ class DtrController extends Controller
             ...$computed,
         ]);
 
+        foreach (['time_in', 'am_out', 'pm_in', 'time_out'] as $eventKey) {
+            if (! empty($validated[$eventKey])) {
+                $this->recordLogEvent($dtr, $eventKey, $validated[$eventKey], 'staff_form');
+            }
+        }
+
         if ($hasOt) {
             $approvers = DtrComputationService::getOtApprovers($employee, Auth::user());
             foreach ($approvers as $approver) {
@@ -167,6 +174,8 @@ class DtrController extends Controller
         }
 
         $dtr->save();
+
+        $this->recordLogEvent($dtr, $validated['event'], $validated['time'], 'staff_dashboard');
 
         if ($hasOt) {
             $approvers = DtrComputationService::getOtApprovers($employee, Auth::user());
@@ -251,6 +260,12 @@ class DtrController extends Controller
             ...$computed,
         ]);
 
+        foreach (['time_in', 'am_out', 'pm_in', 'time_out'] as $eventKey) {
+            if (! empty($validated[$eventKey])) {
+                $this->recordLogEvent($dtr->fresh(), $eventKey, $validated[$eventKey], 'staff_form');
+            }
+        }
+
         // Notify approvers if OT was newly added or re-submitted after rejection
         if ($hasOt && (!$wasOt || $dtr->wasChanged('ot_status'))) {
             $approvers = DtrComputationService::getOtApprovers($employee, Auth::user());
@@ -282,5 +297,19 @@ class DtrController extends Controller
         if ($finalized) {
             abort(403, 'This DTR is part of a finalized payroll and cannot be edited.');
         }
+    }
+
+    private function recordLogEvent(Dtr $dtr, string $eventKey, string $loggedTime, string $source): void
+    {
+        DtrLogEvent::create([
+            'dtr_id'       => $dtr->id,
+            'employee_id'  => $dtr->employee_id,
+            'work_date'    => $dtr->date,
+            'event_key'    => $eventKey,
+            'logged_time'  => $loggedTime,
+            'submitted_at' => now(),
+            'source'       => $source,
+            'created_by'   => Auth::id(),
+        ]);
     }
 }
