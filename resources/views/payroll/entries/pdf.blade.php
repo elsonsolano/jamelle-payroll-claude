@@ -208,7 +208,7 @@
         </tr>
         <tr>
             <td class="summary-label">Rate</td>
-            <td class="summary-value">PHP {{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
+            <td class="summary-value">PHP {{ number_format($entry->is_imported ? $entry->daily_rate : $entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
             <td class="summary-label">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? 'Total Hours' : '' }}</td>
             <td class="summary-value">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? number_format($entry->total_hours_worked, 2) . 'h' : '' }}</td>
         </tr>

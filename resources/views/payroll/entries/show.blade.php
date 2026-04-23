@@ -35,7 +35,7 @@
                     </p>
                     <p class="text-xs text-gray-400 mt-1">
                         {{ ucfirst($entry->employee->salary_type) }} rate ·
-                        ₱{{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}
+                        ₱{{ number_format($entry->is_imported ? $entry->daily_rate : $entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}
                     </p>
                 </div>
             </div>
