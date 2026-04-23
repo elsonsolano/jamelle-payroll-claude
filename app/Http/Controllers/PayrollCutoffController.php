@@ -190,6 +190,15 @@ class PayrollCutoffController extends Controller
         return redirect()->route('payroll.cutoffs.show', $cutoff)->with('success', 'Cutoff updated successfully.');
     }
 
+    public function rename(Request $request, PayrollCutoff $cutoff): RedirectResponse
+    {
+        $request->validate(['name' => 'required|string|max:255']);
+
+        $cutoff->update(['name' => $request->name]);
+
+        return back()->with('success', 'Cutoff renamed successfully.');
+    }
+
     public function void(Request $request, PayrollCutoff $cutoff): RedirectResponse
     {
         $request->validate([

@@ -154,6 +154,7 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::get("bdo-export", [PayrollCutoffController::class, "bdoExport"])->name("bdo-export");
             Route::post("void", [PayrollCutoffController::class, "void"])->name("void");
             Route::post("unvoid", [PayrollCutoffController::class, "unvoid"])->name("unvoid");
+            Route::patch("rename", [PayrollCutoffController::class, "rename"])->name("rename");
         });
 
         // Legacy payroll import (standalone — no branch required)

@@ -73,9 +73,46 @@
                 @forelse($cutoffs as $cutoff)
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-5 py-3 font-medium text-gray-900">
-                            <a href="{{ route('payroll.cutoffs.show', $cutoff) }}" class="hover:text-indigo-600">
-                                {{ $cutoff->name }}
-                            </a>
+                            <div x-data="{ editing: false, name: '{{ addslashes($cutoff->name) }}' }" class="flex items-center gap-1.5">
+                                <template x-if="!editing">
+                                    <div class="flex items-center gap-1.5">
+                                        <a href="{{ route('payroll.cutoffs.show', $cutoff) }}" class="hover:text-indigo-600" x-text="name"></a>
+                                        <button @click.prevent="editing = true"
+                                                class="text-gray-300 hover:text-gray-500 transition"
+                                                title="Rename">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-1.414a2 2 0 01.586-1.414z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </template>
+                                <template x-if="editing">
+                                    <form method="POST"
+                                          action="{{ route('payroll.cutoffs.rename', $cutoff) }}"
+                                          class="flex items-center gap-1.5"
+                                          @submit.prevent="$el.submit()">
+                                        @csrf @method('PATCH')
+                                        <input type="text"
+                                               name="name"
+                                               x-model="name"
+                                               x-ref="nameInput"
+                                               x-init="$nextTick(() => { if (editing) $refs.nameInput?.focus() })"
+                                               @keydown.escape="editing = false"
+                                               class="border border-indigo-400 rounded px-2 py-0.5 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-48">
+                                        <button type="submit" class="text-indigo-600 hover:text-indigo-800" title="Save">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </button>
+                                        <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600" title="Cancel">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </template>
+                            </div>
                         </td>
                         <td class="px-5 py-3 text-gray-600">{{ $cutoff->branch?->name ?? '—' }}</td>
                         <td class="px-5 py-3 text-gray-600">
