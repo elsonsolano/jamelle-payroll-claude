@@ -203,14 +203,14 @@
         <tr>
             <td class="summary-label">Salary Type</td>
             <td class="summary-value">{{ ucfirst($entry->employee->salary_type) }} Rate</td>
-            <td class="summary-label">{{ $entry->employee->salary_type !== 'monthly' ? 'Days Worked' : '' }}</td>
-            <td class="summary-value">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->working_days, 2) . ' day(s)' : '' }}</td>
+            <td class="summary-label">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? 'Days Worked' : '' }}</td>
+            <td class="summary-value">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? number_format($entry->working_days, 2) . ' day(s)' : '' }}</td>
         </tr>
         <tr>
             <td class="summary-label">Rate</td>
             <td class="summary-value">PHP {{ number_format($entry->employee->rate, 2) }} / {{ $entry->employee->salary_type === 'daily' ? 'day' : 'month' }}</td>
-            <td class="summary-label">{{ $entry->employee->salary_type !== 'monthly' ? 'Total Hours' : '' }}</td>
-            <td class="summary-value">{{ $entry->employee->salary_type !== 'monthly' ? number_format($entry->total_hours_worked, 2) . 'h' : '' }}</td>
+            <td class="summary-label">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? 'Total Hours' : '' }}</td>
+            <td class="summary-value">{{ (!$entry->is_imported && $entry->employee->salary_type !== 'monthly') ? number_format($entry->total_hours_worked, 2) . 'h' : '' }}</td>
         </tr>
     </table>
 
@@ -341,6 +341,12 @@
     <div style="margin-top:20px; text-align:right; font-size:9px; color:#9ca3af;">
         Generated: {{ now()->format('M d, Y h:i A') }}
     </div>
+
+    @if($entry->is_imported)
+    <div style="margin-top:8px; text-align:right; font-size:9px; color:#d97706;">
+        Historical record — imported from legacy payroll system.
+    </div>
+    @endif
 
 </body>
 </html>

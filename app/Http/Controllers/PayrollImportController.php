@@ -4,10 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\PayrollCutoff;
-use App\Models\PayrollDeduction;
 use App\Models\PayrollEntry;
-use App\Models\PayrollEntryRefund;
-use App\Models\PayrollEntryVariableDeduction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,18 +13,17 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class PayrollImportController extends Controller
 {
-    public function create(PayrollCutoff $cutoff): View|RedirectResponse
+    public function create(): View
     {
-        abort_if($cutoff->status !== 'draft', 403, 'Can only import into a draft payroll cutoff.');
-
-        return view('payroll.cutoffs.import', compact('cutoff'));
+        return view('payroll.import');
     }
 
-    public function store(Request $request, PayrollCutoff $cutoff): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        abort_if($cutoff->status !== 'draft', 403, 'Can only import into a draft payroll cutoff.');
-
         $request->validate([
+            'name'       => ['required', 'string', 'max:255'],
+            'start_date' => ['required', 'date'],
+            'end_date'   => ['required', 'date', 'after_or_equal:start_date'],
             'excel_file' => ['required', 'file', 'mimes:xlsx,xls'],
         ]);
 
@@ -36,21 +32,20 @@ class PayrollImportController extends Controller
         try {
             $rows = $this->parseExcel($path);
         } catch (\Throwable $e) {
-            return back()->withErrors(['excel_file' => 'Could not read the Excel file: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['excel_file' => 'Could not read the Excel file: ' . $e->getMessage()]);
         }
 
         if (empty($rows)) {
-            return back()->withErrors(['excel_file' => 'No employee data rows found in the PAYROLL sheet.']);
+            return back()->withInput()->withErrors(['excel_file' => 'No employee data rows found in the uploaded file.']);
         }
 
-        // Match each row to an employee in this branch
-        $branchEmployees = Employee::where('branch_id', $cutoff->branch_id)->get();
+        $allEmployees = Employee::all();
 
         $unmatched = [];
         $matched   = [];
 
         foreach ($rows as $row) {
-            $employee = $this->matchEmployee($row['name'], $branchEmployees);
+            $employee = $this->matchEmployee($row['name'], $allEmployees);
             if (! $employee) {
                 $unmatched[] = $row['name'];
             } else {
@@ -60,20 +55,28 @@ class PayrollImportController extends Controller
 
         if (! empty($unmatched)) {
             $list = implode(', ', $unmatched);
-            return back()->withErrors([
-                'excel_file' => "Could not match the following employee(s) in this branch: {$list}. Please correct the names in the Excel file and re-upload.",
+            return back()->withInput()->withErrors([
+                'excel_file' => "Could not match the following employee(s): {$list}. Please correct the names in the Excel file and re-upload.",
             ]);
         }
 
-        DB::transaction(function () use ($cutoff, $matched) {
+        $cutoff = DB::transaction(function () use ($request, $matched) {
+            $cutoff = PayrollCutoff::create([
+                'branch_id'  => null,
+                'name'       => $request->name,
+                'start_date' => $request->start_date,
+                'end_date'   => $request->end_date,
+                'status'     => 'draft',
+            ]);
+
             foreach ($matched as $item) {
                 $row      = $item['row'];
                 $employee = $item['employee'];
 
-                // Delete existing entry for this employee in this cutoff if any
                 $existing = PayrollEntry::where('payroll_cutoff_id', $cutoff->id)
                     ->where('employee_id', $employee->id)
                     ->first();
+
                 if ($existing) {
                     $existing->payrollDeductions()->delete();
                     $existing->payrollRefunds()->delete();
@@ -81,69 +84,22 @@ class PayrollImportController extends Controller
                     $existing->delete();
                 }
 
-                $entry = PayrollEntry::create([
+                PayrollEntry::create([
                     'payroll_cutoff_id'           => $cutoff->id,
                     'employee_id'                 => $employee->id,
                     'daily_rate'                  => $row['daily_rate'],
-                    'working_days'                => $row['working_days'],
-                    'total_overtime_hours'        => $row['overtime_hours'],
                     'basic_pay'                   => $row['basic_pay'],
-                    'retirement_pay'              => $row['retirement_pay'],
-                    'thirteenth_month_allocation' => $row['thirteenth_month_allocation'],
-                    'overtime_pay'                => $row['overtime_pay'],
-                    'allowance_pay'               => $row['allowance_pay'],
-                    'gross_pay'                   => $row['gross_pay'],
-                    'total_deductions'            => $row['sss'] + $row['phic'] + $row['pagibig']
-                                                     + $row['pagibig_loan'] + $row['sl_loan']
-                                                     + $row['saving'] + $row['thirteenth_month_deduction'],
+                    'gross_pay'                   => $row['basic_pay'],
                     'net_pay'                     => $row['net_pay'],
-                    'total_hours_worked'          => round($row['working_days'] * 8, 2),
+                    'thirteenth_month_allocation' => round($row['basic_pay'] / 12, 2),
+                    'retirement_pay'              => round($row['daily_rate'] * 22.5 / 12 / 2, 2),
                     'is_imported'                 => true,
                 ]);
-
-                // Standard government deductions
-                if ($row['sss'] > 0) {
-                    PayrollDeduction::create(['payroll_entry_id' => $entry->id, 'type' => 'SSS', 'amount' => $row['sss']]);
-                }
-                if ($row['phic'] > 0) {
-                    PayrollDeduction::create(['payroll_entry_id' => $entry->id, 'type' => 'PhilHealth', 'amount' => $row['phic']]);
-                }
-                if ($row['pagibig'] > 0) {
-                    PayrollDeduction::create(['payroll_entry_id' => $entry->id, 'type' => 'PagIBIG', 'amount' => $row['pagibig']]);
-                }
-
-                // Variable deductions
-                foreach ([
-                    'Pag-ibig Loan'  => $row['pagibig_loan'],
-                    'S/L'            => $row['sl_loan'],
-                    'Savings'        => $row['saving'],
-                    '13th Month'     => $row['thirteenth_month_deduction'],
-                ] as $label => $amount) {
-                    if ($amount > 0) {
-                        PayrollEntryVariableDeduction::create([
-                            'payroll_entry_id' => $entry->id,
-                            'description'      => $label,
-                            'amount'           => $amount,
-                        ]);
-                    }
-                }
-
-                // Refunds
-                foreach ([
-                    'SSS Refund' => $row['sss_refund'],
-                    'Refund'     => $row['refund'],
-                ] as $label => $amount) {
-                    if ($amount > 0) {
-                        PayrollEntryRefund::create([
-                            'payroll_entry_id' => $entry->id,
-                            'description'      => $label,
-                            'amount'           => $amount,
-                        ]);
-                    }
-                }
             }
 
             $cutoff->update(['status' => 'finalized']);
+
+            return $cutoff;
         });
 
         return redirect()
@@ -154,52 +110,25 @@ class PayrollImportController extends Controller
     private function parseExcel(string $path): array
     {
         $spreadsheet = IOFactory::load($path);
-        $sheet       = $spreadsheet->getSheetByName('PAYROLL');
-
-        if (! $sheet) {
-            throw new \RuntimeException('No sheet named "PAYROLL" found in the uploaded file.');
-        }
-
-        $rows    = $sheet->toArray(null, true, true, true);
-        $records = [];
+        $sheet       = $spreadsheet->getActiveSheet();
+        $rows        = $sheet->toArray(null, true, true, true);
+        $records     = [];
 
         foreach ($rows as $rowNum => $row) {
-            // Data rows start at row 8; skip if no row number in col A
-            if ($rowNum < 8) {
+            if ($rowNum === 1) {
                 continue;
             }
 
-            $no = trim((string) ($row['A'] ?? ''));
-            if (! is_numeric($no)) {
-                continue; // totals row or empty
-            }
-
-            $name = trim((string) ($row['B'] ?? ''));
-            if ($name === '' || ! str_contains($name, ',')) {
-                continue; // skip subtotal/branch label rows
+            $name = trim((string) ($row['A'] ?? ''));
+            if ($name === '') {
+                continue;
             }
 
             $records[] = [
-                'name'                       => $name,
-                'daily_rate'                 => $this->num($row['D'] ?? 0),
-                'working_days'               => $this->num($row['E'] ?? 0),
-                'overtime_hours'             => $this->num($row['F'] ?? 0),
-                'basic_pay'                  => $this->num($row['G'] ?? 0),
-                'retirement_pay'             => $this->num($row['H'] ?? 0),
-                'thirteenth_month_allocation'=> $this->num($row['I'] ?? 0),
-                'overtime_pay'               => $this->num($row['J'] ?? 0),
-                'allowance_pay'              => $this->num($row['L'] ?? 0),
-                'gross_pay'                  => $this->num($row['M'] ?? 0),
-                'sss'                        => $this->num($row['N'] ?? 0),
-                'phic'                       => $this->num($row['O'] ?? 0),
-                'pagibig'                    => $this->num($row['P'] ?? 0),
-                'pagibig_loan'               => $this->num($row['Q'] ?? 0),
-                'sl_loan'                    => $this->num($row['R'] ?? 0),
-                'saving'                     => $this->num($row['S'] ?? 0),
-                'sss_refund'                 => $this->num($row['T'] ?? 0),
-                'refund'                     => $this->num($row['U'] ?? 0),
-                'thirteenth_month_deduction' => $this->num($row['V'] ?? 0),
-                'net_pay'                    => $this->num($row['X'] ?? 0),
+                'name'       => $name,
+                'daily_rate' => $this->num($row['B'] ?? 0),
+                'basic_pay'  => $this->num($row['C'] ?? 0),
+                'net_pay'    => $this->num($row['D'] ?? 0),
             ];
         }
 
@@ -211,18 +140,15 @@ class PayrollImportController extends Controller
         if ($value === null || $value === '') {
             return 0.0;
         }
-        // Remove commas, spaces, currency symbols
         $clean = preg_replace('/[^0-9.\-]/', '', str_replace(',', '', (string) $value));
         return (float) ($clean ?: 0);
     }
 
     private function matchEmployee(string $excelName, $employees): ?Employee
     {
-        // Excel format: "LASTNAME, FIRSTNAME MIDDLENAME"
-        $parts    = explode(',', $excelName, 2);
-        $lastName = strtoupper(trim($parts[0]));
-        $rest     = isset($parts[1]) ? strtoupper(trim($parts[1])) : '';
-        // First word of rest is first name
+        $parts     = explode(',', $excelName, 2);
+        $lastName  = strtoupper(trim($parts[0]));
+        $rest      = isset($parts[1]) ? strtoupper(trim($parts[1])) : '';
         $firstName = strtok($rest, ' ');
 
         foreach ($employees as $employee) {
@@ -234,12 +160,9 @@ class PayrollImportController extends Controller
             }
         }
 
-        // Fallback: match on nickname (like schedule upload does)
-        if ($rest !== '') {
-            foreach ($employees as $employee) {
-                if ($employee->nickname && strtoupper(trim($employee->nickname)) === strtoupper(trim($excelName))) {
-                    return $employee;
-                }
+        foreach ($employees as $employee) {
+            if ($employee->nickname && strtoupper(trim($employee->nickname)) === strtoupper(trim($excelName))) {
+                return $employee;
             }
         }
 

@@ -46,7 +46,7 @@ class PayrollEntryController extends Controller
             $cutoff->end_date->toDateString(),
         ])->get()->keyBy(fn($h) => $h->date->toDateString());
 
-        $breakdown = $this->buildBreakdown($employee, $rate, $dtrs, $holidays);
+        $breakdown = $entry->is_imported ? null : $this->buildBreakdown($employee, $rate, $dtrs, $holidays);
 
         return view('payroll.entries.show', compact('cutoff', 'entry', 'breakdown'));
     }
@@ -245,6 +245,11 @@ class PayrollEntryController extends Controller
         if ($cutoff->status === 'voided') {
             return redirect()->route('payroll.cutoffs.show', $cutoff)
                 ->with('error', 'Cannot regenerate a voided payroll cutoff.');
+        }
+
+        if (! $cutoff->branch_id) {
+            return redirect()->route('payroll.cutoffs.show', $cutoff)
+                ->with('error', 'Legacy imported cutoffs cannot be regenerated.');
         }
 
         $cutoff->update(['status' => 'processing', 'finalized_at' => null]);

@@ -172,7 +172,7 @@
                 </td>
                 <td>
                     <div class="title">Payroll Register</div>
-                    <div class="subtitle">{{ $cutoff->name }} - {{ $cutoff->branch->name }}</div>
+                    <div class="subtitle">{{ $cutoff->name }}{{ $cutoff->branch ? ' - ' . $cutoff->branch->name : '' }}</div>
                 </td>
                 <td class="meta">
                     <div><span class="meta-label">Period</span><span class="meta-value">{{ $cutoff->start_date->format('M d') }} - {{ $cutoff->end_date->format('M d, Y') }}</span></div>

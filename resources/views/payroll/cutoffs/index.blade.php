@@ -2,6 +2,13 @@
     <x-slot name="title">Payroll Cutoffs</x-slot>
 
     <x-slot name="actions">
+        <a href="{{ route('payroll.import.create') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Import Legacy Data
+        </a>
         <a href="{{ route('payroll.cutoffs.create') }}"
            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +77,7 @@
                                 {{ $cutoff->name }}
                             </a>
                         </td>
-                        <td class="px-5 py-3 text-gray-600">{{ $cutoff->branch->name }}</td>
+                        <td class="px-5 py-3 text-gray-600">{{ $cutoff->branch?->name ?? '—' }}</td>
                         <td class="px-5 py-3 text-gray-600">
                             {{ $cutoff->start_date->format('M d') }} – {{ $cutoff->end_date->format('M d, Y') }}
                             <p class="text-xs text-gray-400">{{ $cutoff->start_date->diffInDays($cutoff->end_date) + 1 }} days</p>

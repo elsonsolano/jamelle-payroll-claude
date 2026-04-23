@@ -51,19 +51,19 @@
                         {{ $cutoff->start_date->format('M d') }} – {{ $cutoff->end_date->format('M d, Y') }}
                     </p>
                 </div>
-                @if($entry->employee->salary_type !== 'monthly')
+                @if(!$entry->is_imported && $entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Days Worked</p>
                     <p class="font-medium text-gray-800">{{ number_format($entry->working_days, 2) }} days</p>
                 </div>
                 @endif
-                @if($entry->employee->salary_type !== 'monthly')
+                @if(!$entry->is_imported && $entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Regular Hours</p>
                     <p class="font-medium text-gray-800">{{ number_format($entry->total_hours_worked, 2) }}h</p>
                 </div>
                 @endif
-                @if($entry->employee->salary_type !== 'monthly')
+                @if(!$entry->is_imported && $entry->employee->salary_type !== 'monthly')
                 <div>
                     <p class="text-xs text-gray-400">Overtime Hours</p>
                     <p class="font-medium {{ $entry->total_overtime_hours > 0 ? 'text-indigo-600' : 'text-gray-800' }}">{{ number_format($entry->total_overtime_hours, 2) }}h</p>
@@ -283,6 +283,13 @@
     <div class="w-96 flex-shrink-0 space-y-4 text-sm sticky top-6">
         <h3 class="font-bold text-gray-700 text-base">Calculation Breakdown</h3>
 
+        @if($entry->is_imported)
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+            <p class="font-semibold mb-1">Legacy payroll record</p>
+            <p class="text-xs leading-relaxed">This entry was imported from the previous payroll system. A detailed DTR and calculation breakdown is not available for historical records.</p>
+        </div>
+        @else
+
         @php
             $b = $breakdown;
             $rateLabel = $b['salary_type'] === 'daily'
@@ -477,6 +484,8 @@
             @endif
             <div class="flex justify-between font-bold text-indigo-700 border-t border-gray-200 pt-1"><span>= Net Pay</span><span>₱{{ number_format($entry->net_pay, 2) }}</span></div>
         </div>
+
+        @endif {{-- end @if(!$entry->is_imported) --}}
 
     </div>{{-- end right column --}}
 

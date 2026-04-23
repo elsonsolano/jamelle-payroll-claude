@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-slot name="title">Import Payroll — {{ $cutoff->name }}</x-slot>
+    <x-slot name="title">Import Legacy Payroll Data</x-slot>
 
     <x-slot name="actions">
-        <a href="{{ route('payroll.cutoffs.show', $cutoff) }}"
+        <a href="{{ route('payroll.cutoffs.index') }}"
            class="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            ← Back to Cutoff
+            ← Back to Cutoffs
         </a>
     </x-slot>
 
@@ -12,10 +12,9 @@
 
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
 
-            <h2 class="text-lg font-semibold text-gray-900 mb-1">Import from Excel</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Import Legacy Payroll Data</h2>
             <p class="text-sm text-gray-500 mb-6">
-                Upload the payroll Excel file for <strong>{{ $cutoff->branch->name }}</strong>.
-                The file should have headers in row 1 and employee data starting from row 2.
+                Import historical payroll records from the previous system. A new finalized cutoff will be created automatically — no branch required.
             </p>
 
             @if($errors->any())
@@ -29,13 +28,40 @@
                 </div>
             @endif
 
-            <form method="POST"
-                  action="{{ route('payroll.import.store') }}"
-                  enctype="multipart/form-data">
+            <form method="POST" action="{{ route('payroll.import.store') }}" enctype="multipart/form-data">
                 @csrf
 
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cutoff Name</label>
+                    <input type="text"
+                           name="name"
+                           value="{{ old('name') }}"
+                           placeholder="e.g. Dec 30 – Jan 13"
+                           required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                        <input type="date"
+                               name="start_date"
+                               value="{{ old('start_date') }}"
+                               required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                        <input type="date"
+                               name="end_date"
+                               value="{{ old('end_date') }}"
+                               required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
                 <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Excel File (.xlsx)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Excel File (.xlsx)</label>
                     <input type="file"
                            name="excel_file"
                            accept=".xlsx,.xls"
@@ -49,8 +75,7 @@
                         <li>Employee names must be in <strong>LASTNAME, FIRSTNAME</strong> format and match names in the system.</li>
                         <li>Employees can belong to any branch — the import searches system-wide.</li>
                         <li>If any name doesn't match, the entire import will be blocked — correct and re-upload.</li>
-                        <li>Importing will <strong>finalize</strong> the cutoff immediately.</li>
-                        <li>Any existing entries for this cutoff will be replaced.</li>
+                        <li>The cutoff will be <strong>finalized immediately</strong> on import.</li>
                     </ul>
                 </div>
 
@@ -59,7 +84,7 @@
                             class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
                         Import & Finalize
                     </button>
-                    <a href="{{ route('payroll.cutoffs.show', $cutoff) }}"
+                    <a href="{{ route('payroll.cutoffs.index') }}"
                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">
                         Cancel
                     </a>

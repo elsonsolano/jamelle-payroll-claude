@@ -3,6 +3,19 @@
 
     <div class="space-y-4">
 
+        @if($entry->is_imported)
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+            </svg>
+            <div>
+                <p class="text-sm font-semibold text-amber-800">Historical payroll record</p>
+                <p class="text-xs text-amber-700 mt-0.5 leading-relaxed">This payslip was migrated from the previous payroll system. Deduction details are not shown. Contact your admin for the full breakdown.</p>
+            </div>
+        </div>
+        @endif
+
         {{-- Back + Download --}}
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -30,6 +43,7 @@
             <p class="text-green-100 text-sm mt-0.5">
                 {{ $entry->payrollCutoff->start_date->format('M d') }} – {{ $entry->payrollCutoff->end_date->format('M d, Y') }}
             </p>
+            @if(!$entry->is_imported)
             <div class="mt-4 pt-4 border-t border-white/20 flex gap-6 text-sm">
                 @if($entry->employee->salary_type !== 'monthly')
                 <div>
@@ -50,6 +64,7 @@
                 </div>
                 @endif
             </div>
+            @endif
         </div>
 
         {{-- Earnings --}}
@@ -114,7 +129,13 @@
             </div>
             @endforeach
             @if($entry->payrollDeductions->isEmpty() && $entry->payrollVariableDeductions->isEmpty())
-            <div class="px-5 py-3 text-sm text-gray-400 text-center">No deductions.</div>
+            <div class="px-5 py-3 text-sm text-center {{ $entry->is_imported ? 'text-amber-600' : 'text-gray-400' }}">
+                @if($entry->is_imported)
+                    Deduction details not available for historical records. Contact your admin.
+                @else
+                    No deductions.
+                @endif
+            </div>
             @endif
             <div class="px-5 py-3 flex justify-between text-sm bg-gray-50 rounded-b-2xl">
                 <span class="font-semibold text-gray-700">Total Deductions</span>

@@ -86,7 +86,7 @@
                         <div>
                             <p class="text-sm font-medium text-gray-800">{{ $cutoff->name }}</p>
                             <p class="text-xs text-gray-400">
-                                {{ $cutoff->branch->name }} &middot;
+                                {{ $cutoff->branch?->name ?? '—' }} &middot;
                                 {{ \Carbon\Carbon::parse($cutoff->start_date)->format('M d') }} –
                                 {{ \Carbon\Carbon::parse($cutoff->end_date)->format('M d, Y') }}
                             </p>

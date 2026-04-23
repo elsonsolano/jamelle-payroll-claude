@@ -154,9 +154,11 @@ Route::middleware(["auth", "admin"])->group(function () {
             Route::get("bdo-export", [PayrollCutoffController::class, "bdoExport"])->name("bdo-export");
             Route::post("void", [PayrollCutoffController::class, "void"])->name("void");
             Route::post("unvoid", [PayrollCutoffController::class, "unvoid"])->name("unvoid");
-            Route::get("import-excel", [PayrollImportController::class, "create"])->name("import-excel");
-            Route::post("import-excel", [PayrollImportController::class, "store"])->name("import-excel.store");
         });
+
+        // Legacy payroll import (standalone — no branch required)
+        Route::get("payroll/import", [PayrollImportController::class, "create"])->name("payroll.import.create");
+        Route::post("payroll/import", [PayrollImportController::class, "store"])->name("payroll.import.store");
 
         // DTR admin view
         Route::get("dtr", [DtrController::class, "index"])->name("dtr.index");

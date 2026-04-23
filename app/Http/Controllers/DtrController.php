@@ -41,8 +41,10 @@ class DtrController extends Controller
 
         if ($request->filled('cutoff_id')) {
             $cutoff = PayrollCutoff::findOrFail($request->cutoff_id);
-            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date])
-                  ->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date]);
+            if ($cutoff->branch_id) {
+                $query->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            }
         } else {
             if ($request->filled('date_from')) {
                 $query->where('date', '>=', $request->date_from);
@@ -82,8 +84,10 @@ class DtrController extends Controller
 
         if ($request->filled('cutoff_id')) {
             $cutoff = PayrollCutoff::findOrFail($request->cutoff_id);
-            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date])
-                  ->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date]);
+            if ($cutoff->branch_id) {
+                $query->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            }
         } else {
             if ($request->filled('date_from')) {
                 $query->where('date', '>=', $request->date_from);
@@ -139,8 +143,10 @@ class DtrController extends Controller
 
         if ($request->filled('cutoff_id')) {
             $cutoff = PayrollCutoff::findOrFail($request->cutoff_id);
-            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date])
-                  ->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            $query->whereBetween('date', [$cutoff->start_date, $cutoff->end_date]);
+            if ($cutoff->branch_id) {
+                $query->whereHas('employee', fn($q) => $q->where('branch_id', $cutoff->branch_id));
+            }
         } else {
             if ($request->filled('date_from')) {
                 $query->where('date', '>=', $request->date_from);

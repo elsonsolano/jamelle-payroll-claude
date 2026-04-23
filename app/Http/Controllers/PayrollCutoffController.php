@@ -112,10 +112,12 @@ class PayrollCutoffController extends Controller
             }),
         ];
 
-        $pendingDtrCount = \App\Models\Dtr::where('status', 'Pending')
-            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
-            ->whereHas('employee', fn ($q) => $q->where('branch_id', $cutoff->branch_id))
-            ->count();
+        $pendingDtrQuery = \App\Models\Dtr::where('status', 'Pending')
+            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()]);
+        if ($cutoff->branch_id) {
+            $pendingDtrQuery->whereHas('employee', fn ($q) => $q->where('branch_id', $cutoff->branch_id));
+        }
+        $pendingDtrCount = $pendingDtrQuery->count();
 
         return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary', 'pendingDtrCount'));
     }

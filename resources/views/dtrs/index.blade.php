@@ -155,7 +155,7 @@
                         <option value="">— select cutoff —</option>
                         @foreach($cutoffs as $cutoff)
                             <option value="{{ $cutoff->id }}" @selected(request('cutoff_id') == $cutoff->id)>
-                                {{ $cutoff->name }} ({{ $cutoff->branch->name }})
+                                {{ $cutoff->name }}{{ $cutoff->branch ? ' (' . $cutoff->branch->name . ')' : '' }}
                             </option>
                         @endforeach
                     </select>
