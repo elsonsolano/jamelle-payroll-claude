@@ -83,6 +83,10 @@ class PayrollEntry extends Model
      */
     public function unworkedRegularHolidayPay(): float
     {
+        if ($this->is_imported) {
+            return 0.0;
+        }
+
         if ($this->employee->salary_type !== 'daily') {
             return 0.0;
         }
