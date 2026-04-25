@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Jobs\PublishAnnouncementJob;
 use App\Models\Announcement;
-use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,10 +64,7 @@ class AnnouncementController extends Controller
         ]);
 
         if ($status === 'published') {
-            PublishAnnouncementJob::dispatch($announcement->id);
-        } elseif ($status === 'scheduled') {
-            PublishAnnouncementJob::dispatch($announcement->id)
-                ->delay(Carbon::parse($validated['scheduled_at']));
+            PublishAnnouncementJob::dispatchSync($announcement->id);
         }
 
         $message = match ($status) {
@@ -140,13 +135,8 @@ class AnnouncementController extends Controller
 
         $announcement->save();
 
-        if (! $isPublished) {
-            if ($announcement->status === 'published') {
-                PublishAnnouncementJob::dispatch($announcement->id);
-            } elseif ($announcement->status === 'scheduled') {
-                PublishAnnouncementJob::dispatch($announcement->id)
-                    ->delay(Carbon::parse($announcement->scheduled_at));
-            }
+        if (! $isPublished && $announcement->status === 'published') {
+            PublishAnnouncementJob::dispatchSync($announcement->id);
         }
 
         return redirect()->route('announcements.index')->with('success', 'Announcement updated.');
@@ -167,7 +157,7 @@ class AnnouncementController extends Controller
 
         abort_unless($announcement->status === 'published', 404);
 
-        PublishAnnouncementJob::dispatch($announcement->id, true);
+        PublishAnnouncementJob::dispatchSync($announcement->id, true);
 
         return redirect()
             ->route('announcements.show', $announcement)
