@@ -82,6 +82,7 @@ class GamificationService
     {
         $date  = Carbon::parse($throughDate ?? today())->startOfDay();
         $floor = $date->copy()->subDays(60);
+        $trackingStart = $this->trackingStartDate($employee);
 
         $dtrs = $employee->dtrs()
             ->whereBetween('date', [$floor->toDateString(), $date->toDateString()])
@@ -91,7 +92,7 @@ class GamificationService
         $streak  = 0;
         $current = $date->copy();
 
-        while ($current->gte($floor)) {
+        while ($current->gte($floor) && $current->gte($trackingStart)) {
             $schedule = $this->scoringService->scheduledWorkdayFor($employee, $current->toDateString());
 
             if (! $schedule['has_schedule']) {
@@ -149,6 +150,7 @@ class GamificationService
         $sameDayProgress = 0;
         $noAbsentProgress = 0;
         $workdayStatuses  = [];
+        $trackingStart = $this->trackingStartDate($employee);
 
         if ($cutoff) {
             $today = today()->toDateString();
@@ -163,6 +165,11 @@ class GamificationService
 
             foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
                 $dateStr = $date->toDateString();
+
+                if ($date->lt($trackingStart)) {
+                    continue;
+                }
+
                 $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
 
                 if (! $schedule['has_schedule']) {
@@ -281,19 +288,21 @@ class GamificationService
     {
         $today = today()->toDateString();
         $end   = min($endDate, $today);
+        $trackingStart = $this->trackingStartDate($employee)->toDateString();
+        $start = max($startDate, $trackingStart);
 
-        if ($startDate > $end) {
+        if ($start > $end) {
             return 0;
         }
 
         $dtrs = $employee->dtrs()
-            ->whereBetween('date', [$startDate, $end])
+            ->whereBetween('date', [$start, $end])
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
 
         $total = 0;
 
-        foreach (CarbonPeriod::create($startDate, $end) as $date) {
+        foreach (CarbonPeriod::create($start, $end) as $date) {
             $dateStr  = $date->toDateString();
             $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
 
@@ -357,6 +366,26 @@ class GamificationService
         );
 
         return $pastPts + $badgePts + $historicalDeductions;
+    }
+
+    private function trackingStartDate(Employee $employee): Carbon
+    {
+        $employee->loadMissing('user');
+
+        $candidates = array_filter([
+            $employee->created_at?->copy()->startOfDay(),
+            $employee->user?->created_at?->copy()->startOfDay(),
+            $employee->hired_date?->copy()->startOfDay(),
+        ]);
+
+        if ($candidates === []) {
+            return today()->copy()->startOfDay();
+        }
+
+        return collect($candidates)
+            ->sortBy(fn (Carbon $date) => $date->timestamp)
+            ->last()
+            ->copy();
     }
 
     private function badgePoints(?string $key): int

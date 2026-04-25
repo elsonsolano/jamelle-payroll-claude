@@ -72,6 +72,8 @@ class AttendanceScoringService
     {
         $date = ($throughDate ?? today())->copy()->startOfDay();
         $floor = $sinceDate?->copy()->startOfDay() ?? $date->copy()->subDays(45);
+        $trackingStart = $this->trackingStartDate($employee);
+        $floor = $floor->max($trackingStart);
         $dtrs = $employee->dtrs()
             ->whereBetween('date', [$floor->toDateString(), $date->toDateString()])
             ->get()
@@ -113,9 +115,15 @@ class AttendanceScoringService
             'late_minutes'           => 0,
         ];
         $items = [];
+        $trackingStart = $this->trackingStartDate($employee);
 
         foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
             $workDate = $date->toDateString();
+
+            if ($date->lt($trackingStart)) {
+                continue;
+            }
+
             $schedule = $this->scheduledWorkdayFor($employee, $workDate);
 
             if (! $schedule['has_schedule']) {
@@ -280,5 +288,25 @@ class AttendanceScoringService
             'points'      => $points,
             'metadata'    => $metadata,
         ];
+    }
+
+    private function trackingStartDate(Employee $employee): Carbon
+    {
+        $employee->loadMissing('user');
+
+        $candidates = array_filter([
+            $employee->created_at?->copy()->startOfDay(),
+            $employee->user?->created_at?->copy()->startOfDay(),
+            $employee->hired_date?->copy()->startOfDay(),
+        ]);
+
+        if ($candidates === []) {
+            return today()->copy()->startOfDay();
+        }
+
+        return collect($candidates)
+            ->sortBy(fn (Carbon $date) => $date->timestamp)
+            ->last()
+            ->copy();
     }
 }

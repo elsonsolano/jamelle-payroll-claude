@@ -131,15 +131,83 @@
     .dash-ring-btn { transition: transform .12s ease; }
     .dash-ring-btn:active { transform: scale(.97); }
     .quote-serif { font-family: 'Source Serif 4', Georgia, serif; }
+    .rank-mascot-idle {
+        animation: mascot-dashboard-float 3.2s ease-in-out infinite;
+        transform-origin: center bottom;
+        will-change: transform;
+        transition: transform .18s ease, filter .18s ease;
+    }
+    .rank-mascot-shell {
+        transition: transform .18s ease, box-shadow .18s ease;
+        will-change: transform;
+        position: relative;
+        border-radius: 1rem;
+        padding: 2px;
+        isolation: isolate;
+    }
+    .rank-mascot-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+            conic-gradient(
+                from 0deg,
+                rgba(34, 197, 94, 0.15) 0deg,
+                rgba(57, 255, 20, 0.95) 72deg,
+                rgba(170, 255, 80, 0.75) 112deg,
+                rgba(34, 197, 94, 0.15) 180deg,
+                rgba(34, 197, 94, 0.08) 360deg
+            );
+        animation: mascot-neon-ring 2.8s linear infinite;
+        box-shadow:
+            0 0 10px rgba(57, 255, 20, 0.18),
+            0 0 18px rgba(57, 255, 20, 0.08);
+        z-index: -1;
+    }
+    .rank-mascot-core {
+        width: 100%;
+        height: 100%;
+        border-radius: calc(1rem - 2px);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .rank-progress-link:hover .rank-mascot-shell,
+    .rank-progress-link:active .rank-mascot-shell {
+        transform: scale(1.04);
+        box-shadow: 0 10px 20px rgba(232,114,42,.12);
+    }
+    .rank-progress-link:hover .rank-mascot-idle,
+    .rank-progress-link:active .rank-mascot-idle {
+        animation-play-state: paused;
+        transform: translateY(-4px) rotate(2deg) scale(1.08);
+        filter: drop-shadow(0 8px 14px rgba(232,114,42,.18));
+    }
     .live-dot {
         display: inline-block; width: 6px; height: 6px; border-radius: 50%;
         background: #8bc53f; margin-right: 6px;
         animation: ring-pulse 2s ease-in-out infinite;
     }
-    @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+    @media (prefers-reduced-motion: reduce) {
+        .live-dot,
+        .rank-mascot-idle {
+            animation: none;
+            transition: none;
+        }
+    }
     @keyframes ring-pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: .4; transform: scale(.85); }
+    }
+    @keyframes mascot-dashboard-float {
+        0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); }
+        50% { transform: translateY(-5px) rotate(1deg) scale(1.035); }
+    }
+    @keyframes mascot-neon-ring {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     /* Celebration overlay animations */
     .celeb-circle { transition: transform .45s cubic-bezier(.34,1.56,.64,1), opacity .45s ease; transition-delay: 150ms; }
@@ -441,45 +509,66 @@
 
 </div>{{-- /agenda --}}
 
-{{-- ── Achievements Teaser Strip ── --}}
+{{-- ── Rank Progress Strip ── --}}
 @php
-    $streak = $gamificationTeaser['streak'];
-    $target = $gamificationTeaser['target'];
-    $remaining = max(0, $target - $streak);
+    $rankMascotFile = str_pad($rank['number'], 2, '0', STR_PAD_LEFT);
+    $rankHasMascot = file_exists(public_path("images/rank-mascots/mascot-{$rankMascotFile}.png"));
 @endphp
-<a href="{{ route('staff.achievements') }}"
-   class="mt-3 flex items-center gap-3 rounded-2xl border px-4 py-3"
-   style="background:#fff; border-color:#EBEBEB; text-decoration:none;">
-    {{-- Dot indicators --}}
-    <div class="flex items-center gap-1.5 shrink-0">
-        @for($di = 0; $di < $target; $di++)
-            @if($di < $streak)
-                <span class="w-2.5 h-2.5 rounded-full" style="background:#5BBF27;"></span>
-            @elseif($di === $streak)
-                <span class="w-2.5 h-2.5 rounded-full" style="background:#fff; border:1.5px dashed #5BBF27;"></span>
+<div class="mt-3 flex items-center gap-3 rounded-2xl border px-4 py-3"
+     style="background:#fff; border-color:#EBEBEB;">
+    <div class="rank-mascot-shell shrink-0 w-20 h-20">
+        <div class="rank-mascot-core" style="background:#FFF7ED;">
+            @if($rankHasMascot)
+                <img src="{{ asset("images/rank-mascots/mascot-{$rankMascotFile}.png") }}"
+                     alt="{{ $rank['name'] }}"
+                     class="w-full h-full object-cover rank-mascot-idle">
             @else
-                <span class="w-2.5 h-2.5 rounded-full" style="background:#E5E5E5;"></span>
+                <span class="font-black text-lg" style="color:#E8722A;">#{{ $rank['number'] }}</span>
             @endif
-        @endfor
+        </div>
     </div>
-    {{-- Text --}}
+
+    <a href="{{ route('staff.achievements') }}"
+       class="rank-progress-link flex items-center gap-3 flex-1 min-w-0"
+       style="text-decoration:none;">
     <div class="flex-1 min-w-0">
-        <p class="text-sm font-bold truncate" style="color:#111;">{{ $gamificationTeaser['badge_name'] }}
-            <span class="font-medium" style="color:#555;">— {{ $streak }} of {{ $target }} days</span>
-        </p>
-        <p class="text-xs mt-0.5" style="color:#999;">
-            @if($remaining > 0)
-                {{ $remaining }} more on-time {{ $remaining === 1 ? 'day' : 'days' }} to earn badge · +{{ $gamificationTeaser['points'] }} pts
-            @else
-                Badge earned! Keep the streak going.
-            @endif
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#C2510A; letter-spacing:.08em;">Your Rank</p>
+                <p class="text-xl font-black leading-tight truncate mt-0.5" style="color:#111;">{{ $rank['name'] }}</p>
+            </div>
+            <div class="shrink-0 text-right">
+                <p class="text-2xl font-black leading-none" style="color:#5BBF27;">{{ number_format($achievementSummary['total_points']) }}</p>
+                <p class="text-[10px] font-bold uppercase tracking-wide" style="color:#77AA55;">pts</p>
+            </div>
+        </div>
+
+        <p class="text-xs mt-0.5 truncate" style="color:#777;">{{ $rank['desc'] }}</p>
+
+        @if(!$rank['is_max'])
+            <div class="mt-2.5">
+                <div class="flex items-center justify-between gap-3 text-[11px] font-semibold" style="color:#6b7768;">
+                    <span class="truncate">{{ $rank['name'] }}</span>
+                    <span class="shrink-0" style="color:#5BBF27;">{{ number_format($rank['points_to_next']) }} pts → {{ $rank['next_name'] }}</span>
+                </div>
+                <div class="mt-1.5 h-2 rounded-full overflow-hidden" style="background:#E9ECE5;">
+                    <div class="h-full rounded-full" style="width:{{ $rank['progress_pct'] }}%; background:#A6D66A;"></div>
+                </div>
+            </div>
+        @else
+            <p class="text-xs font-bold mt-2" style="color:#5BBF27;">Max rank achieved</p>
+        @endif
+
+        <p class="text-[11px] mt-2" style="color:#8d9889;">
+            Rank {{ $rank['number'] }} of {{ count(\App\Services\GamificationService::RANKS) }}
         </p>
     </div>
-    {{-- Arrow --}}
-    <svg class="w-4 h-4 shrink-0" style="color:#999;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+
+    <svg class="w-4 h-4 shrink-0 self-center" style="color:#999;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
         <path d="m9 6 6 6-6 6"/>
     </svg>
-</a>
+    </a>
+</div>
 
 
 {{-- ── Approvals waiting (approvers only) ── --}}

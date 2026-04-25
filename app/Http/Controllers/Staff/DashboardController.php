@@ -54,7 +54,15 @@ class DashboardController extends Controller
         $todaySchedule      = $this->resolveSchedule($employee, today());
         $tomorrowSchedule   = $this->resolveSchedule($employee, today()->addDay());
         $attendanceProgress = $this->attendanceProgress($employee, $todayDtr);
-        $gamificationTeaser = $this->gamification->teaserData($employee);
+        $currentCutoff = PayrollCutoff::where('branch_id', $employee->branch_id)
+            ->where('status', '!=', 'voided')
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->first();
+        $achievementSummary = $this->gamification->achievementsData($employee, $currentCutoff);
+        $rank = $this->gamification->rankFor($achievementSummary['total_points']);
 
         // Clock state derived from today's DTR
         $clockState = 'none';
@@ -94,7 +102,7 @@ class DashboardController extends Controller
             'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount',
             'quote', 'todaySchedule', 'tomorrowSchedule',
             'clockState', 'nextEvent', 'yesterdayNextEvent', 'attendanceProgress',
-            'gamificationTeaser'
+            'achievementSummary', 'rank'
         ));
     }
 

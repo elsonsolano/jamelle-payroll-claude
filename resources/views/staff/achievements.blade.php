@@ -4,9 +4,79 @@
 <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800,900&display=swap" rel="stylesheet" />
 <style>
     .ach-font { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .achievement-mascot-idle {
+        animation: mascot-achievement-float 3.4s ease-in-out infinite;
+        transform-origin: center bottom;
+        will-change: transform;
+        transition: transform .18s ease, filter .18s ease;
+    }
+    .achievement-mascot-shell {
+        transition: transform .18s ease, box-shadow .18s ease;
+        will-change: transform;
+        position: relative;
+        border-radius: 9999px;
+        padding: 2px;
+        isolation: isolate;
+    }
+    .achievement-mascot-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+            conic-gradient(
+                from 0deg,
+                rgba(34, 197, 94, 0.14) 0deg,
+                rgba(57, 255, 20, 0.95) 74deg,
+                rgba(170, 255, 80, 0.72) 114deg,
+                rgba(34, 197, 94, 0.14) 180deg,
+                rgba(34, 197, 94, 0.08) 360deg
+            );
+        animation: mascot-achievement-ring 2.8s linear infinite;
+        box-shadow:
+            0 0 12px rgba(57, 255, 20, 0.2),
+            0 0 20px rgba(57, 255, 20, 0.09);
+        z-index: -1;
+    }
+    .achievement-mascot-core {
+        width: 100%;
+        height: 100%;
+        border-radius: calc(9999px - 2px);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .achievement-rank-hero:hover .achievement-mascot-shell,
+    .achievement-rank-hero:active .achievement-mascot-shell {
+        transform: scale(1.045);
+        box-shadow: 0 12px 22px rgba(232,114,42,.12);
+    }
+    .achievement-rank-hero:hover .achievement-mascot-idle,
+    .achievement-rank-hero:active .achievement-mascot-idle {
+        animation-play-state: paused;
+        transform: translateY(-5px) rotate(2.2deg) scale(1.1);
+        filter: drop-shadow(0 10px 18px rgba(232,114,42,.2));
+    }
     @keyframes fadeUp {
         from { opacity: 0; transform: translateY(14px); }
         to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes mascot-achievement-float {
+        0%, 100% { transform: translateY(0) rotate(-1.5deg) scale(1); }
+        25% { transform: translateY(-3px) rotate(1deg) scale(1.02); }
+        50% { transform: translateY(-6px) rotate(1.8deg) scale(1.04); }
+        75% { transform: translateY(-2px) rotate(-0.8deg) scale(1.015); }
+    }
+    @keyframes mascot-achievement-ring {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .achievement-mascot-idle {
+            animation: none;
+            transition: none;
+        }
     }
     .fade-up { animation: fadeUp 0.18s ease; }
 </style>
@@ -43,7 +113,7 @@ function achievementsPage() {
         <div class="rounded-2xl overflow-hidden" style="background:#fff; border:1.5px solid #EBEBEB;">
 
             {{-- Rank hero — centered, full-width --}}
-            <div class="flex flex-col items-center text-center px-4 pt-4 pb-4">
+            <div class="achievement-rank-hero flex flex-col items-center text-center px-4 pt-4 pb-4">
                 <p class="text-xs font-bold uppercase tracking-widest" style="color:#C2510A; letter-spacing:.07em;">Your Rank</p>
                 @php
                     $mascotFile = str_pad($rank['number'], 2, '0', STR_PAD_LEFT);
@@ -52,10 +122,12 @@ function achievementsPage() {
                 {{-- Mascot with points badge on upper-right --}}
                 <div class="relative mt-3" style="width:96px; height:96px; flex-shrink:0;">
                     @if($hasMascot)
-                        <div class="rounded-full overflow-hidden w-full h-full" style="background:#FFF7ED; border:2.5px solid #FED7AA;">
-                            <img src="{{ asset("images/rank-mascots/mascot-{$mascotFile}.png") }}"
-                                 alt="{{ $rank['name'] }}"
-                                 class="w-full h-full object-cover">
+                        <div class="achievement-mascot-shell w-full h-full">
+                            <div class="achievement-mascot-core" style="background:#FFF7ED;">
+                                <img src="{{ asset("images/rank-mascots/mascot-{$mascotFile}.png") }}"
+                                     alt="{{ $rank['name'] }}"
+                                     class="w-full h-full object-cover achievement-mascot-idle">
+                            </div>
                         </div>
                     @else
                         <div class="rounded-full w-full h-full flex items-center justify-center font-black text-white"

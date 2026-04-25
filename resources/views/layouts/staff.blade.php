@@ -182,17 +182,6 @@
                 <span class="text-xs font-medium">Schedule</span>
             </a>
 
-            <a href="{{ route('staff.achievements') }}" id="nav-achievements"
-               class="relative flex flex-col items-center gap-0.5 px-3 py-1 {{ request()->routeIs('staff.achievements') ? 'text-green-600' : 'text-gray-400' }}">
-                <div class="relative">
-                    <svg class="w-6 h-6" fill="{{ request()->routeIs('staff.achievements') ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    <span id="ach-nav-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-white" style="background:#5BBF27;"></span>
-                </div>
-                <span class="text-xs font-medium">Achieve</span>
-            </a>
-
             @php
                 $unreadAnnouncementCount = \App\Models\Announcement::published()
                     ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', Auth::id()))
@@ -356,13 +345,6 @@
         console.warn('[Push] Not supported:', 'serviceWorker' in navigator, 'PushManager' in window);
     }
 
-    // Achievements nav dot — shown until first visit
-    (function () {
-        const dot = document.getElementById('ach-nav-dot');
-        if (dot && !localStorage.getItem('achievements-seen')) {
-            dot.classList.remove('hidden');
-        }
-    })();
 </script>
 
 </body>
