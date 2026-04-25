@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AttendanceScoreController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\DtrController;
@@ -62,6 +63,9 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/payslips/{entry}/pdf", [\App\Http\Controllers\Staff\PayslipController::class, "downloadPdf"])->name("payslips.pdf");
     Route::post("/payslips/{entry}/acknowledge", [\App\Http\Controllers\Staff\PayslipController::class, "acknowledge"])->name("payslips.acknowledge");
     Route::get("/achievements", [\App\Http\Controllers\Staff\AchievementsController::class, "index"])->name("achievements");
+    Route::get("/achievements", [\App\Http\Controllers\Staff\AchievementsController::class, "index"])->name("achievements");
+    Route::get("/announcements", [\App\Http\Controllers\Staff\AnnouncementController::class, "index"])->name("announcements.index");
+    Route::get("/announcements/{announcement}", [\App\Http\Controllers\Staff\AnnouncementController::class, "show"])->name("announcements.show");
 });
 
 Route::middleware(["auth", "admin"])->group(function () {
@@ -71,6 +75,11 @@ Route::middleware(["auth", "admin"])->group(function () {
     Route::delete("/profile", [ProfileController::class, "destroy"])->name("profile.destroy");
 
     // --- Accessible to all admins (super + limited) ---
+
+    // Announcements (permission: announcements)
+    Route::post("announcements/upload-image", [AnnouncementController::class, "uploadImage"])->name("announcements.upload-image");
+    Route::post("announcements/{announcement}/resend-push", [AnnouncementController::class, "resendPush"])->name("announcements.resend-push");
+    Route::resource("announcements", AnnouncementController::class);
 
     // Employees: index accessible to all admins (schedule managers get a simplified view)
     Route::get("employees", [EmployeeController::class, "index"])->name("employees.index");

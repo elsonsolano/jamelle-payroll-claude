@@ -13,6 +13,7 @@ Schedule::command('attendance:fetch')->dailyAt('00:00');
 
 // Auto-acknowledge payslips not confirmed within 5 days of finalization.
 Schedule::command('payroll:auto-acknowledge')->dailyAt('01:00');
+Schedule::command('announcements:publish-scheduled')->everyMinute();
 
 // Push reminders — both run every 5 minutes; each command handles its own time-window check.
 // Time-in: fires in the 07:00–07:05 window.

@@ -2,7 +2,9 @@
 
 namespace App\Notifications\Channels;
 
+use App\Notifications\AnnouncementPublished;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -12,6 +14,7 @@ class WebPushChannel
     {
         $subscriptions = $notifiable->pushSubscriptions ?? collect();
         if ($subscriptions->isEmpty()) {
+            $this->logAnnouncementPush('info', 'Skipped — no push subscriptions', $notifiable, $notification);
             return;
         }
 
@@ -35,8 +38,41 @@ class WebPushChannel
             );
         }
 
+        $sent = 0;
+        $failed = 0;
+
         foreach ($webPush->flush() as $report) {
-            // silent failure — stale subscriptions are expected
+            if ($report->isSuccess()) {
+                $sent++;
+                continue;
+            }
+
+            $failed++;
+            $this->logAnnouncementPush('warning', 'Push failed', $notifiable, $notification, [
+                'reason' => $report->getReason(),
+            ]);
         }
+
+        $this->logAnnouncementPush('info', 'Push flush complete', $notifiable, $notification, [
+            'subscriptions' => $subscriptions->count(),
+            'sent' => $sent,
+            'failed' => $failed,
+        ]);
+    }
+
+    private function logAnnouncementPush(string $level, string $message, object $notifiable, Notification $notification, array $extra = []): void
+    {
+        if (! $notification instanceof AnnouncementPublished) {
+            return;
+        }
+
+        $context = array_merge([
+            'announcement_id' => $notification->announcement->id,
+            'subject' => $notification->announcement->subject,
+            'user_id' => $notifiable->id ?? null,
+            'user_name' => $notifiable->name ?? null,
+        ], $extra);
+
+        Log::{$level}('[AnnouncementPush] ' . $message, $context);
     }
 }

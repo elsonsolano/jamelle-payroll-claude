@@ -75,6 +75,12 @@
                                    class="rounded border-gray-300 text-indigo-600">
                             <span>Schedules — upload schedules, manage employee schedules</span>
                         </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" name="permissions[]" value="announcements"
+                                   {{ in_array('announcements', old('permissions', $user->permissions ?? [])) ? 'checked' : '' }}
+                                   class="rounded border-gray-300 text-indigo-600">
+                            <span>Announcements — create, edit, and delete company announcements</span>
+                        </label>
                     </div>
                 </div>
                 @else
