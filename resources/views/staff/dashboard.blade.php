@@ -141,11 +141,17 @@
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: .4; transform: scale(.85); }
     }
+    /* Celebration overlay animations */
+    .celeb-circle { transition: transform .45s cubic-bezier(.34,1.56,.64,1), opacity .45s ease; transition-delay: 150ms; }
+    .celeb-fade   { transition: transform .35s ease, opacity .35s ease; }
+    .celeb-out    { transform: translateY(14px); opacity: 0; }
+    .celeb-out.celeb-circle { transform: scale(.5); opacity: 0; }
+    .celeb-in     { transform: translateY(0) scale(1); opacity: 1; }
 </style>
 @endpush
 
 {{-- ========================================
-     Alpine wrapper: ring + bottom sheet
+     Alpine wrapper: ring + bottom sheet + celebration
      ======================================== --}}
 <div x-data="{
     open: false,
@@ -159,7 +165,41 @@
     otError: '',
     note: '',
     todayNote: '{{ addslashes($todayDtr?->notes ?? '') }}',
-    yesterdayNote: '{{ addslashes($yesterdayDtr?->notes ?? '') }}'
+    yesterdayNote: '{{ addslashes($yesterdayDtr?->notes ?? '') }}',
+    showCelebration: false,
+    celebration: null,
+    loggedTimeDisplay: '',
+    celebReady: false,
+    async submitLog(form) {
+        if (this.event !== 'time_in') {
+            if (this.hasOt && !this.otHours) { this.otError = 'Please enter your overtime hours.'; return; }
+            this.otError = '';
+            form.submit();
+            return;
+        }
+        const fd = new FormData(form);
+        const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+            body: fd,
+        });
+        if (!res.ok) { form.submit(); return; }
+        const data = await res.json();
+        if (data.success) {
+            this.open = false;
+            this.loggedTimeDisplay = data.logged_time;
+            this.celebration = data.celebration;
+            this.celebReady = false;
+            this.showCelebration = true;
+            setTimeout(() => { this.celebReady = true; }, 50);
+        } else {
+            form.submit();
+        }
+    },
+    closeCelebration() {
+        this.showCelebration = false;
+        window.location.reload();
+    }
 }">
 
 {{-- ── Greeting row ── --}}
@@ -401,112 +441,46 @@
 
 </div>{{-- /agenda --}}
 
-{{-- ── Private attendance progress ── --}}
+{{-- ── Achievements Teaser Strip ── --}}
 @php
-    $estimateTotals = $attendanceProgress['estimate']['totals'] ?? null;
-    $officialScore = $attendanceProgress['latest_official_score'];
-    $currentCutoff = $attendanceProgress['current_cutoff'];
-    $estimatePeriod = $attendanceProgress['estimate_period'];
-    $recentBadges = $attendanceProgress['recent_badges'];
+    $streak = $gamificationTeaser['streak'];
+    $target = $gamificationTeaser['target'];
+    $remaining = max(0, $target - $streak);
 @endphp
-<div class="mt-3 rounded-2xl border overflow-hidden"
-     style="background:linear-gradient(180deg,#fff9ec 0%,#ffffff 100%); border-color:#f2d28a; box-shadow:0 8px 18px -14px rgba(146,64,14,.35);">
-    <div class="px-4 pt-4 pb-3">
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <p class="text-xs font-bold tracking-widest uppercase" style="color:#b7791f; letter-spacing:.08em;">Attendance Progress</p>
-                <h2 class="text-lg font-bold tracking-tight mt-0.5" style="color:#0f1410;">Live estimate this cutoff</h2>
-            </div>
-            <div class="text-right shrink-0">
-                <p class="text-3xl font-bold leading-none" style="color:#d97706;">
-                    {{ $estimateTotals ? number_format($estimateTotals['total_points']) : '—' }}
-                </p>
-                <p class="text-[11px] font-semibold mt-1" style="color:#b7791f;">points</p>
-            </div>
-        </div>
-
-        <div class="mt-3 rounded-xl px-3 py-2" style="background:#fff7df; border:1px solid #f2d28a;">
-            <p class="text-xs font-medium" style="color:#92400e;">
-                {{ $attendanceProgress['today_message'] }}
-            </p>
-            <p class="text-[11px] mt-1" style="color:#a16207;">
-                Final points are locked when payroll is finalized.
-            </p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 mt-3">
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['on_time_days']) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">No late</p>
-            </div>
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['same_day_complete_days']) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">Same-day complete</p>
-            </div>
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['no_absent_days'] ?? 0) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">No absent</p>
-            </div>
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#b91c1c;">{{ $estimateTotals ? number_format($estimateTotals['late_days'] ?? 0) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">Late days</p>
-            </div>
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#0f1410;">{{ $estimateTotals ? number_format($estimateTotals['late_minutes']) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">Late mins</p>
-            </div>
-            <div>
-                <p class="text-lg font-bold leading-none" style="color:#b91c1c;">{{ $estimateTotals ? number_format(($estimateTotals['late_days'] ?? 0) * -5) : '—' }}</p>
-                <p class="text-[11px] mt-1" style="color:#6b7768;">Late penalty</p>
-            </div>
-        </div>
-
-        <div class="mt-3 pt-3" style="border-top:1px dashed #f2d28a;">
-            <div class="flex items-center justify-between gap-2 mb-2">
-                <p class="text-xs font-bold tracking-widest uppercase" style="color:#b7791f; letter-spacing:.08em;">Recent Badges</p>
-                <p class="text-[11px] font-semibold" style="color:#6b7768;">{{ number_format($attendanceProgress['total_badge_count']) }} total</p>
-            </div>
-
-            @if($recentBadges->isNotEmpty())
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach($recentBadges as $award)
-                        <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                              style="background:#fff; color:#92400e; border:1px solid #f2d28a;">
-                            <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] text-white" style="background:#d97706;">
-                                {{ str($award->badge->name)->substr(0, 1)->upper() }}
-                            </span>
-                            {{ $award->badge->name }}
-                        </span>
-                    @endforeach
-                </div>
+<a href="{{ route('staff.achievements') }}"
+   class="mt-3 flex items-center gap-3 rounded-2xl border px-4 py-3"
+   style="background:#fff; border-color:#EBEBEB; text-decoration:none;">
+    {{-- Dot indicators --}}
+    <div class="flex items-center gap-1.5 shrink-0">
+        @for($di = 0; $di < $target; $di++)
+            @if($di < $streak)
+                <span class="w-2.5 h-2.5 rounded-full" style="background:#5BBF27;"></span>
+            @elseif($di === $streak)
+                <span class="w-2.5 h-2.5 rounded-full" style="background:#fff; border:1.5px dashed #5BBF27;"></span>
             @else
-                <p class="text-xs" style="color:#8d9889;">No badges yet. Keep completing your DTRs and your first one will show here.</p>
+                <span class="w-2.5 h-2.5 rounded-full" style="background:#E5E5E5;"></span>
             @endif
-        </div>
+        @endfor
     </div>
-
-    <div class="px-4 py-3 flex items-center justify-between gap-3" style="background:#fff; border-top:1px solid #f2d28a;">
-        <div class="min-w-0">
-            <p class="text-xs font-semibold" style="color:#6b7768;">Official last cutoff</p>
-            @if($officialScore)
-                <p class="text-sm font-bold truncate" style="color:#0f1410;">
-                    {{ number_format($officialScore->total_points) }} points
-                    <span class="font-medium" style="color:#8d9889;">· {{ $officialScore->payrollCutoff?->name }}</span>
-                </p>
+    {{-- Text --}}
+    <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold truncate" style="color:#111;">{{ $gamificationTeaser['badge_name'] }}
+            <span class="font-medium" style="color:#555;">— {{ $streak }} of {{ $target }} days</span>
+        </p>
+        <p class="text-xs mt-0.5" style="color:#999;">
+            @if($remaining > 0)
+                {{ $remaining }} more on-time {{ $remaining === 1 ? 'day' : 'days' }} to earn badge · +{{ $gamificationTeaser['points'] }} pts
             @else
-                <p class="text-sm font-bold" style="color:#8d9889;">No finalized score yet</p>
+                Badge earned! Keep the streak going.
             @endif
-        </div>
-        <div class="shrink-0 text-right">
-            <p class="text-[11px] font-semibold" style="color:#b7791f;">
-                {{ $estimatePeriod->start_date->format('M j') . ' - ' . $estimatePeriod->end_date->format('M j') }}
-            </p>
-            @if($attendanceProgress['is_virtual_period'])
-                <p class="text-[10px] font-medium mt-0.5" style="color:#8d9889;">estimated period</p>
-            @endif
-        </div>
+        </p>
     </div>
-</div>
+    {{-- Arrow --}}
+    <svg class="w-4 h-4 shrink-0" style="color:#999;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="m9 6 6 6-6 6"/>
+    </svg>
+</a>
+
 
 {{-- ── Approvals waiting (approvers only) ── --}}
 @if($pendingApprovalCount > 0)
@@ -564,7 +538,7 @@
         <h3 class="text-lg font-bold text-gray-900 mb-4" x-text="label"></h3>
 
         <form method="POST" action="{{ route('staff.dtr.log-event') }}"
-              @submit.prevent="if (hasOt && !otHours) { otError = 'Please enter your overtime hours.' } else { otError = ''; $el.submit() }">
+              @submit.prevent="submitLog($el)">
             @csrf
             <input type="hidden" name="date"  :value="date">
             <input type="hidden" name="event" :value="event">
@@ -624,6 +598,86 @@
             </div>
         </form>
     </div>
+</div>
+
+{{-- ── Celebration Overlay ── --}}
+<div x-show="showCelebration" x-cloak
+     class="fixed inset-0 z-[60] flex flex-col items-center justify-center"
+     style="background:rgba(255,255,255,0.97); backdrop-filter:blur(8px); padding:0 28px;">
+
+    <div class="w-full flex flex-col items-center">
+
+        {{-- Check circle --}}
+        <div class="celeb-circle flex items-center justify-center rounded-full text-white font-black"
+             :class="celebReady ? 'celeb-in' : 'celeb-out'"
+             style="width:88px; height:88px; font-size:40px; background:#5BBF27; box-shadow:0 8px 32px rgba(91,191,39,.35); flex-shrink:0;">
+            ✓
+        </div>
+
+        {{-- Heading --}}
+        <div class="text-center mt-5 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:200ms;">
+            <p class="font-black" style="font-size:20px; color:#111;">Time In Logged!</p>
+            <p class="text-sm mt-1" style="color:#999;">
+                <span x-text="loggedTimeDisplay"></span>
+                <span x-show="celebration && celebration.is_on_time"> · On time today ✓</span>
+            </p>
+        </div>
+
+        {{-- Points Card --}}
+        <div x-show="celebration && celebration.points_earned > 0"
+             class="w-full mt-4 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:300ms;">
+            <div class="flex items-center justify-between rounded-2xl px-4 py-3.5"
+                 style="background:#EBF7E0; border:1.5px solid #C8ECA4;">
+                <div>
+                    <p class="text-xs font-bold" style="color:#3D8C18;">Points earned</p>
+                    <p class="text-xs mt-0.5" style="color:#77AA55;">On-time time-in</p>
+                </div>
+                <p class="font-black" style="font-size:30px; color:#5BBF27;" x-text="celebration ? '+' + celebration.points_earned : ''"></p>
+            </div>
+        </div>
+
+        {{-- Streak progress card --}}
+        <div x-show="celebration && celebration.streak < celebration.streak_target"
+             class="w-full mt-2.5 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:400ms;">
+            <div class="rounded-2xl px-4 py-3.5" style="background:#FFF7ED; border:1.5px solid #FED7AA;">
+                <p class="text-xs font-bold" style="color:#92400E;">
+                    ⏱ No-Late 5 —
+                    Day <span x-text="celebration ? celebration.streak : 0"></span>
+                    of <span x-text="celebration ? celebration.streak_target : 5"></span>
+                </p>
+                <div class="flex gap-1 mt-2">
+                    <template x-for="i in (celebration ? celebration.streak_target : 5)" :key="i">
+                        <div class="flex-1 rounded-full" style="height:8px;"
+                             :style="i <= (celebration ? celebration.streak : 0) ? 'background:#E8722A;' : 'background:#F0F0F0;'"></div>
+                    </template>
+                </div>
+                <p class="text-xs mt-1.5" style="color:#B45309;">
+                    <span x-text="celebration ? (celebration.streak_target - celebration.streak) : 5"></span>
+                    more on-time days → earn badge + 50 pts
+                </p>
+            </div>
+        </div>
+
+        {{-- Badge earned card --}}
+        <div x-show="celebration && celebration.streak >= celebration.streak_target"
+             class="w-full mt-2.5 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:400ms;">
+            <div class="rounded-2xl px-4 py-3.5 text-center" style="background:#FFF7ED; border:1.5px solid #FED7AA;">
+                <p class="font-bold" style="color:#E8722A;">🏅 No-Late 5 — Badge Earned!</p>
+                <p class="text-xs mt-1" style="color:#B45309;">+50 pts awarded · Keep it up!</p>
+            </div>
+        </div>
+
+        {{-- Continue button --}}
+        <div class="w-full mt-6 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:500ms;">
+            <button type="button" @click="closeCelebration()"
+                    class="w-full font-bold py-4 rounded-2xl text-white"
+                    style="background:#5BBF27; font-size:15px; box-shadow:0 4px 16px rgba(91,191,39,.3);">
+                Continue
+            </button>
+        </div>
+
+    </div>
+
 </div>
 
 </div>{{-- /Alpine wrapper --}}

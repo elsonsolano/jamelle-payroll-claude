@@ -8,6 +8,8 @@ use App\Models\DtrLogEvent;
 use App\Models\PayrollEntry;
 use App\Notifications\OtSubmitted;
 use App\Services\DtrComputationService;
+use App\Services\GamificationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +17,10 @@ use Illuminate\View\View;
 
 class DtrController extends Controller
 {
-    public function __construct(private DtrComputationService $computer) {}
+    public function __construct(
+        private DtrComputationService $computer,
+        private GamificationService $gamification,
+    ) {}
 
     public function index(): View
     {
@@ -107,7 +112,7 @@ class DtrController extends Controller
             ->with('success', 'DTR submitted successfully.' . ($hasOt ? ' Overtime request is pending approval.' : ''));
     }
 
-    public function logEvent(Request $request): RedirectResponse
+    public function logEvent(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'event'    => 'required|in:time_in,am_out,pm_in,time_out',
@@ -191,8 +196,19 @@ class DtrController extends Controller
             'time_out' => 'Clock Out',
         ];
 
+        $loggedTimeDisplay = date('g:i A', strtotime($validated['time']));
+
+        if ($request->expectsJson()) {
+            $celebration = $this->gamification->celebrationData($employee, $dtr->fresh());
+            return response()->json([
+                'success'      => true,
+                'logged_time'  => $loggedTimeDisplay,
+                'celebration'  => $celebration,
+            ]);
+        }
+
         return redirect()->route('staff.dashboard')
-            ->with('success', $labels[$validated['event']] . ' logged at ' . date('g:i A', strtotime($validated['time'])) . '.' . ($hasOt ? ' Overtime request sent for approval.' : ''));
+            ->with('success', $labels[$validated['event']] . ' logged at ' . $loggedTimeDisplay . '.' . ($hasOt ? ' Overtime request sent for approval.' : ''));
     }
 
     public function edit(Dtr $dtr): View

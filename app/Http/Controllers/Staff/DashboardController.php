@@ -8,15 +8,17 @@ use App\Models\DailySchedule;
 use App\Models\EmployeeAttendanceBadge;
 use App\Models\PayrollCutoff;
 use App\Services\AttendanceScoringService;
+use App\Services\GamificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __construct(protected AttendanceScoringService $attendanceScoringService)
-    {
-    }
+    public function __construct(
+        protected AttendanceScoringService $attendanceScoringService,
+        protected GamificationService $gamification,
+    ) {}
 
     public function index(): View
     {
@@ -48,10 +50,11 @@ class DashboardController extends Controller
             $pendingApprovalCount = $this->pendingApprovalCount($user, $employee);
         }
 
-        $quote             = $this->dailyQuote();
-        $todaySchedule     = $this->resolveSchedule($employee, today());
-        $tomorrowSchedule  = $this->resolveSchedule($employee, today()->addDay());
+        $quote              = $this->dailyQuote();
+        $todaySchedule      = $this->resolveSchedule($employee, today());
+        $tomorrowSchedule   = $this->resolveSchedule($employee, today()->addDay());
         $attendanceProgress = $this->attendanceProgress($employee, $todayDtr);
+        $gamificationTeaser = $this->gamification->teaserData($employee);
 
         // Clock state derived from today's DTR
         $clockState = 'none';
@@ -90,7 +93,8 @@ class DashboardController extends Controller
         return view('staff.dashboard', compact(
             'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount',
             'quote', 'todaySchedule', 'tomorrowSchedule',
-            'clockState', 'nextEvent', 'yesterdayNextEvent', 'attendanceProgress'
+            'clockState', 'nextEvent', 'yesterdayNextEvent', 'attendanceProgress',
+            'gamificationTeaser'
         ));
     }
 

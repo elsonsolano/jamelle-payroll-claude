@@ -61,6 +61,7 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/payslips/{entry}", [\App\Http\Controllers\Staff\PayslipController::class, "show"])->name("payslips.show");
     Route::get("/payslips/{entry}/pdf", [\App\Http\Controllers\Staff\PayslipController::class, "downloadPdf"])->name("payslips.pdf");
     Route::post("/payslips/{entry}/acknowledge", [\App\Http\Controllers\Staff\PayslipController::class, "acknowledge"])->name("payslips.acknowledge");
+    Route::get("/achievements", [\App\Http\Controllers\Staff\AchievementsController::class, "index"])->name("achievements");
 });
 
 Route::middleware(["auth", "admin"])->group(function () {
