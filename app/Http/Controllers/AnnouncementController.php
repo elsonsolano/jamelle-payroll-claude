@@ -161,6 +161,19 @@ class AnnouncementController extends Controller
         return redirect()->route('announcements.index')->with('success', 'Announcement deleted.');
     }
 
+    public function resendPush(Announcement $announcement): RedirectResponse
+    {
+        $this->gate();
+
+        abort_unless($announcement->status === 'published', 404);
+
+        PublishAnnouncementJob::dispatch($announcement->id, true);
+
+        return redirect()
+            ->route('announcements.show', $announcement)
+            ->with('success', 'Push notification resent.');
+    }
+
     public function uploadImage(Request $request): JsonResponse
     {
         $this->gate();

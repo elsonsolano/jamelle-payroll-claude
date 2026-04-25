@@ -75,6 +75,7 @@ Route::middleware(["auth", "admin"])->group(function () {
 
     // Announcements (permission: announcements)
     Route::post("announcements/upload-image", [AnnouncementController::class, "uploadImage"])->name("announcements.upload-image");
+    Route::post("announcements/{announcement}/resend-push", [AnnouncementController::class, "resendPush"])->name("announcements.resend-push");
     Route::resource("announcements", AnnouncementController::class);
 
     // Employees: index accessible to all admins (schedule managers get a simplified view)

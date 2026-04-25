@@ -19,8 +19,20 @@
                     <p class="text-xs text-gray-400">Published by {{ $announcement->author?->name ?? '—' }}</p>
                     <p class="text-xs text-gray-400">{{ $announcement->published_at?->format('F j, Y g:i A') }}</p>
                 </div>
-                <a href="{{ route('announcements.edit', $announcement) }}"
-                   class="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition">Edit</a>
+                <div class="flex items-center gap-3">
+                    @if($announcement->status === 'published')
+                        <form method="POST" action="{{ route('announcements.resend-push', $announcement) }}"
+                              onsubmit="return confirm('Resend this push notification to all subscribed staff devices?');">
+                            @csrf
+                            <button type="submit"
+                                    class="text-xs font-medium text-amber-600 hover:text-amber-700 transition">
+                                Resend Push
+                            </button>
+                        </form>
+                    @endif
+                    <a href="{{ route('announcements.edit', $announcement) }}"
+                       class="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition">Edit</a>
+                </div>
             </div>
             <div class="announcement-body text-sm text-gray-800">
                 {!! $announcement->body !!}

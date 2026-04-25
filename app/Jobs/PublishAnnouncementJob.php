@@ -16,7 +16,10 @@ class PublishAnnouncementJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $announcementId) {}
+    public function __construct(
+        public int $announcementId,
+        public bool $pushOnly = false,
+    ) {}
 
     public function handle(): void
     {
@@ -72,14 +75,18 @@ class PublishAnnouncementJob implements ShouldQueue
             'subject' => $announcement->subject,
             'staff_users' => $users->count(),
             'staff_with_subscriptions' => $users->filter(fn (User $user) => $user->pushSubscriptions->isNotEmpty())->count(),
+            'push_only' => $this->pushOnly,
         ]);
 
-        $users->each(fn (User $user) => $user->notify(new AnnouncementPublished($announcement)));
+        $users->each(fn (User $user) => $user->notify(
+            new AnnouncementPublished($announcement, storeInDatabase: ! $this->pushOnly)
+        ));
 
         Log::info('[AnnouncementPush] Dispatch complete', [
             'announcement_id' => $announcement->id,
             'subject' => $announcement->subject,
             'staff_users' => $users->count(),
+            'push_only' => $this->pushOnly,
         ]);
     }
 }
