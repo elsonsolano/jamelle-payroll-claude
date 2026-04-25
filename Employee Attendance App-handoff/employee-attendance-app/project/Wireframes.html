@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Attendance Dashboard — Wireframe Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Kalam:wght@300;400;700&family=Gloock&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#1e1e1c;
+    --ink-2:#3a3a36;
+    --ink-soft:#6c6c66;
+    --paper:#fbfaf5;
+    --paper-2:#f4f1e8;
+    --rule:#d9d4c3;
+    --rule-2:#c2bba5;
+    --green:#8bc53f;       /* apple green */
+    --green-deep:#6ea830;
+    --green-wash:#e8f3d4;
+    --yellow:#f4c542;
+    --red:#d86a5f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper-2);color:var(--ink);font-family:'Kalam',sans-serif}
+  body{
+    background:
+      radial-gradient(ellipse at 20% 0%, #fff 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, #eee6d0 0%, transparent 55%),
+      var(--paper-2);
+    min-height:100vh;
+    padding:28px 20px 80px;
+  }
+  .page-header{
+    max-width:1400px;margin:0 auto 20px;
+    display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;
+  }
+  .page-title{
+    font-family:'Caveat',cursive;font-weight:700;font-size:42px;line-height:1;margin:0;
+    color:var(--ink);
+  }
+  .page-title small{display:block;font-size:18px;color:var(--ink-soft);font-weight:400;margin-top:4px}
+  .legend{
+    font-family:'Kalam',sans-serif;font-size:13px;color:var(--ink-soft);
+    background:#fff;border:1.5px solid var(--rule);border-radius:10px;padding:8px 12px;
+    box-shadow:2px 2px 0 var(--rule);
+  }
+  .legend b{color:var(--ink)}
+
+  /* ======= Tabs ======= */
+  .tabs{
+    max-width:1400px;margin:0 auto 18px;
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  }
+  .tab{
+    font-family:'Caveat',cursive;font-size:22px;font-weight:600;
+    padding:8px 18px;border:2px solid var(--ink);border-radius:30px 28px 32px 26px;
+    background:#fff;color:var(--ink);cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);
+    transition:transform .08s ease;
+    white-space:nowrap;display:inline-flex;align-items:center;
+  }
+  .tab:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+  .tab:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+  .tab.active{background:var(--green);}
+  .tab .n{font-family:'Kalam',sans-serif;font-size:13px;opacity:.7;margin-right:6px}
+  .tabs-spacer{flex:1}
+  .tweaks-toggle{
+    font-family:'Caveat',cursive;font-size:22px;font-weight:600;
+    padding:8px 16px;border:2px dashed var(--ink);border-radius:10px;background:transparent;
+    cursor:pointer;color:var(--ink);
+  }
+
+  /* ======= Tweaks panel ======= */
+  .tweaks{
+    position:fixed;right:20px;bottom:20px;width:260px;
+    background:#fff;border:2px solid var(--ink);border-radius:14px;
+    box-shadow:5px 5px 0 var(--ink);
+    padding:14px 16px;z-index:50;display:none;
+    font-family:'Kalam',sans-serif;
+  }
+  .tweaks.open{display:block}
+  .tweaks h4{font-family:'Caveat',cursive;font-size:26px;margin:0 0 8px;font-weight:700}
+  .tweaks label{display:block;font-size:13px;color:var(--ink-soft);margin:10px 0 4px}
+  .tweaks select, .tweaks .seg{
+    width:100%;font-family:'Kalam',sans-serif;font-size:14px;
+    border:1.5px solid var(--ink);border-radius:8px;padding:6px 8px;background:#fff;
+  }
+  .tweaks .seg{display:flex;padding:3px;gap:3px}
+  .tweaks .seg button{
+    flex:1;font:inherit;font-size:13px;border:none;background:transparent;padding:6px;border-radius:6px;cursor:pointer;color:var(--ink-soft);
+  }
+  .tweaks .seg button.on{background:var(--green);color:var(--ink);font-weight:700}
+  .tweaks .close{position:absolute;top:8px;right:10px;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--ink-soft)}
+
+  /* ======= Canvas & phone ======= */
+  .canvas{
+    max-width:1400px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:28px 24px;align-items:start;
+  }
+  .slot{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .slot-label{
+    font-family:'Caveat',cursive;font-weight:700;font-size:26px;line-height:1.05;color:var(--ink);
+    text-align:center;white-space:nowrap;
+  }
+  .slot-sub{font-family:'Kalam',sans-serif;font-size:13px;color:var(--ink-soft);text-align:center;max-width:300px;line-height:1.35;margin-top:4px}
+  .phone{
+    width:320px;height:640px;
+    background:var(--paper);
+    border:2.5px solid var(--ink);
+    border-radius:34px;
+    padding:10px 10px 0;
+    position:relative;
+    box-shadow:6px 6px 0 var(--ink);
+    overflow:hidden;
+  }
+  .phone::before{
+    /* notch */
+    content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    width:90px;height:18px;background:var(--ink);border-radius:10px;z-index:3;
+  }
+  .screen{
+    height:100%;overflow:hidden;position:relative;
+    border-radius:24px;background:var(--paper);
+    display:flex;flex-direction:column;
+  }
+  .statusbar{
+    height:28px;padding:6px 18px 0;display:flex;justify-content:space-between;align-items:center;
+    font-family:'Kalam',sans-serif;font-size:11px;color:var(--ink-soft);
+  }
+  .scroll{flex:1;overflow:hidden;padding:6px 14px 0;position:relative}
+  .tabbar{
+    height:58px;border-top:1.5px solid var(--rule);display:flex;align-items:center;justify-content:space-around;
+    font-family:'Kalam',sans-serif;font-size:11px;color:var(--ink-soft);
+  }
+  .tabbar .tab-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tabbar .tab-item .ic{width:20px;height:20px;border:1.5px solid var(--ink-soft);border-radius:5px}
+  .tabbar .tab-item.on{color:var(--ink)}
+  .tabbar .tab-item.on .ic{border-color:var(--green-deep);background:var(--green-wash)}
+
+  /* ======= Sketchy primitives ======= */
+  .box{
+    border:1.8px solid var(--ink);
+    border-radius:14px 13px 15px 12px;
+    background:#fff;
+    padding:10px 12px;
+    position:relative;
+  }
+  .box.soft{border-style:dashed;border-color:var(--rule-2);color:var(--ink-soft);background:transparent}
+  .box.green{background:var(--green-wash);border-color:var(--green-deep)}
+  .box.ink{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .row{display:flex;align-items:center;gap:8px}
+  .between{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .muted{color:var(--ink-soft)}
+  .tiny{font-size:11px}
+  .sm{font-size:13px}
+  .md{font-size:15px}
+  .lg{font-size:18px}
+  .xl{font-size:22px}
+  .xxl{font-size:30px}
+  .display{font-family:'Caveat',cursive;font-weight:700}
+  .serif{font-family:'Gloock',serif}
+  .stack{display:flex;flex-direction:column}
+  .gap-4{gap:4px}.gap-6{gap:6px}.gap-8{gap:8px}.gap-10{gap:10px}.gap-12{gap:12px}.gap-14{gap:14px}
+  .mt-4{margin-top:4px}.mt-6{margin-top:6px}.mt-8{margin-top:8px}.mt-10{margin-top:10px}.mt-12{margin-top:12px}.mt-14{margin-top:14px}.mt-16{margin-top:16px}
+  .mb-6{margin-bottom:6px}.mb-8{margin-bottom:8px}.mb-10{margin-bottom:10px}
+  .pill{
+    display:inline-flex;align-items:center;gap:4px;
+    font-family:'Kalam',sans-serif;font-size:10px;
+    padding:2px 8px;border:1.3px solid var(--ink);border-radius:20px;background:#fff;
+  }
+  .pill.green{background:var(--green-wash);border-color:var(--green-deep)}
+  .pill.dot::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink)}
+  .pill.green.dot::before{background:var(--green-deep)}
+  .pill.red.dot::before{background:var(--red)}
+  .pill.amber.dot::before{background:var(--yellow)}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--ink-soft)}
+  .dot.g{background:var(--green-deep)}
+  .dot.y{background:var(--yellow)}
+  .dot.r{background:var(--red)}
+
+  /* hand-drawn divider */
+  .hr{
+    height:10px;margin:8px 0;
+    background:
+      radial-gradient(circle at 50% 50%, var(--ink) 0.6px, transparent 1.2px) 0 0/8px 10px,
+      linear-gradient(to right, transparent, transparent);
+    opacity:.35;
+  }
+  .squiggle{
+    height:8px;
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 8' preserveAspectRatio='none'><path d='M0 4 Q 7.5 0 15 4 T 30 4 T 45 4 T 60 4' fill='none' stroke='%231e1e1c' stroke-width='1.2' stroke-linecap='round'/></svg>");
+    opacity:.45;
+  }
+
+  /* primary smart button */
+  .smart{
+    border:2px solid var(--ink);border-radius:18px 16px 20px 14px;
+    background:var(--green);color:var(--ink);
+    padding:16px 14px;position:relative;overflow:hidden;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .smart.on{background:var(--green)}
+  .smart.break{background:var(--yellow)}
+  .smart.out{background:#fff}
+  .smart.none{background:#fff}
+  .smart .eyebrow{font-family:'Kalam',sans-serif;font-size:11px;color:var(--ink-2);opacity:.75;letter-spacing:.04em;text-transform:uppercase}
+  .smart .title{font-family:'Caveat',cursive;font-weight:700;font-size:34px;line-height:1;margin-top:2px}
+  .smart .sub{font-family:'Kalam',sans-serif;font-size:12px;margin-top:6px;color:var(--ink-2)}
+  .smart .arrow{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    width:40px;height:40px;border-radius:50%;border:2px solid var(--ink);background:#fff;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .smart .arrow::before{content:"→";font-size:20px;font-family:'Caveat',cursive;font-weight:700}
+
+  /* progress ring */
+  .ring-wrap{display:flex;align-items:center;justify-content:center;position:relative}
+  .ring-wrap .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+
+  /* timeline */
+  .timeline{position:relative;padding-left:22px}
+  .timeline::before{
+    content:"";position:absolute;left:7px;top:4px;bottom:4px;width:2px;
+    background:repeating-linear-gradient(to bottom, var(--ink) 0 4px, transparent 4px 8px);
+    opacity:.55;
+  }
+  .tl-item{position:relative;padding:4px 0}
+  .tl-item::before{
+    content:"";position:absolute;left:-22px;top:8px;width:14px;height:14px;border-radius:50%;
+    border:1.8px solid var(--ink);background:#fff;
+  }
+  .tl-item.done::before{background:var(--green);}
+  .tl-item.now::before{background:var(--ink);}
+  .tl-item.future::before{background:#fff;border-style:dashed}
+
+  /* week bar */
+  .weekbar{display:flex;align-items:flex-end;gap:6px;height:52px}
+  .weekbar .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .weekbar .bar{width:100%;background:var(--green-wash);border:1.3px solid var(--green-deep);border-radius:4px 4px 2px 2px}
+  .weekbar .bar.today{background:var(--green);}
+  .weekbar .bar.empty{background:repeating-linear-gradient(45deg, transparent 0 3px, var(--rule) 3px 4px);border-color:var(--rule-2);border-style:dashed}
+  .weekbar .lbl{font-size:9px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em}
+
+  /* placeholders */
+  .ph-line{height:8px;background:var(--rule);border-radius:3px;margin:3px 0}
+  .ph-line.w60{width:60%}.ph-line.w80{width:80%}.ph-line.w40{width:40%}.ph-line.w30{width:30%}
+
+  /* swipe dots */
+  .dots{display:flex;gap:5px;justify-content:center;margin-top:8px}
+  .dots span{width:6px;height:6px;border-radius:50%;background:var(--rule-2)}
+  .dots span.on{background:var(--ink);width:16px;border-radius:4px}
+
+  /* card stack horizontal */
+  .hscroll{display:flex;gap:10px;overflow:visible}
+  .mini-card{
+    min-width:140px;border:1.8px solid var(--ink);border-radius:14px 13px 15px 12px;
+    padding:10px;background:#fff;
+  }
+  .mini-card.peek{opacity:.6;transform:scale(.95);transform-origin:left center}
+
+  /* quote */
+  .quote{
+    font-family:'Gloock',serif;font-size:13px;line-height:1.35;color:var(--ink);
+  }
+  .quote .mark{font-size:28px;line-height:0;color:var(--green-deep);vertical-align:-8px;margin-right:2px}
+  .quote .attr{display:block;font-family:'Kalam',sans-serif;font-size:11px;color:var(--ink-soft);margin-top:4px;font-style:normal}
+
+  /* compact density */
+  body.compact .phone{transform:scale(1)}
+  body.compact .screen .smart{padding:12px 12px}
+  body.compact .screen .smart .title{font-size:28px}
+  body.compact .screen .box{padding:8px 10px}
+  body.compact .scroll{padding-top:2px}
+
+  /* footer note */
+  .footnote{
+    max-width:1400px;margin:24px auto 0;font-family:'Kalam',sans-serif;font-size:13px;color:var(--ink-soft);
+    text-align:center;
+  }
+
+  /* annotations */
+  .annot{
+    font-family:'Caveat',cursive;font-weight:600;font-size:20px;color:var(--green-deep);
+    display:flex;align-items:center;gap:6px;
+  }
+  .annot::before{content:"✦";color:var(--green-deep)}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1 class="page-title">V2b Ring + Agenda — quote treatments
+    <small>Lowkey, subtle, intentional · 3 ways to handle the daily inspiration line</small>
+  </h1>
+  <div class="legend"><b>Goal:</b> quote present but not loud · feels purposeful, not decoration</div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-view="all"><span class="n">All</span>Quote treatments</button>
+  <button class="tab" data-view="v2b"><span class="n">B1</span>Footer line</button>
+  <button class="tab" data-view="v2b2"><span class="n">B2</span>Margin whisper</button>
+  <button class="tab" data-view="v2b3"><span class="n">B3</span>Chip reveal</button>
+  <button class="tab" data-view="original"><span class="n">←</span>All 5 originals</button>
+  <div class="tabs-spacer"></div>
+  <button class="tweaks-toggle" id="openTweaks">✎ Tweaks</button>
+</nav>
+
+<main class="canvas" id="canvas">
+  <!-- slots rendered by JS -->
+</main>
+
+<p class="footnote">Hand-drawn · low-fi · placeholder copy · schedule data is fake · ring shows progress through today's shift (e.g. 2h of 9h)</p>
+
+<!-- ============ Tweaks panel ============ -->
+<aside class="tweaks" id="tweaks">
+  <button class="close" id="closeTweaks">×</button>
+  <h4>Tweaks</h4>
+  <label>Current clock state</label>
+  <div class="seg" id="stateSeg">
+    <button data-state="none" class="on">Not started</button>
+    <button data-state="in">Clocked in</button>
+  </div>
+  <div class="seg mt-6" id="stateSeg2">
+    <button data-state="break">On break</button>
+    <button data-state="out">Clocked out</button>
+  </div>
+  <label>Density</label>
+  <div class="seg" id="densitySeg">
+    <button data-density="spacious" class="on">Spacious</button>
+    <button data-density="compact">Compact</button>
+  </div>
+  <label>Visible variation</label>
+  <select id="viewSelect">
+    <option value="all">Quote treatments (compare)</option>
+    <option value="v2b">B1 — Footer line (serif italic)</option>
+    <option value="v2b2">B2 — Margin whisper (green rule)</option>
+    <option value="v2b3">B3 — Chip reveal (tap to expand)</option>
+    <option value="original">All 5 originals</option>
+    <option value="v2a">• V2a Two cards</option>
+    <option value="v2c">• V2c Split peek</option>
+    <option value="v1">• V1 Smart Button Hero</option>
+    <option value="v2">• V2 Status Ring (old)</option>
+    <option value="v3">• V3 Timeline Day</option>
+    <option value="v4">• V4 Card Stack</option>
+    <option value="v5">• V5 Minimal Zen</option>
+  </select>
+</aside>
+
+<script>
+  /* ==================================================================
+     Shared helpers
+  ================================================================== */
+  const STATE = { clock: 'none', density: 'spacious', view: 'all' };
+  const stateLabel = {
+    none:  { eyebrow:'Ready to start',  title:'Tap to Time In',  sub:'No shift started yet', cls:'none'  },
+    in:    { eyebrow:"You're clocked in", title:'Start Break',    sub:'Running 02:14:38 · since 8:00 AM', cls:'on' },
+    break: { eyebrow:'On break',          title:'End Break',      sub:'Break 00:12:04 · back by 1:00 PM', cls:'break' },
+    out:   { eyebrow:'Done for the day',  title:'Clocked Out',    sub:'8:00 AM — 5:00 PM · 9.00h',         cls:'out' }
+  };
+
+  function statusBar(){
+    return `<div class="statusbar"><span>9:41</span><span>●●●● 5G ⬛</span></div>`;
+  }
+  function tabbar(){
+    return `<div class="tabbar">
+      <div class="tab-item on"><div class="ic"></div>Home</div>
+      <div class="tab-item"><div class="ic"></div>DTR</div>
+      <div class="tab-item"><div class="ic"></div>Schedule</div>
+      <div class="tab-item"><div class="ic"></div>Profile</div>
+    </div>`;
+  }
+  function greeting(size='lg'){
+    return `<div class="stack gap-4">
+      <span class="tiny muted">Saturday · Apr 18</span>
+      <span class="display ${size==='xl'?'xxl':'xl'}">Hi, Jim</span>
+    </div>`;
+  }
+  function quote(compact=false){
+    return `<div class="box ${compact?'':''}" style="background:transparent;border-style:dashed;border-color:var(--rule-2)">
+      <div class="quote"><span class="mark">“</span>Take care of your body. It's the only place you have to live.<span class="attr">— Jim Rohn</span></div>
+    </div>`;
+  }
+  function weekBar(highlightToday=true){
+    const days=['M','T','W','T','F','S','S'];
+    const heights=[70,85,60,90,75,40,0]; // percentages
+    return `<div class="weekbar">${
+      days.map((d,i)=>{
+        const h=heights[i];
+        const isToday = i===5 && highlightToday;
+        const cls = h===0?'empty':(isToday?'today':'');
+        return `<div class="col"><div class="bar ${cls}" style="height:${Math.max(h,6)}%"></div><div class="lbl">${d}</div></div>`;
+      }).join('')
+    }</div>`;
+  }
+
+  /* smart button that reflects STATE.clock */
+  function smartBtn(variant='full'){
+    const s = stateLabel[STATE.clock];
+    if(variant==='full'){
+      return `<div class="smart ${s.cls}">
+        <div class="eyebrow">${s.eyebrow}</div>
+        <div class="title">${s.title}</div>
+        <div class="sub">${s.sub}</div>
+        <div class="arrow"></div>
+      </div>`;
+    }
+    if(variant==='mini'){
+      return `<div class="smart ${s.cls}" style="padding:10px 12px;box-shadow:2px 2px 0 var(--ink)">
+        <div class="eyebrow">${s.eyebrow}</div>
+        <div class="title" style="font-size:24px">${s.title}</div>
+      </div>`;
+    }
+  }
+
+  /* ==================================================================
+     V1 — Smart Button Hero
+     Idea: single biggest element = current action. quote & week tucked below.
+  ================================================================== */
+  function V1(){
+    return `
+      <div class="stack gap-10">
+        ${greeting()}
+        ${smartBtn('full')}
+        <div class="between tiny muted" style="padding:0 2px">
+          <span>This week</span><span>28.0 / 40 h</span>
+        </div>
+        ${weekBar()}
+        <div class="box" style="padding:8px 10px">
+          <div class="between">
+            <div class="stack gap-4">
+              <span class="tiny muted">Today's schedule</span>
+              <span class="md">No schedule set</span>
+            </div>
+            <span class="pill">view</span>
+          </div>
+        </div>
+        ${quote()}
+      </div>`;
+  }
+
+  /* ==================================================================
+     V2 — Status Ring (schedule-focused rebuild)
+     Ring now shows progress through TODAY'S SHIFT (not weekly hours).
+     Three sub-variants explore how to surface today + tomorrow's schedule.
+  ================================================================== */
+  // Ring = today's shift progress. Tick marks are shift hours.
+  function ringSVG(pct = 2/9){
+    const R = 78, C = 2*Math.PI*R;
+    const off = C*(1-pct);
+    const stateFill =
+      STATE.clock==='break' ? '#f4c542' :
+      STATE.clock==='out'   ? '#6ea830' :
+      STATE.clock==='in'    ? '#8bc53f' :
+                              '#d9d4c3'; // not started -> muted ring
+    return `<svg width="220" height="220" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="${R}" fill="none" stroke="#ece6d2" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="110" cy="110" r="${R}" fill="none" stroke="${stateFill}" stroke-width="14" stroke-linecap="round"
+        stroke-dasharray="${C}" stroke-dashoffset="${STATE.clock==='none'?C:off}" transform="rotate(-90 110 110)"/>
+      <!-- hour tick marks around the ring (9h shift = 9 ticks) -->
+      ${Array.from({length:9}).map((_,i)=>{
+        const a = (-90 + i*(360/9)) * Math.PI/180;
+        const x1 = 110 + Math.cos(a)*(R+10);
+        const y1 = 110 + Math.sin(a)*(R+10);
+        const x2 = 110 + Math.cos(a)*(R+16);
+        const y2 = 110 + Math.sin(a)*(R+16);
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6c6c66" stroke-width="1.4" stroke-linecap="round"/>`;
+      }).join('')}
+    </svg>`;
+  }
+
+  // Shared ring block: tappable circle centered in the donut.
+  function ringBlock(){
+    const act = {
+      none:  {top:'START SHIFT',    big:'Time In', tap:'tap ▸'},
+      in:    {top:'WORKING',        big:'Break',   tap:'start break ▸'},
+      break: {top:'ON BREAK',       big:'Resume',  tap:'end break ▸'},
+      out:   {top:'SHIFT COMPLETE', big:'Done',    tap:'8:00 — 5:00'}
+    }[STATE.clock];
+    return `
+      <div class="ring-wrap" style="margin:4px 0 0">
+        ${ringSVG()}
+        <div class="center">
+          <div style="width:156px;height:156px;border-radius:50%;border:2.2px solid var(--ink);background:${
+            STATE.clock==='break'?'var(--yellow)':STATE.clock==='out'?'#fff':STATE.clock==='none'?'#fff':'var(--green)'
+          };display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:3px 3px 0 var(--ink);text-align:center;padding:0 8px">
+            <span class="tiny" style="letter-spacing:.12em;opacity:.7;font-size:10px">${act.top}</span>
+            <span class="display" style="font-size:26px;line-height:1;margin-top:2px;white-space:nowrap">${act.big}</span>
+            <span class="tiny" style="margin-top:4px;opacity:.8;font-size:10px;white-space:nowrap">${act.tap}</span>
+          </div>
+        </div>
+      </div>
+      <div class="between sm" style="padding:0 6px;margin-top:2px">
+        <span class="muted tiny">${STATE.clock==='none'?'starts 8:00 AM':STATE.clock==='out'?'9.0h logged':'2h of 9h'}</span>
+        <span class="muted tiny">Sat · Apr 18</span>
+      </div>`;
+  }
+
+  /* ---------- V2a — Ring + two schedule cards (Today / Tomorrow) ---------- */
+  function V2a(){
+    return `
+      <div class="stack gap-8">
+        ${greeting()}
+        ${ringBlock()}
+        <div class="stack gap-6 mt-4">
+          <div class="box green" style="padding:8px 10px">
+            <div class="between">
+              <span class="tiny" style="letter-spacing:.1em;opacity:.75">TODAY · SAT</span>
+              <span class="pill green dot tiny" style="white-space:nowrap">on shift</span>
+            </div>
+            <div class="between mt-4" style="gap:6px">
+              <span class="display" style="font-size:20px;line-height:1;white-space:nowrap">8:00 — 5:00</span>
+              <span class="tiny muted" style="white-space:nowrap">9h · Crew</span>
+            </div>
+          </div>
+          <div class="box" style="padding:8px 10px">
+            <div class="between">
+              <span class="tiny" style="letter-spacing:.1em;opacity:.75">TOMORROW · SUN</span>
+              <span class="pill tiny" style="white-space:nowrap">off</span>
+            </div>
+            <div class="between mt-4" style="gap:6px">
+              <span class="display muted" style="font-size:20px;line-height:1;white-space:nowrap">Rest day</span>
+              <span class="tiny muted">—</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ---------- V2b — Ring + horizontal agenda strip ----------
+     Three sub-variants differ only in how the quote is treated.
+  -------------------------------------------------------------- */
+  function V2bCore(){
+    return `
+      ${greeting()}
+      ${ringBlock()}
+      <div class="mt-4">
+        <div class="between mb-6" style="gap:6px">
+          <span class="display lg" style="white-space:nowrap">Up next</span>
+          <span class="tiny muted" style="white-space:nowrap">schedule ▸</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="box green" style="padding:8px 10px">
+            <div class="tiny" style="letter-spacing:.1em;opacity:.75">TODAY</div>
+            <div class="display" style="font-size:20px;line-height:1.05;margin-top:2px;white-space:nowrap">8:00<span class="muted" style="font-size:13px"> AM</span></div>
+            <div class="sm" style="white-space:nowrap">— 5:00 PM</div>
+            <div class="tiny muted mt-4">Crew · 9h</div>
+          </div>
+          <div class="box soft" style="padding:8px 10px;background:#fff">
+            <div class="tiny" style="letter-spacing:.1em;opacity:.75">TOMORROW</div>
+            <div class="display" style="font-size:20px;line-height:1.05;margin-top:2px;color:var(--ink-soft)">Off</div>
+            <div class="sm muted">rest day</div>
+            <div class="tiny muted mt-4">next: Mon 8–5</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // B1 — Quiet footer line. Serif italic, no container, bottom-anchored.
+  function V2b(){
+    return `
+      <div class="stack gap-8" style="height:100%">
+        ${V2bCore()}
+        <div style="flex:1"></div>
+        <div style="text-align:center;padding:6px 4px 2px;border-top:1px dashed var(--rule);margin-top:4px">
+          <div class="serif" style="font-size:11px;line-height:1.35;color:var(--ink-soft);font-style:italic">
+            “Take care of your body. It's the only place you have to live.”
+          </div>
+          <div class="tiny muted" style="font-size:10px;margin-top:2px;opacity:.7">— Jim Rohn</div>
+        </div>
+      </div>`;
+  }
+
+  // B2 — Margin whisper. Small green vertical accent rule, left-aligned, no box.
+  function V2b2(){
+    return `
+      <div class="stack gap-8" style="height:100%">
+        ${V2bCore()}
+        <div style="flex:1"></div>
+        <div style="padding:6px 4px 2px 10px;border-left:2px solid var(--green-deep);margin-top:2px">
+          <div class="serif" style="font-size:11px;line-height:1.4;color:var(--ink-2);font-style:italic">
+            Take care of your body. It's the only place you have to live.
+          </div>
+          <div class="tiny muted" style="font-size:10px;margin-top:2px;opacity:.7">Jim Rohn · daily inspiration</div>
+        </div>
+      </div>`;
+  }
+
+  // B3 — Tap-to-reveal chip. Collapsed to a single discreet line; a small leaf mark.
+  function V2b3(){
+    return `
+      <div class="stack gap-8" style="height:100%">
+        ${V2bCore()}
+        <div style="flex:1"></div>
+        <div style="text-align:center;padding:4px 0 2px;margin-top:4px">
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--rule);border-radius:20px;background:#fff">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green-deep)"></span>
+            <span class="serif" style="font-size:11px;line-height:1;color:var(--ink-soft);font-style:italic">“Take care of your body...”</span>
+            <span class="tiny muted" style="font-size:10px">tap ▸</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ---------- V2c — Ring + split peek (2-day preview + tiny timeline) ---------- */
+  function V2c(){
+    const order = ['timeIn','startBreak','endBreak','timeOut'];
+    const doneMap = { none:[], in:['timeIn'], break:['timeIn','startBreak'], out:['timeIn','startBreak','endBreak','timeOut'] };
+    const done = doneMap[STATE.clock];
+    const icons = {timeIn:'In',startBreak:'Brk',endBreak:'End',timeOut:'Out'};
+    const times = {timeIn:'8:00',startBreak:'12:00',endBreak:'1:00',timeOut:'5:00'};
+    return `
+      <div class="stack gap-8">
+        ${greeting()}
+        ${ringBlock()}
+
+        <!-- Today's mini timeline under the ring -->
+        <div class="box" style="padding:6px 10px">
+          <div class="between mb-6" style="gap:6px">
+            <span class="tiny" style="letter-spacing:.1em;opacity:.75;white-space:nowrap">TODAY · 8–5</span>
+            <span class="tiny muted" style="white-space:nowrap">Crew · 9h</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            ${order.map(k=>{
+              const isDone = done.includes(k);
+              const bg = isDone?'var(--green-wash)':'#fff';
+              const border = isDone?'var(--green-deep)':'var(--rule-2)';
+              return `<div style="border:1.4px ${isDone?'solid':'dashed'} ${border};border-radius:8px;padding:3px 0;text-align:center;background:${bg}">
+                <div class="display" style="font-size:13px;line-height:1">${icons[k]}</div>
+                <div class="tiny muted" style="font-size:9px">${times[k]}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Tomorrow peek -->
+        <div class="box" style="padding:6px 10px">
+          <div class="between" style="gap:6px">
+            <div class="stack gap-4" style="min-width:0">
+              <span class="tiny" style="letter-spacing:.1em;opacity:.75;white-space:nowrap">TOMORROW · SUN</span>
+              <span class="display muted" style="font-size:18px;line-height:1;white-space:nowrap">Rest day</span>
+            </div>
+            <span class="pill tiny" style="white-space:nowrap;flex-shrink:0">off</span>
+          </div>
+          <div class="between tiny muted mt-4">
+            <span style="white-space:nowrap">Mon 8–5 next</span>
+            <span style="white-space:nowrap">schedule ▸</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // keep legacy V2 for the "originals" view
+  function V2(){
+    const s = stateLabel[STATE.clock];
+    return `
+      <div class="stack gap-10">
+        ${greeting()}
+        ${ringBlock()}
+        ${weekBar()}
+        ${quote()}
+      </div>`;
+  }
+
+  /* ==================================================================
+     V3 — Timeline Day
+     Idea: today as a vertical timeline; the "next" event is the primary tap.
+  ================================================================== */
+  function V3(){
+    // map clock state -> which timeline item is "now"
+    const order = ['timeIn','startBreak','endBreak','timeOut'];
+    const doneMap = { none:[], in:['timeIn'], break:['timeIn','startBreak'], out:['timeIn','startBreak','endBreak','timeOut'] };
+    const done = doneMap[STATE.clock];
+    const items = [
+      { k:'timeIn',     label:'Time In',     hint:'8:00 AM' },
+      { k:'startBreak', label:'Start Break', hint:'12:00 PM' },
+      { k:'endBreak',   label:'End Break',   hint:'1:00 PM' },
+      { k:'timeOut',    label:'Time Out',    hint:'5:00 PM' },
+    ];
+    const nowIndex = done.length;
+    return `
+      <div class="stack gap-10">
+        <div class="between" style="gap:6px">
+          <div class="stack gap-4" style="min-width:0">
+            <span class="tiny muted">Today · Sat Apr 18</span>
+            <span class="display xl">Jim's day</span>
+          </div>
+          <span class="pill green dot" style="flex-shrink:0;white-space:nowrap">${STATE.clock==='none'?'Ready':STATE.clock==='in'?'Working':STATE.clock==='break'?'Break':'Done'}</span>
+        </div>
+
+        <div class="box">
+          <div class="timeline">
+            ${items.map((it,i)=>{
+              const isDone = done.includes(it.k);
+              const isNow = i===nowIndex && STATE.clock!=='out';
+              const cls = isDone?'done':(isNow?'now':'future');
+              return `<div class="tl-item ${cls}">
+                <div class="between">
+                  <span class="md" style="${isDone?'text-decoration:line-through;color:var(--ink-soft)':''}">${it.label}</span>
+                  <span class="tiny muted">${isDone?'logged '+it.hint:it.hint}</span>
+                </div>
+                ${isNow?`<div class="mt-6">${smartBtn('mini')}</div>`:''}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="between tiny muted" style="padding:0 2px">
+          <span>This week</span><span>28.0 / 40 h</span>
+        </div>
+        ${weekBar()}
+        ${quote()}
+      </div>`;
+  }
+
+  /* ==================================================================
+     V4 — Card Stack (horizontal swipe)
+     Idea: 3 focused cards -- Today / This Week / Schedule. Less scrolling.
+  ================================================================== */
+  function V4(){
+    return `
+      <div class="stack gap-10">
+        ${greeting()}
+        <div class="hscroll">
+          <div class="mini-card" style="min-width:180px">
+            <span class="tiny muted">TODAY</span>
+            <div class="mt-6">${smartBtn('mini')}</div>
+            <div class="mt-8 row gap-6 tiny muted">
+              <span class="dot g"></span> In 8:00
+              <span class="dot"></span> — —
+            </div>
+          </div>
+          <div class="mini-card peek" style="min-width:120px">
+            <span class="tiny muted">THIS WEEK</span>
+            <div class="display xl mt-4">28h</div>
+            <div class="tiny muted">of 40</div>
+            <div class="mt-6" style="height:40px">${weekBar(false)}</div>
+          </div>
+          <div class="mini-card peek" style="min-width:60px"></div>
+        </div>
+        <div class="dots"><span class="on"></span><span></span><span></span></div>
+
+        <div class="box" style="padding:8px 10px">
+          <div class="between">
+            <div class="stack gap-4">
+              <span class="tiny muted">Next shift</span>
+              <span class="md">Mon Apr 20 · 8–5</span>
+            </div>
+            <span class="pill">add</span>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="between mb-6">
+            <span class="display lg">Recent</span>
+            <span class="tiny muted">last 3</span>
+          </div>
+          <div class="stack gap-8">
+            <div class="between sm">
+              <span>Fri · Apr 17</span><span class="muted tiny">8h · OK</span>
+            </div>
+            <div class="between sm">
+              <span>Thu · Apr 16</span><span class="muted tiny">9h · OT</span>
+            </div>
+            <div class="between sm">
+              <span>Wed · Apr 15</span><span class="muted tiny">8h · OK</span>
+            </div>
+          </div>
+          <div class="squiggle mt-6"></div>
+          <div class="tiny muted" style="text-align:center">see all in DTR →</div>
+        </div>
+
+        ${quote(true)}
+      </div>`;
+  }
+
+  /* ==================================================================
+     V5 — Minimal Zen
+     Idea: radical reduction. One action dead-center. Tiny week strip. Quote at foot.
+  ================================================================== */
+  function V5(){
+    const s = stateLabel[STATE.clock];
+    return `
+      <div class="stack gap-10" style="height:100%">
+        <div class="between" style="gap:6px">
+          <span class="tiny muted" style="white-space:nowrap">Sat · Apr 18</span>
+          <span class="pill green dot tiny" style="flex-shrink:0;white-space:nowrap">${STATE.clock==='none'?'ready':STATE.clock==='in'?'working':STATE.clock==='break'?'break':'done'}</span>
+        </div>
+
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:8px 0">
+          <span class="tiny muted" style="letter-spacing:.15em;text-transform:uppercase">${s.eyebrow}</span>
+          <div style="width:150px;height:150px;border-radius:50%;border:2.5px solid var(--ink);background:${STATE.clock==='break'?'var(--yellow)':STATE.clock==='out'?'#fff':'var(--green)'};display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:4px 4px 0 var(--ink)">
+            <span class="display" style="font-size:36px;line-height:1">${s.title.replace('Tap to ','')}</span>
+            <span class="tiny" style="margin-top:4px">tap ▸</span>
+          </div>
+          <span class="sm muted" style="max-width:220px">${s.sub}</span>
+        </div>
+
+        <div class="stack gap-4">
+          <div class="between tiny muted"><span>this week</span><span>28h / 40h</span></div>
+          <div style="height:8px;border-radius:4px;background:var(--rule);overflow:hidden;border:1px solid var(--rule-2)">
+            <div style="height:100%;width:70%;background:var(--green)"></div>
+          </div>
+        </div>
+
+        <div class="quote" style="text-align:center;font-size:12px;border-top:1px dashed var(--rule-2);padding-top:8px">
+          <span class="mark">“</span>Take care of your body.<span class="attr">— Jim Rohn</span>
+        </div>
+      </div>`;
+  }
+
+  /* ==================================================================
+     Slot renderer
+  ================================================================== */
+  const VIEWS = {
+    v2b:  { title:'B1 · Footer line',     sub:'Serif italic at the bottom, divided by a dashed rule. Quiet but readable.', render:V2b },
+    v2b2: { title:'B2 · Margin whisper',  sub:'Left-aligned with a small green accent rule. Feels like a pull-quote.',   render:V2b2 },
+    v2b3: { title:'B3 · Chip reveal',     sub:'Collapsed to a single discreet pill — tap to expand. Most restrained.',    render:V2b3 },
+    v2a: { title:'V2a · Ring + Two cards',   sub:'Big ring + today and tomorrow as two clear cards stacked below.', render:V2a },
+    v2c: { title:'V2c · Ring + Split peek',   sub:"Ring + today's punches as mini chips + tomorrow peek below.",    render:V2c },
+    v1: { title:'V1 · Smart Button Hero', sub:'One huge state-aware button. Everything else is support.', render:V1 },
+    v2: { title:'V2 · Status Ring (old)', sub:'The original weekly-bar version. Kept for reference.',        render:V2 },
+    v3: { title:'V3 · Timeline Day',      sub:"Today as a vertical timeline. Next step is the only tap.",  render:V3 },
+    v4: { title:'V4 · Card Stack',        sub:'Swipeable cards. Today, this week, schedule — no endless list.', render:V4 },
+    v5: { title:'V5 · Minimal Zen',       sub:'One circle. One action. Everything else whispers.',          render:V5 }
+  };
+
+  function renderSlot(key){
+    const v = VIEWS[key];
+    return `<section class="slot" data-view="${key}">
+      <div class="phone">
+        <div class="screen">
+          ${statusBar()}
+          <div class="scroll">${v.render()}</div>
+          ${tabbar()}
+        </div>
+      </div>
+      <div class="slot-label">${v.title}</div>
+      <div class="slot-sub">${v.sub}</div>
+    </section>`;
+  }
+
+  function render(){
+    const canvas = document.getElementById('canvas');
+    const V2_KEYS = ['v2b','v2b2','v2b3'];
+    const ORIG_KEYS = ['v1','v2','v3','v4','v5'];
+    let keys;
+    if (STATE.view === 'all') keys = ['v2b','v2b2','v2b3'];
+    else if (STATE.view === 'original') keys = ORIG_KEYS;
+    else keys = [STATE.view];
+    canvas.innerHTML = keys.map(renderSlot).join('');
+    const multi = keys.length > 1;
+    canvas.style.gridTemplateColumns = multi
+      ? 'repeat(auto-fit,minmax(320px,1fr))'
+      : 'minmax(320px,380px)';
+    canvas.style.justifyContent = multi ? 'stretch' : 'center';
+    document.body.classList.toggle('compact', STATE.density==='compact');
+    // tabs
+    document.querySelectorAll('#tabs .tab').forEach(t=>{
+      t.classList.toggle('active', t.dataset.view===STATE.view);
+    });
+    document.getElementById('viewSelect').value = STATE.view;
+  }
+
+  /* ==================================================================
+     Tabs + Tweaks wiring
+  ================================================================== */
+  document.querySelectorAll('#tabs .tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{ STATE.view = btn.dataset.view; render(); });
+  });
+  document.getElementById('viewSelect').addEventListener('change', e=>{
+    STATE.view = e.target.value; render();
+  });
+
+  const tweaks = document.getElementById('tweaks');
+  document.getElementById('openTweaks').addEventListener('click',()=>tweaks.classList.add('open'));
+  document.getElementById('closeTweaks').addEventListener('click',()=>tweaks.classList.remove('open'));
+
+  function wireSeg(id, key){
+    document.querySelectorAll(`#${id} button`).forEach(b=>{
+      b.addEventListener('click',()=>{
+        const val = b.dataset[key];
+        STATE[key==='state'?'clock':key] = val;
+        // toggle .on across BOTH state segments so exactly one is active
+        if(key==='state'){
+          document.querySelectorAll('#stateSeg button, #stateSeg2 button').forEach(x=>x.classList.toggle('on', x.dataset.state===val));
+        } else {
+          document.querySelectorAll(`#${id} button`).forEach(x=>x.classList.toggle('on', x===b));
+        }
+        render();
+      });
+    });
+  }
+  wireSeg('stateSeg','state');
+  wireSeg('stateSeg2','state');
+  wireSeg('densitySeg','density');
+
+  render();
+</script>
+</body>
+</html>

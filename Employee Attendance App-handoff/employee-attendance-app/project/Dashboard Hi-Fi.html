@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Attendance Dashboard — Hi-Fi V2b-B1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* Apple-green palette, dialed in for production */
+    --green-50:#f1f8e4;
+    --green-100:#e3f1c9;
+    --green-200:#cfe7a4;
+    --green-300:#b5d977;
+    --green-400:#9fcc53;
+    --green-500:#8bc53f;   /* brand */
+    --green-600:#6ea830;
+    --green-700:#557f24;
+    --green-800:#3f5e1b;
+
+    --ink-900:#0f1410;
+    --ink-800:#1b2419;
+    --ink-700:#2e3a2a;
+    --ink-600:#4a5748;
+    --ink-500:#6b7768;
+    --ink-400:#8d9889;
+    --ink-300:#b4bcb0;
+    --ink-200:#d9ddd6;
+    --ink-100:#eef1ec;
+    --ink-50:#f7f8f5;
+    --white:#ffffff;
+
+    --amber-500:#f4a53c;  /* break */
+    --amber-50:#fdf2df;
+
+    --radius-sm:8px;
+    --radius-md:12px;
+    --radius-lg:16px;
+    --radius-xl:20px;
+
+    --shadow-1: 0 1px 2px rgba(15,20,16,.04), 0 1px 1px rgba(15,20,16,.03);
+    --shadow-2: 0 4px 10px -4px rgba(15,20,16,.08), 0 2px 4px rgba(15,20,16,.04);
+    --shadow-3: 0 12px 24px -8px rgba(15,20,16,.12), 0 4px 8px rgba(15,20,16,.05);
+    --shadow-green: 0 10px 22px -8px rgba(110,168,48,.45), 0 3px 6px rgba(110,168,48,.18);
+
+    --font-sans:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;
+    --font-serif:'Source Serif 4',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font-sans);
+    color:var(--ink-800);
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, #fff 0%, transparent 60%),
+      radial-gradient(ellipse 80% 50% at 100% 100%, var(--green-50) 0%, transparent 55%),
+      #f3f5f0;
+    min-height:100vh;
+    padding:36px 24px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== Page chrome ===== */
+  .page-header{
+    max-width:1400px;margin:0 auto 28px;
+    display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;
+  }
+  .page-title{
+    font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0;color:var(--ink-900);
+  }
+  .page-title small{
+    display:block;font-size:14px;font-weight:500;color:var(--ink-500);margin-top:6px;
+    letter-spacing:0;
+  }
+  .legend{
+    font-size:13px;color:var(--ink-600);
+    background:#fff;border:1px solid var(--ink-200);border-radius:var(--radius-md);padding:10px 14px;
+    box-shadow:var(--shadow-1);
+  }
+  .legend b{color:var(--ink-900)}
+  .legend .kbd{
+    display:inline-block;padding:1px 6px;border-radius:6px;border:1px solid var(--ink-200);
+    background:var(--ink-50);color:var(--ink-700);font-size:11px;font-weight:600;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 2px;
+  }
+
+  /* ===== Tabs ===== */
+  .tabs{
+    max-width:1400px;margin:0 auto 24px;
+    display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+    background:#fff;border:1px solid var(--ink-200);border-radius:14px;padding:6px;
+    box-shadow:var(--shadow-1);width:fit-content;
+  }
+  .tab{
+    font:inherit;font-size:13px;font-weight:600;
+    padding:8px 14px;border:none;border-radius:10px;
+    background:transparent;color:var(--ink-600);cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+    transition:background .15s, color .15s;
+  }
+  .tab:hover{background:var(--ink-50);color:var(--ink-900)}
+  .tab.active{background:var(--ink-900);color:#fff}
+  .tab .n{
+    font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.55;
+  }
+
+  /* ===== Canvas & phone ===== */
+  .canvas{
+    max-width:1400px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+    gap:40px 28px;justify-items:center;align-items:start;
+  }
+  .slot{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:380px}
+  .slot-label{
+    font-size:14px;font-weight:600;color:var(--ink-900);letter-spacing:-.01em;
+  }
+  .slot-label .state{
+    display:inline-flex;align-items:center;gap:6px;margin-left:8px;
+    font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;
+    background:var(--ink-100);color:var(--ink-700);
+  }
+  .slot-label .state .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}
+  .slot-label .state.in  {background:var(--green-100);color:var(--green-800)}
+  .slot-label .state.brk {background:var(--amber-50);color:#8a5a12}
+  .slot-label .state.out {background:var(--ink-100);color:var(--ink-700)}
+
+  .phone{
+    width:360px;height:740px;
+    background:#0a0d0b;
+    border-radius:44px;
+    padding:10px;
+    position:relative;
+    box-shadow:
+      0 0 0 2px #1a1f1b,
+      var(--shadow-3),
+      0 30px 60px -20px rgba(15,20,16,.35);
+  }
+  .phone::before{
+    /* dynamic island */
+    content:"";position:absolute;top:16px;left:50%;transform:translateX(-50%);
+    width:112px;height:30px;background:#000;border-radius:20px;z-index:4;
+  }
+  .screen{
+    height:100%;overflow:hidden;position:relative;
+    border-radius:34px;background:var(--ink-50);
+    display:flex;flex-direction:column;
+  }
+  .statusbar{
+    height:48px;padding:18px 28px 0;display:flex;justify-content:space-between;align-items:center;
+    font-size:14px;font-weight:600;color:var(--ink-900);
+  }
+  .statusbar .icons{display:inline-flex;gap:6px;align-items:center;color:var(--ink-900)}
+  .statusbar .icons svg{display:block}
+  .scroll{flex:1;overflow:hidden;padding:8px 20px 0;position:relative;display:flex;flex-direction:column}
+  .tabbar{
+    height:78px;padding:10px 16px 20px;display:flex;align-items:flex-start;justify-content:space-around;
+    background:rgba(255,255,255,.88);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--ink-200);
+  }
+  .tab-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+    font-size:10px;font-weight:600;color:var(--ink-500);letter-spacing:.01em;
+    padding-top:4px;
+  }
+  .tab-item svg{display:block;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab-item.on{color:var(--green-700)}
+  .tab-item.on svg{stroke:var(--green-700);fill:var(--green-100)}
+  .tab-item .label-indicator{
+    width:4px;height:4px;border-radius:50%;background:var(--green-600);margin-top:-2px;opacity:0;
+  }
+  .tab-item.on .label-indicator{opacity:1}
+
+  /* ===== Greeting ===== */
+  .greet{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;
+  }
+  .greet .hello{
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .greet .eyebrow{
+    font-size:12px;font-weight:600;color:var(--ink-500);letter-spacing:.02em;
+  }
+  .greet h1{
+    margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--ink-900);
+  }
+  .greet .avatar{
+    width:40px;height:40px;border-radius:50%;background:var(--green-200);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-800);
+    font-size:14px;border:1.5px solid #fff;box-shadow:var(--shadow-1);flex-shrink:0;position:relative;
+  }
+  .greet .avatar .notif{
+    position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;
+    background:var(--amber-500);border:2px solid var(--ink-50);
+  }
+
+  /* ===== Ring block (hero) ===== */
+  .ring-wrap{
+    position:relative;display:flex;align-items:center;justify-content:center;
+    margin:14px 0 6px;
+  }
+  .ring-wrap svg{display:block}
+  .ring-center{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  }
+  .ring-btn{
+    width:186px;height:186px;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    cursor:pointer;border:none;color:inherit;
+    transition:transform .15s ease, box-shadow .2s ease, background .25s ease;
+    font-family:inherit;
+    position:relative;
+  }
+  .ring-btn:active{transform:scale(.97)}
+  .ring-btn .eyebrow{
+    font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.7;
+  }
+  .ring-btn .big{
+    font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1;
+  }
+  .ring-btn .sub{
+    font-size:11px;font-weight:500;opacity:.75;margin-top:2px;
+    display:inline-flex;align-items:center;gap:4px;
+  }
+  /* state variants */
+  .ring-btn.state-none{background:var(--green-500);color:#0f1410;box-shadow:var(--shadow-green)}
+  .ring-btn.state-in  {background:var(--ink-900);color:#fff;box-shadow:var(--shadow-3)}
+  .ring-btn.state-brk {background:var(--amber-500);color:#0f1410;box-shadow:0 10px 22px -8px rgba(244,165,60,.5)}
+  .ring-btn.state-out {background:#fff;color:var(--ink-500);box-shadow:var(--shadow-2);border:1.5px solid var(--ink-200)}
+
+  .ring-meta{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:12px;color:var(--ink-500);font-weight:500;margin-top:6px;padding:0 6px;
+  }
+  .ring-meta .live-dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green-500);
+    margin-right:6px;
+    animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.4;transform:scale(.85)}
+  }
+
+  /* ===== Up next / Agenda strip ===== */
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;gap:10px;
+  }
+  .section-head h2{
+    margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--ink-900);
+  }
+  .section-head .link{
+    font-size:12px;font-weight:600;color:var(--green-700);
+    display:inline-flex;align-items:center;gap:3px;cursor:pointer;
+  }
+  .agenda{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  }
+  .day-card{
+    background:#fff;border:1px solid var(--ink-200);border-radius:var(--radius-lg);
+    padding:14px;box-shadow:var(--shadow-1);
+    display:flex;flex-direction:column;gap:8px;
+    position:relative;overflow:hidden;
+  }
+  .day-card.today{
+    background:linear-gradient(180deg,#f7fbeb 0%, #fff 100%);
+    border-color:var(--green-200);
+  }
+  .day-card.today::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--green-500);
+  }
+  .day-card .label{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);
+  }
+  .day-card.today .label{color:var(--green-700)}
+  .day-card .time{
+    font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink-900);line-height:1.05;
+    white-space:nowrap;
+  }
+  .day-card .time .ampm{font-size:12px;font-weight:600;color:var(--ink-500);margin-left:2px}
+  .day-card .sub{
+    font-size:13px;font-weight:500;color:var(--ink-700);white-space:nowrap;
+  }
+  .day-card .foot{
+    font-size:11px;color:var(--ink-500);margin-top:auto;display:flex;align-items:center;gap:6px;
+  }
+  .day-card .foot svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .day-card.off .time{color:var(--ink-400)}
+  .pill-mini{
+    font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;
+    background:var(--green-600);color:#fff;letter-spacing:.02em;
+  }
+  .pill-mini.off{background:var(--ink-200);color:var(--ink-700)}
+
+  /* ===== Quote footer ===== */
+  .quote-footer{
+    margin-top:auto;padding:14px 6px 10px;
+    border-top:1px dashed var(--ink-200);
+    text-align:center;
+  }
+  .quote-footer .q{
+    font-family:var(--font-serif);
+    font-style:italic;font-size:13px;line-height:1.45;color:var(--ink-600);font-weight:400;
+  }
+  .quote-footer .attr{
+    display:block;margin-top:4px;font-family:var(--font-sans);font-style:normal;
+    font-size:10px;font-weight:600;color:var(--ink-400);letter-spacing:.04em;
+  }
+
+  /* ===== Footnote ===== */
+  .footnote{
+    max-width:1400px;margin:32px auto 0;font-size:12px;color:var(--ink-500);text-align:center;
+  }
+
+  /* ===== Tokens panel (handoff docs) ===== */
+  .handoff{
+    max-width:1400px;margin:48px auto 0;
+    background:#fff;border:1px solid var(--ink-200);border-radius:20px;
+    padding:28px 32px;box-shadow:var(--shadow-1);
+  }
+  .handoff h2{
+    margin:0 0 6px;font-size:20px;font-weight:700;letter-spacing:-.015em;color:var(--ink-900);
+  }
+  .handoff .lead{font-size:13px;color:var(--ink-500);margin:0 0 20px}
+  .handoff-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;
+  }
+  .card{
+    border:1px solid var(--ink-200);border-radius:14px;padding:16px;background:var(--ink-50);
+  }
+  .card h3{margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-700)}
+  .card p, .card li{font-size:12.5px;color:var(--ink-700);line-height:1.55;margin:0 0 6px}
+  .card ul{margin:0;padding-left:16px}
+  .swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .sw{
+    aspect-ratio:1;border-radius:8px;border:1px solid var(--ink-200);
+    display:flex;align-items:flex-end;justify-content:flex-start;padding:4px 5px;
+    font-size:9px;font-weight:700;color:#0f1410;
+  }
+  .sw.dark{color:#fff}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+    background:#fff;border:1px solid var(--ink-200);padding:1px 5px;border-radius:5px;color:var(--ink-900);
+  }
+
+  /* ===== Print ===== */
+  @media print{
+    body{background:#fff;padding:20px}
+    .tabs, .footnote{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1 class="page-title">Employee Attendance — Dashboard
+    <small>V2b · Ring + Agenda strip · B1 quote footer · 4 clock states</small>
+  </h1>
+  <div class="legend"><b>Hi-fi · Inter + Source Serif 4 · apple green</b> · tap the state tabs to switch the matrix</div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-view="matrix"><span class="n">Matrix</span>All 4 states</button>
+  <button class="tab" data-view="none"><span class="n">01</span>Not started</button>
+  <button class="tab" data-view="in"><span class="n">02</span>Clocked in</button>
+  <button class="tab" data-view="break"><span class="n">03</span>On break</button>
+  <button class="tab" data-view="out"><span class="n">04</span>Clocked out</button>
+</nav>
+
+<main class="canvas" id="canvas"></main>
+
+<p class="footnote">Scroll down for design tokens, component breakdown, and Claude Code handoff notes.</p>
+
+<!-- ============ Handoff notes ============ -->
+<section class="handoff">
+  <h2>Design tokens & Claude Code handoff</h2>
+  <p class="lead">Everything a developer needs to implement this screen. Tokens are named; states are enumerated; components are decomposed.</p>
+
+  <div class="handoff-grid">
+
+    <div class="card">
+      <h3>Brand color — Apple green</h3>
+      <div class="swatches">
+        <div class="sw" style="background:#f1f8e4">50</div>
+        <div class="sw" style="background:#e3f1c9">100</div>
+        <div class="sw" style="background:#cfe7a4">200</div>
+        <div class="sw" style="background:#b5d977">300</div>
+        <div class="sw" style="background:#9fcc53">400</div>
+        <div class="sw dark" style="background:#8bc53f">500★</div>
+        <div class="sw dark" style="background:#6ea830">600</div>
+        <div class="sw dark" style="background:#557f24">700</div>
+        <div class="sw dark" style="background:#3f5e1b">800</div>
+      </div>
+      <p style="margin-top:10px">★ <code>#8bc53f</code> is the primary brand. Use <code>600</code> for text on light, <code>500</code> for fills.</p>
+    </div>
+
+    <div class="card">
+      <h3>Neutrals</h3>
+      <div class="swatches">
+        <div class="sw" style="background:#f7f8f5">50</div>
+        <div class="sw" style="background:#eef1ec">100</div>
+        <div class="sw" style="background:#d9ddd6">200</div>
+        <div class="sw" style="background:#b4bcb0">300</div>
+        <div class="sw dark" style="background:#8d9889">400</div>
+        <div class="sw dark" style="background:#6b7768">500</div>
+        <div class="sw dark" style="background:#4a5748">600</div>
+        <div class="sw dark" style="background:#2e3a2a">700</div>
+        <div class="sw dark" style="background:#0f1410">900</div>
+      </div>
+      <p style="margin-top:10px">Warm-gray neutrals tuned to the green — avoid pure <code>#000</code> / <code>#fff</code>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Typography</h3>
+      <ul>
+        <li><b>Inter</b> — UI sans, weights 500/600/700</li>
+        <li><b>Source Serif 4 italic</b> — quote only</li>
+        <li>Greeting h1: 22 / 700 / -0.02em</li>
+        <li>Ring big: 30 / 700 / -0.02em</li>
+        <li>Section head: 15 / 700</li>
+        <li>Time display: 20 / 700 / -0.02em</li>
+        <li>Body: 13 / 500 · Caption: 11 / 600</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Components</h3>
+      <ul>
+        <li><code>&lt;RingButton state=... progress=... onTap /&gt;</code></li>
+        <li><code>&lt;AgendaCard variant="today|off|upcoming" time="8:00 AM" end="5:00 PM" /&gt;</code></li>
+        <li><code>&lt;QuoteFooter quote author /&gt;</code></li>
+        <li><code>&lt;TabBar active /&gt;</code> — Home / DTR / Schedule / Profile</li>
+        <li><code>&lt;Greeting name avatarSrc hasNotif /&gt;</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>State machine (ring action)</h3>
+      <ul>
+        <li><code>none</code> → tap logs Time In → <code>in</code></li>
+        <li><code>in</code> → tap logs Start Break → <code>break</code></li>
+        <li><code>break</code> → tap logs End Break → <code>in</code></li>
+        <li><code>in</code> (after scheduled end) → Time Out button → <code>out</code></li>
+        <li><code>out</code> → read-only until next shift</li>
+      </ul>
+      <p style="margin-top:6px">Ring progress = <code>elapsedWork / scheduledHours</code>. Pauses during break.</p>
+    </div>
+
+    <div class="card">
+      <h3>Icons</h3>
+      <p>Lucide icons — stroke 1.8, size 20 for nav, 14 for inline.</p>
+      <ul>
+        <li>Nav: <code>home</code>, <code>clipboard-list</code>, <code>calendar</code>, <code>user</code></li>
+        <li>Inline: <code>clock</code>, <code>coffee</code>, <code>check-circle</code>, <code>chevron-right</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Data contracts</h3>
+      <pre style="margin:0;white-space:pre-wrap;font-size:11.5px;line-height:1.55;color:var(--ink-800)">type ClockState =
+  'none' | 'in' | 'break' | 'out';
+
+interface DashboardData {
+  user: { name, avatarUrl, role };
+  today: Shift | null;
+  tomorrow: Shift | null;
+  current: {
+    state: ClockState;
+    clockedInAt?: string;
+    breakStartedAt?: string;
+    elapsedMinutes: number;
+  };
+  dailyQuote: { text, author };
+}</pre>
+    </div>
+
+    <div class="card">
+      <h3>Accessibility</h3>
+      <ul>
+        <li>Ring button: <code>role="button"</code>, label describes current action (“Time in — shift starts 8 AM”).</li>
+        <li>Minimum tap target: 186×186 (hero), 44×44 (tab items).</li>
+        <li>Contrast: ring label on green-500 passes AA at 14px bold.</li>
+        <li>Live region: announce clock state changes.</li>
+        <li>Respect <code>prefers-reduced-motion</code> — disable live-dot pulse.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Notes for Claude Code</h3>
+      <ul>
+        <li>Build as React Native or a PWA? (App currently says “Add to home screen”, so a React + Capacitor or PWA track fits.)</li>
+        <li>Persist clock state server-side; optimistic UI on tap.</li>
+        <li>Offline: queue punches; sync on reconnect.</li>
+        <li>Quote endpoint: daily cache, fallback to last-known.</li>
+        <li>This HTML is the visual spec — all sizes, colors, radii, shadows are final.</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  /* ==========================================================
+     Single source of truth: render V2b-B1 per clock state
+  ========================================================== */
+  const STATES = ['none','in','break','out'];
+
+  const RING_CONTENT = {
+    none:  { top:'READY',       big:'Time In',  sub:'Starts 8:00 AM',  progress:0,    cls:'state-none' },
+    in:    { top:'WORKING',     big:'Break',    sub:'2h 14m · since 8:00', progress:.25, cls:'state-in'   },
+    break: { top:'ON BREAK',    big:'Resume',   sub:'Break 12m · back 1:00', progress:.45, cls:'state-brk'  },
+    out:   { top:'SHIFT DONE',  big:'Clocked Out', sub:'8:00 AM — 5:00 PM',  progress:1,   cls:'state-out'  }
+  };
+
+  function icon(name, size=18){
+    const p = {
+      home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z',
+      clipboard:'M9 3h6v2h3v16H6V5h3zM9 10h6M9 14h6M9 18h4',
+      calendar:'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+      user:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0',
+      bell:'M6 8a6 6 0 0 1 12 0c0 5 2 6 2 8H4c0-2 2-3 2-8Z M10 21a2 2 0 0 0 4 0',
+      chevron:'m9 6 6 6-6 6',
+      clock:'M12 7v5l3 2 M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',
+      coffee:'M3 8h13v5a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8ZM16 10h2a2 2 0 0 1 0 4h-2M6 3v2M10 3v2M14 3v2'
+    };
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${p[name]}"/></svg>`;
+  }
+
+  function ringSVG(progress, state){
+    // 220×220 canvas, radius 92, stroke 10
+    const R = 92, C = 2*Math.PI*R;
+    const off = C*(1-progress);
+    const color = state==='brk'?'#f4a53c'
+               : state==='out'?'#6b7768'
+               : state==='in' ?'#8bc53f'
+               : '#cfe7a4';
+    const trackDash = state==='none' ? 'stroke-dasharray:2 7;stroke-linecap:round;' : '';
+    return `
+      <svg width="240" height="240" viewBox="0 0 240 240">
+        <defs>
+          <filter id="softg" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3"/>
+          </filter>
+        </defs>
+        <!-- track -->
+        <circle cx="120" cy="120" r="${R}" fill="none" stroke="#e3eadb" stroke-width="10" stroke-linecap="round"
+          ${state==='none' ? 'stroke-dasharray="2 7"' : ''}/>
+        ${progress>0 ? `<circle cx="120" cy="120" r="${R}" fill="none" stroke="${color}" stroke-width="10"
+          stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
+          transform="rotate(-90 120 120)"/>` : ''}
+        <!-- hour markers (9h shift) -->
+        ${Array.from({length:9}).map((_,i)=>{
+          const a=(-90+i*40)*Math.PI/180;
+          const x1=120+Math.cos(a)*(R+8);
+          const y1=120+Math.sin(a)*(R+8);
+          const x2=120+Math.cos(a)*(R+14);
+          const y2=120+Math.sin(a)*(R+14);
+          return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8d9889" stroke-width="1.4" stroke-linecap="round"/>`;
+        }).join('')}
+      </svg>`;
+  }
+
+  function screen(state){
+    const r = RING_CONTENT[state];
+    const tomorrow = state==='out'
+      ? { label:'TOMORROW · SUN', time:'Off', sub:'rest day', foot:'next: Mon 8–5', pill:'off', cls:'off' }
+      : { label:'TOMORROW · SUN', time:'Off', sub:'rest day', foot:'next: Mon 8–5', pill:'off', cls:'off' };
+    const today = state==='out'
+      ? { label:'TODAY · SAT', time:'8:00', end:'— 5:00 PM', foot:'Crew · 9h logged', pill:'done' }
+      : { label:'TODAY · SAT', time:'8:00', end:'— 5:00 PM', foot:'Crew · 9h', pill:state==='in'||state==='break'?'on shift':'scheduled' };
+
+    return `
+      <div class="phone">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="icons">
+              ${icon('bell',16)}
+            </span>
+          </div>
+          <div class="scroll">
+            <div class="greet">
+              <div class="hello">
+                <span class="eyebrow">Saturday · Apr 18</span>
+                <h1>Hi, Jim</h1>
+              </div>
+              <div class="avatar">JS<span class="notif"></span></div>
+            </div>
+
+            <div class="ring-wrap">
+              ${ringSVG(r.progress, state)}
+              <div class="ring-center">
+                <button class="ring-btn ${r.cls}" aria-label="${r.top} — ${r.big}">
+                  <span class="eyebrow">${r.top}</span>
+                  <span class="big">${r.big}</span>
+                  <span class="sub">${r.sub}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="ring-meta">
+              <span>${state==='in' || state==='break' ? '<span class="live-dot"></span>' : ''}${
+                state==='none' ? 'Shift starts in 14 min' :
+                state==='in'   ? '2h 14m of 9h · 25%' :
+                state==='break'? 'Break 12m · back by 1:00' :
+                                 '9h logged · ready to submit'
+              }</span>
+              <span>${state==='out' ? 'Today' : 'Today · 8–5'}</span>
+            </div>
+
+            <div class="section-head">
+              <h2>Up next</h2>
+              <span class="link">Schedule ${icon('chevron',12)}</span>
+            </div>
+
+            <div class="agenda">
+              <div class="day-card today">
+                <div class="label">
+                  <span>${today.label}</span>
+                  <span class="pill-mini ${state==='out'?'':''}" style="${state==='out'?'background:var(--ink-700)':''}">${today.pill}</span>
+                </div>
+                <div class="time">${today.time}<span class="ampm"> AM</span></div>
+                <div class="sub">${today.end}</div>
+                <div class="foot">${icon('clock',12)} ${today.foot}</div>
+              </div>
+              <div class="day-card off">
+                <div class="label">
+                  <span>${tomorrow.label}</span>
+                  <span class="pill-mini off">${tomorrow.pill}</span>
+                </div>
+                <div class="time">${tomorrow.time}</div>
+                <div class="sub">${tomorrow.sub}</div>
+                <div class="foot">${icon('calendar',12)} ${tomorrow.foot}</div>
+              </div>
+            </div>
+
+            <div class="quote-footer">
+              <div class="q">“Take care of your body. It's the only place you have to live.”</div>
+              <span class="attr">— JIM ROHN · DAILY</span>
+            </div>
+          </div>
+
+          <div class="tabbar">
+            <div class="tab-item on">
+              ${icon('home',22)}
+              <span>Home</span>
+              <span class="label-indicator"></span>
+            </div>
+            <div class="tab-item">
+              ${icon('clipboard',22)}
+              <span>DTR</span>
+              <span class="label-indicator"></span>
+            </div>
+            <div class="tab-item">
+              ${icon('calendar',22)}
+              <span>Schedule</span>
+              <span class="label-indicator"></span>
+            </div>
+            <div class="tab-item">
+              ${icon('user',22)}
+              <span>Profile</span>
+              <span class="label-indicator"></span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const LABELS = {
+    none:  { text:'Not started',  cls:'' },
+    in:    { text:'Clocked in',   cls:'in' },
+    break: { text:'On break',     cls:'brk' },
+    out:   { text:'Clocked out',  cls:'out' }
+  };
+
+  function slot(state){
+    const L = LABELS[state];
+    return `<div class="slot" data-state="${state}" data-screen-label="V2b-B1 · ${L.text}">
+      ${screen(state)}
+      <div class="slot-label">
+        V2b-B1
+        <span class="state ${L.cls}"><span class="dot"></span>${L.text}</span>
+      </div>
+    </div>`;
+  }
+
+  function render(view){
+    const canvas = document.getElementById('canvas');
+    const keys = view==='matrix' ? STATES : [view];
+    canvas.innerHTML = keys.map(slot).join('');
+    canvas.style.gridTemplateColumns = keys.length>1
+      ? 'repeat(auto-fit,minmax(340px,1fr))'
+      : 'minmax(340px,400px)';
+    canvas.style.justifyContent = keys.length>1 ? 'stretch' : 'center';
+    document.querySelectorAll('#tabs .tab').forEach(t=>{
+      t.classList.toggle('active', t.dataset.view===view);
+    });
+  }
+
+  document.querySelectorAll('#tabs .tab').forEach(btn=>{
+    btn.addEventListener('click',()=>render(btn.dataset.view));
+  });
+
+  render('matrix');
+</script>
+</body>
+</html>
