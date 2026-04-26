@@ -43,6 +43,17 @@
                     </span>
                 @endif
             </a>
+            <a href="{{ route('staff.profile') }}"
+               class="w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center overflow-hidden"
+               aria-label="Profile">
+                @if(Auth::user()->profile_photo_url)
+                    <img src="{{ Auth::user()->profile_photo_url }}" alt="" class="w-full h-full object-cover">
+                @else
+                    <span class="text-xs font-bold text-white">
+                        {{ strtoupper(substr(Auth::user()->employee->first_name ?? Auth::user()->name, 0, 1)) }}
+                    </span>
+                @endif
+            </a>
         </div>
     </header>
     @endif
@@ -201,10 +212,14 @@
             </a>
 
             <a href="{{ route('staff.profile') }}"
-               class="flex flex-col items-center gap-0.5 px-3 py-1 {{ request()->routeIs('staff.profile') ? 'text-green-600' : 'text-gray-400' }}">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
+               class="flex flex-col items-center gap-0.5 px-3 py-1 {{ request()->routeIs('staff.profile*') ? 'text-green-600' : 'text-gray-400' }}">
+                @if(Auth::user()->profile_photo_url)
+                    <img src="{{ Auth::user()->profile_photo_url }}" alt="" class="w-6 h-6 rounded-full object-cover border {{ request()->routeIs('staff.profile*') ? 'border-green-600' : 'border-gray-300' }}">
+                @else
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                @endif
                 <span class="text-xs font-medium">Profile</span>
             </a>
 

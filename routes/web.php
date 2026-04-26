@@ -55,6 +55,8 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
     Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");
+    Route::post("/profile/photo", [\App\Http\Controllers\Staff\ProfileController::class, "updatePhoto"])->name("profile.photo");
+    Route::delete("/profile/photo", [\App\Http\Controllers\Staff\ProfileController::class, "destroyPhoto"])->name("profile.photo.destroy");
     Route::post("/profile/signature", [\App\Http\Controllers\Staff\ProfileController::class, "updateSignature"])->name("profile.signature");
     Route::get("/schedule", [\App\Http\Controllers\Staff\ScheduleController::class, "index"])->name("schedule");
     Route::get("/payslips", [\App\Http\Controllers\Staff\PayslipController::class, "index"])->name("payslips.index");
