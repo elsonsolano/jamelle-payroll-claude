@@ -16,9 +16,15 @@
         {{-- Profile Card --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6">
             <div class="flex items-start gap-5">
-                <div class="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-bold flex-shrink-0">
-                    {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1)) }}
-                </div>
+                @if($employee->user?->profile_photo_url)
+                    <img src="{{ $employee->user->profile_photo_url }}"
+                         alt="{{ $employee->full_name }}"
+                         class="w-16 h-16 rounded-full object-cover flex-shrink-0">
+                @else
+                    <div class="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-bold flex-shrink-0">
+                        {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1)) }}
+                    </div>
+                @endif
                 <div class="flex-1">
                     <div class="flex items-center gap-3 flex-wrap">
                         <h2 class="text-xl font-bold text-gray-900">{{ $employee->full_name }}</h2>
@@ -166,9 +172,15 @@
 
             @if($employee->user)
                 <div class="flex items-center gap-4 mb-4">
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                        {{ strtoupper(substr($employee->user->name, 0, 1)) }}
-                    </div>
+                    @if($employee->user->profile_photo_url)
+                        <img src="{{ $employee->user->profile_photo_url }}"
+                             alt="{{ $employee->full_name }}"
+                             class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                    @else
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold flex-shrink-0">
+                            {{ strtoupper(substr($employee->user->name, 0, 1)) }}
+                        </div>
+                    @endif
                     <div>
                         <p class="text-sm font-medium text-gray-900">{{ $employee->user->email }}</p>
                         <div class="flex items-center gap-2 mt-0.5">
