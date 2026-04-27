@@ -223,8 +223,8 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-3 text-gray-600 max-w-[220px]">
-                                    <p class="line-clamp-2 text-xs leading-relaxed cursor-help"
-                                       data-tippy-content="{{ $req->reason }}">
+                                    <p class="line-clamp-2 hover:line-clamp-none focus:line-clamp-none text-xs leading-relaxed cursor-default"
+                                       tabindex="0">
                                         {{ $req->reason }}
                                     </p>
                                 </td>
@@ -266,8 +266,8 @@
                                             @endif
                                         </div>
                                     @elseif($req->status === 'rejected' && $req->rejection_reason)
-                                        <p class="text-xs text-red-500 max-w-[160px] text-right line-clamp-2 cursor-help"
-                                           data-tippy-content="{{ $req->rejection_reason }}">
+                                        <p class="text-xs text-red-500 max-w-[160px] text-right line-clamp-2 hover:line-clamp-none focus:line-clamp-none cursor-default"
+                                           tabindex="0">
                                             {{ $req->rejection_reason }}
                                         </p>
                                     @endif
@@ -351,16 +351,4 @@
             </div>
         @endif
     @endif
-
-@push('scripts')
-<script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
-<script>
-    tippy('[data-tippy-content]', {
-        delay: 0,
-        maxWidth: 360,
-        placement: 'top-start',
-    });
-</script>
-@endpush
-
 </x-app-layout>
