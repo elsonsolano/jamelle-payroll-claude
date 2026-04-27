@@ -187,6 +187,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         // Reports
         Route::get("reports/lates", [\App\Http\Controllers\ReportsController::class, "lates"])->name("reports.lates");
         Route::get("reports/overtime", [\App\Http\Controllers\ReportsController::class, "overtime"])->name("reports.overtime");
+        Route::get("reports/absences", [\App\Http\Controllers\ReportsController::class, "absences"])->name("reports.absences");
         Route::get("reports/thirteenth-month", [\App\Http\Controllers\ReportsController::class, "thirteenthMonth"])->name("reports.thirteenth-month");
 
         // Holidays
