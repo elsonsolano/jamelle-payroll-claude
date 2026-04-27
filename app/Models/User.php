@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -60,7 +59,10 @@ class User extends Authenticatable
             return null;
         }
 
-        return Storage::disk(config('filesystems.profile_photos_disk', 'public'))->url($this->profile_photo_path);
+        return route('profile-photos.show', [
+            'user' => $this,
+            'filename' => basename($this->profile_photo_path),
+        ]);
     }
 
     public function isAdmin(): bool

@@ -14,6 +14,7 @@ use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PayrollEntryRefundController;
 use App\Http\Controllers\PayrollEntryVariableDeductionController;
+use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScheduleUploadController;
 use App\Http\Controllers\SetupSignatureController;
@@ -31,6 +32,7 @@ Route::middleware("auth")->group(function () {
     Route::post("/setup-signature", [SetupSignatureController::class, "store"])->name("signature.setup.store");
     Route::post("/impersonation/exit", [ImpersonationController::class, "exit"])->name("impersonation.exit");
     Route::post("/push-subscriptions", [\App\Http\Controllers\PushSubscriptionController::class, "store"])->name("push-subscriptions.store");
+    Route::get("/profile-photos/{user}/{filename}", [ProfilePhotoController::class, "show"])->name("profile-photos.show");
 });
 
 Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(function () {
