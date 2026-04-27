@@ -206,6 +206,17 @@
             </div>
         </div>
 
+        {{-- Bank Details --}}
+        <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100">
+            <div class="px-5 py-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Bank Details</p>
+            </div>
+            <div class="px-5 py-3 flex justify-between text-sm">
+                <span class="text-gray-500">BDO #</span>
+                <span class="font-medium text-gray-800 font-mono">{{ $employee->bdo_account_number ?? '—' }}</span>
+            </div>
+        </div>
+
         {{-- Emergency Contact --}}
         @if($employee->emergency_contact_name)
         <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100">
