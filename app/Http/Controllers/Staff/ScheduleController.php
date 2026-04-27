@@ -7,18 +7,37 @@ use App\Models\DailySchedule;
 use App\Models\ScheduleChangeRequest;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class ScheduleController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $employee = Auth::user()->employee;
 
         // Show 5 days back + today + 15 days ahead
         $start = today()->subDays(5);
         $end   = today()->addDays(15);
+        $highlightedDate = null;
+
+        if ($request->filled('date')) {
+            try {
+                $highlightedDate = Carbon::parse($request->query('date'))->toDateString();
+                $targetDate = Carbon::parse($highlightedDate);
+
+                if ($targetDate->lt($start)) {
+                    $start = $targetDate->copy();
+                }
+
+                if ($targetDate->gt($end)) {
+                    $end = $targetDate->copy();
+                }
+            } catch (\Throwable) {
+                $highlightedDate = null;
+            }
+        }
 
         $dailySchedules = DailySchedule::where('employee_id', $employee->id)
             ->whereBetween('date', [$start, $end])
@@ -83,6 +102,6 @@ class ScheduleController extends Controller
             ->unique(fn($r) => $r->date->toDateString())
             ->keyBy(fn($r) => $r->date->toDateString());
 
-        return view('staff.schedule', compact('days', 'employee', 'changeRequests'));
+        return view('staff.schedule', compact('days', 'employee', 'changeRequests', 'highlightedDate'));
     }
 }

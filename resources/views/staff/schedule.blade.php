@@ -13,6 +13,9 @@
   .sched-section-hd.today-sec {
     background: rgba(241,248,228,.96);
   }
+  .schedule-target-row {
+    scroll-margin-top: 112px;
+  }
 </style>
 @endpush
 
@@ -112,6 +115,7 @@ function scheduleSheet() {
 
                 $hasPending  = $changeReq && $changeReq->status === 'pending';
                 $hasRejected = $changeReq && $changeReq->status === 'rejected';
+                $isHighlighted = $highlightedDate === $dateStr;
 
                 $changeData = json_encode([
                     'date'              => $dateStr,
@@ -157,12 +161,14 @@ function scheduleSheet() {
 
             {{-- Day row --}}
             <div role="listitem"
+                 id="schedule-date-{{ $dateStr }}"
                  aria-label="{{ $day['date']->format('l F j') }}{{ !$noSched && !$isOff && $day['start'] ? ', '.(\Carbon\Carbon::parse($day['start'])->format('g:i A')).' to '.(\Carbon\Carbon::parse($day['end'])->format('g:i A')) : '' }}"
-                 class="relative flex items-start gap-3 px-[18px] py-[10px] border-b"
+                 class="schedule-target-row relative flex items-start gap-3 px-[18px] py-[10px] border-b {{ $isHighlighted ? 'ring-2 ring-offset-0' : '' }}"
                  style="
                      border-color:#eef1ec;
                      {{ $isPast ? 'opacity:.55;' : '' }}
                      {{ $isToday ? 'background:linear-gradient(to right,#f1f8e4 0%,rgba(241,248,228,.4) 100%);' : '' }}
+                     {{ $isHighlighted ? 'background:#fff7ed; --tw-ring-color:#fb923c;' : '' }}
                  ">
 
                 {{-- Green left border for today --}}

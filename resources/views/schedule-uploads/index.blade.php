@@ -13,12 +13,6 @@
 
     @php $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : '—'; @endphp
 
-    @if(session('success'))
-        <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-            {{ session('success') }}
-        </div>
-    @endif
-
     @if($errors->any())
         <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
             {{ $errors->first() }}
