@@ -12,13 +12,19 @@ use Carbon\CarbonPeriod;
 
 class GamificationService
 {
-    const PTS_ON_TIME   = 10;
-    const PTS_SAME_DAY  = 5;
-    const PTS_BADGE_NO_LATE_5           = 50;
-    const PTS_BADGE_SAME_DAY_FINISHER   = 30;
-    const PTS_BADGE_NO_ABSENCES         = 80;
-    const PTS_PENALTY_LATE              = -2;
-    const PTS_PENALTY_ABSENT            = -3;
+    const PTS_ON_TIME = 10;
+
+    const PTS_SAME_DAY = 5;
+
+    const PTS_BADGE_NO_LATE_5 = 50;
+
+    const PTS_BADGE_SAME_DAY_FINISHER = 30;
+
+    const PTS_BADGE_NO_ABSENCES = 80;
+
+    const PTS_PENALTY_LATE = -2;
+
+    const PTS_PENALTY_ABSENT = -3;
 
     const RANKS = [
         ['name' => 'Empty Cup',          'min' => 0,      'desc' => 'Wala pang laman, pero may potential'],
@@ -40,38 +46,38 @@ class GamificationService
 
     public function rankFor(int $points): array
     {
-        $ranks   = self::RANKS;
+        $ranks = self::RANKS;
         $current = $ranks[0];
-        $index   = 0;
+        $index = 0;
 
         foreach ($ranks as $i => $rank) {
             if ($points >= $rank['min']) {
                 $current = $rank;
-                $index   = $i;
+                $index = $i;
             }
         }
 
-        $next            = $ranks[$index + 1] ?? null;
-        $progressPct     = 0;
-        $pointsToNext    = null;
+        $next = $ranks[$index + 1] ?? null;
+        $progressPct = 0;
+        $pointsToNext = null;
 
         if ($next) {
-            $span        = $next['min'] - $current['min'];
-            $earned      = $points - $current['min'];
+            $span = $next['min'] - $current['min'];
+            $earned = $points - $current['min'];
             $progressPct = $span > 0 ? min(100, (int) round($earned / $span * 100)) : 100;
             $pointsToNext = $next['min'] - $points;
         }
 
         return [
-            'number'        => $index + 1,
-            'name'          => $current['name'],
-            'desc'          => $current['desc'],
-            'min_points'    => $current['min'],
-            'next_name'     => $next['name'] ?? null,
-            'next_min'      => $next['min'] ?? null,
-            'points_to_next'=> $pointsToNext,
-            'progress_pct'  => $progressPct,
-            'is_max'        => $next === null,
+            'number' => $index + 1,
+            'name' => $current['name'],
+            'desc' => $current['desc'],
+            'min_points' => $current['min'],
+            'next_name' => $next['name'] ?? null,
+            'next_min' => $next['min'] ?? null,
+            'points_to_next' => $pointsToNext,
+            'progress_pct' => $progressPct,
+            'is_max' => $next === null,
         ];
     }
 
@@ -80,7 +86,7 @@ class GamificationService
     // Current consecutive on-time days streak (cross-cutoff)
     public function noLateStreak(Employee $employee, ?string $throughDate = null): int
     {
-        $date  = Carbon::parse($throughDate ?? today())->startOfDay();
+        $date = Carbon::parse($throughDate ?? today())->startOfDay();
         $floor = $date->copy()->subDays(60);
         $trackingStart = $this->trackingStartDate($employee);
 
@@ -89,7 +95,7 @@ class GamificationService
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
 
-        $streak  = 0;
+        $streak = 0;
         $current = $date->copy();
 
         while ($current->gte($floor) && $current->gte($trackingStart)) {
@@ -97,6 +103,7 @@ class GamificationService
 
             if (! $schedule['has_schedule']) {
                 $current->subDay();
+
                 continue;
             }
 
@@ -117,12 +124,12 @@ class GamificationService
     public function celebrationData(Employee $employee, Dtr $dtr): array
     {
         $isOnTime = $dtr->time_in && (int) $dtr->late_mins === 0;
-        $streak   = $this->noLateStreak($employee, $dtr->date->toDateString());
+        $streak = $this->noLateStreak($employee, $dtr->date->toDateString());
 
         return [
             'points_earned' => $isOnTime ? self::PTS_ON_TIME : 0,
-            'is_on_time'    => $isOnTime,
-            'streak'        => $streak,
+            'is_on_time' => $isOnTime,
+            'streak' => $streak,
             'streak_target' => 5,
         ];
     }
@@ -134,27 +141,27 @@ class GamificationService
 
         return [
             'badge_name' => 'No-Late 5',
-            'streak'     => $streak,
-            'target'     => 5,
-            'points'     => self::PTS_BADGE_NO_LATE_5,
+            'streak' => $streak,
+            'target' => 5,
+            'points' => self::PTS_BADGE_NO_LATE_5,
         ];
     }
 
     // Full data for the Achievements screen
     public function achievementsData(Employee $employee, ?PayrollCutoff $cutoff): array
     {
-        $noLateStreak    = $this->noLateStreak($employee);
-        $thisCutoffPts   = 0;
-        $pointsLog       = [];
+        $noLateStreak = $this->noLateStreak($employee);
+        $thisCutoffPts = 0;
+        $pointsLog = [];
         $elapsedWorkdays = 0;
         $sameDayProgress = 0;
         $noAbsentProgress = 0;
-        $workdayStatuses  = [];
+        $workdayStatuses = [];
         $trackingStart = $this->trackingStartDate($employee);
 
         if ($cutoff) {
             $today = today()->toDateString();
-            $dtrs  = $employee->dtrs()
+            $dtrs = $employee->dtrs()
                 ->whereBetween('date', [
                     $cutoff->start_date->toDateString(),
                     min($cutoff->end_date->toDateString(), $today),
@@ -177,9 +184,9 @@ class GamificationService
                 }
 
                 $isFuture = $dateStr > $today;
-                $isToday  = $dateStr === $today;
-                $dtr      = $dtrs->get($dateStr);
-                $hasDtr   = $dtr && $dtr->time_in;
+                $isToday = $dateStr === $today;
+                $dtr = $dtrs->get($dateStr);
+                $hasDtr = $dtr && $dtr->time_in;
                 $isOnTime = $hasDtr && (int) $dtr->late_mins === 0;
                 $isSameDay = $hasDtr && $this->scoringService->wasCompletedPromptly($dtr);
 
@@ -189,12 +196,12 @@ class GamificationService
 
                 // Workday status for calendar grid (cutoff badge cards)
                 $workdayStatuses[$dateStr] = [
-                    'date'       => $dateStr,
-                    'label'      => $date->format('D')[0],
-                    'has_dtr'    => (bool) $hasDtr,
+                    'date' => $dateStr,
+                    'label' => $date->format('D')[0],
+                    'has_dtr' => (bool) $hasDtr,
                     'is_on_time' => $isOnTime,
-                    'is_today'   => $isToday,
-                    'is_future'  => $isFuture,
+                    'is_today' => $isToday,
+                    'is_future' => $isFuture,
                 ];
 
                 if ($isFuture) {
@@ -206,37 +213,37 @@ class GamificationService
                     if ($isOnTime) {
                         $thisCutoffPts += self::PTS_ON_TIME;
                         $pointsLog[] = [
-                            'type'        => 'on_time',
+                            'type' => 'on_time',
                             'description' => 'On-time time-in',
-                            'points'      => self::PTS_ON_TIME,
-                            'date'        => Carbon::parse($dateStr)->format('M j'),
+                            'points' => self::PTS_ON_TIME,
+                            'date' => Carbon::parse($dateStr)->format('M j'),
                         ];
                     } else {
                         $thisCutoffPts += self::PTS_PENALTY_LATE;
                         $pointsLog[] = [
-                            'type'        => 'penalty',
+                            'type' => 'penalty',
                             'description' => 'Late time-in',
-                            'points'      => self::PTS_PENALTY_LATE,
-                            'date'        => Carbon::parse($dateStr)->format('M j'),
+                            'points' => self::PTS_PENALTY_LATE,
+                            'date' => Carbon::parse($dateStr)->format('M j'),
                         ];
                     }
                     if ($isSameDay) {
                         $thisCutoffPts += self::PTS_SAME_DAY;
                         $sameDayProgress++;
                         $pointsLog[] = [
-                            'type'        => 'same_day',
+                            'type' => 'same_day',
                             'description' => 'Same-day DTR filed',
-                            'points'      => self::PTS_SAME_DAY,
-                            'date'        => Carbon::parse($dateStr)->format('M j'),
+                            'points' => self::PTS_SAME_DAY,
+                            'date' => Carbon::parse($dateStr)->format('M j'),
                         ];
                     }
                 } else {
                     $thisCutoffPts += self::PTS_PENALTY_ABSENT;
                     $pointsLog[] = [
-                        'type'        => 'penalty',
+                        'type' => 'penalty',
                         'description' => 'Absent',
-                        'points'      => self::PTS_PENALTY_ABSENT,
-                        'date'        => Carbon::parse($dateStr)->format('M j'),
+                        'points' => self::PTS_PENALTY_ABSENT,
+                        'date' => Carbon::parse($dateStr)->format('M j'),
                     ];
                 }
             }
@@ -253,10 +260,10 @@ class GamificationService
                 if ($pts > 0) {
                     $thisCutoffPts += $pts;
                     $pointsLog[] = [
-                        'type'        => 'badge',
-                        'description' => ($award->badge->name ?? 'Badge') . ' earned',
-                        'points'      => $pts,
-                        'date'        => Carbon::parse($award->awarded_at)->format('M j'),
+                        'type' => 'badge',
+                        'description' => ($award->badge->name ?? 'Badge').' earned',
+                        'points' => $pts,
+                        'date' => Carbon::parse($award->awarded_at)->format('M j'),
                     ];
                 }
             }
@@ -275,19 +282,90 @@ class GamificationService
             ->count();
 
         return [
-            'total_points'        => $allTimePoints,
-            'this_cutoff_points'  => $thisCutoffPts,
+            'total_points' => $allTimePoints,
+            'this_cutoff_points' => $thisCutoffPts,
             'total_badges_earned' => $totalBadgesEarned,
-            'points_log'          => array_reverse($pointsLog),
-            'badges'              => $badges,
-            'no_late_streak'      => $noLateStreak,
+            'points_log' => array_reverse($pointsLog),
+            'badges' => $badges,
+            'no_late_streak' => $noLateStreak,
         ];
+    }
+
+    public function leaderboard(Employee $viewer, int $limit = 10, ?string $search = null): array
+    {
+        $employees = Employee::query()
+            ->where('active', true)
+            ->whereHas('user', fn ($query) => $query->where('role', 'staff'))
+            ->with('branch')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        $ranked = $employees
+            ->map(function (Employee $employee) use ($viewer) {
+                $cutoff = $this->currentCutoffFor($employee);
+                $data = $this->achievementsData($employee, $cutoff);
+
+                return [
+                    'rank' => 0,
+                    'employee_id' => $employee->id,
+                    'name' => $employee->full_name,
+                    'branch' => $employee->branch?->name ?? 'No branch',
+                    'points' => $data['total_points'],
+                    'rank_name' => $this->rankFor($data['total_points'])['name'],
+                    'is_viewer' => $employee->id === $viewer->id,
+                ];
+            })
+            ->sortBy([
+                ['points', 'desc'],
+                ['name', 'asc'],
+            ])
+            ->values()
+            ->map(function (array $row, int $index) {
+                $row['rank'] = $index + 1;
+
+                return $row;
+            });
+
+        $top = $ranked->take($limit)->values();
+        $viewerRow = $ranked->firstWhere('employee_id', $viewer->id);
+        $searchQuery = trim((string) $search);
+        $searchResults = collect();
+
+        if ($searchQuery !== '') {
+            $needle = mb_strtolower($searchQuery);
+
+            $searchResults = $ranked
+                ->filter(fn (array $row) => str_contains(mb_strtolower($row['name']), $needle))
+                ->take(5)
+                ->values();
+        }
+
+        return [
+            'top10' => $top->all(),
+            'allEntries' => $ranked->all(),
+            'viewerRank' => $viewerRow,
+            'viewerInTop10' => $viewerRow ? $top->contains('employee_id', $viewer->id) : false,
+            'searchQuery' => $searchQuery,
+            'searchResults' => $searchResults->all(),
+        ];
+    }
+
+    public function currentCutoffFor(Employee $employee): ?PayrollCutoff
+    {
+        return PayrollCutoff::where('branch_id', $employee->branch_id)
+            ->where('status', '!=', 'voided')
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function deductionsForPeriod(Employee $employee, string $startDate, string $endDate): int
     {
         $today = today()->toDateString();
-        $end   = min($endDate, $today);
+        $end = min($endDate, $today);
         $trackingStart = $this->trackingStartDate($employee)->toDateString();
         $start = max($startDate, $trackingStart);
 
@@ -303,14 +381,14 @@ class GamificationService
         $total = 0;
 
         foreach (CarbonPeriod::create($start, $end) as $date) {
-            $dateStr  = $date->toDateString();
+            $dateStr = $date->toDateString();
             $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
 
             if (! $schedule['has_schedule']) {
                 continue;
             }
 
-            $dtr    = $dtrs->get($dateStr);
+            $dtr = $dtrs->get($dateStr);
             $hasDtr = $dtr && $dtr->time_in;
 
             if (! $hasDtr) {
@@ -391,9 +469,9 @@ class GamificationService
     private function badgePoints(?string $key): int
     {
         return match ($key) {
-            AttendanceBadgeService::BADGE_ON_TIME_5          => self::PTS_BADGE_NO_LATE_5,
-            AttendanceBadgeService::BADGE_SAME_DAY_FINISHER  => self::PTS_BADGE_SAME_DAY_FINISHER,
-            AttendanceBadgeService::BADGE_NO_ABSENT_CUTOFF   => self::PTS_BADGE_NO_ABSENCES,
+            AttendanceBadgeService::BADGE_ON_TIME_5 => self::PTS_BADGE_NO_LATE_5,
+            AttendanceBadgeService::BADGE_SAME_DAY_FINISHER => self::PTS_BADGE_SAME_DAY_FINISHER,
+            AttendanceBadgeService::BADGE_NO_ABSENT_CUTOFF => self::PTS_BADGE_NO_ABSENCES,
             default => 0,
         };
     }
@@ -430,63 +508,63 @@ class GamificationService
         }
 
         $noLate5 = [
-            'id'           => 'on_time_5',
-            'name'         => 'No-Late 5',
-            'tagline'      => 'Arrive on time 5 days in a row',
-            'desc'         => 'Clock in before or at your scheduled start time for 5 consecutive working days. Any late arrival resets the streak.',
-            'type'         => 'streak',
-            'color'        => '#E8722A',
-            'bg_color'     => '#FFF7ED',
+            'id' => 'on_time_5',
+            'name' => 'No-Late 5',
+            'tagline' => 'Arrive on time 5 days in a row',
+            'desc' => 'Clock in before or at your scheduled start time for 5 consecutive working days. Any late arrival resets the streak.',
+            'type' => 'streak',
+            'color' => '#E8722A',
+            'bg_color' => '#1c1408',
             'border_color' => '#FED7AA',
-            'icon'         => '⏱',
-            'progress'     => $streak5,
-            'total'        => 5,
-            'earned'       => $noLateStreak >= 5,
+            'icon' => '⏱',
+            'progress' => $streak5,
+            'total' => 5,
+            'earned' => $noLateStreak >= 5,
             'times_earned' => (int) ($timesEarned[AttendanceBadgeService::BADGE_ON_TIME_5] ?? 0),
-            'points'       => self::PTS_BADGE_NO_LATE_5,
-            'tip'          => 'Clock in before or at your scheduled start time, every day.',
+            'points' => self::PTS_BADGE_NO_LATE_5,
+            'tip' => 'Clock in before or at your scheduled start time, every day.',
             'day_statuses' => $dayStatuses,
         ];
 
         // --- Same-Day Finisher (cutoff badge) ---
         $sameDayFinisher = [
-            'id'               => 'same_day_finisher',
-            'name'             => 'Same-Day Finisher',
-            'tagline'          => 'File every DTR on the day it happens',
-            'desc'             => 'Complete all 4 time events (time in, break start, break end, time out) on the same calendar day as your work date, for every scheduled workday this cutoff.',
-            'type'             => 'cutoff',
-            'color'            => '#3B82F6',
-            'bg_color'         => '#EFF5FF',
-            'border_color'     => '#BFDBFE',
-            'icon'             => '✦',
-            'progress'         => $sameDayProgress,
-            'total'            => $elapsedWorkdays,
-            'earned'           => $cutoff && $elapsedWorkdays > 0 && $sameDayProgress >= $elapsedWorkdays,
-            'on_track'         => $elapsedWorkdays > 0 && $sameDayProgress === $elapsedWorkdays,
-            'times_earned'     => (int) ($timesEarned[AttendanceBadgeService::BADGE_SAME_DAY_FINISHER] ?? 0),
-            'points'           => self::PTS_BADGE_SAME_DAY_FINISHER,
-            'tip'              => 'File all 4 DTR events — time in, break start, break end, and time out — before midnight each day.',
+            'id' => 'same_day_finisher',
+            'name' => 'Same-Day Finisher',
+            'tagline' => 'File every DTR on the day it happens',
+            'desc' => 'Complete all 4 time events (time in, break start, break end, time out) on the same calendar day as your work date, for every scheduled workday this cutoff.',
+            'type' => 'cutoff',
+            'color' => '#3B82F6',
+            'bg_color' => '#080e1c',
+            'border_color' => '#BFDBFE',
+            'icon' => '✦',
+            'progress' => $sameDayProgress,
+            'total' => $elapsedWorkdays,
+            'earned' => $cutoff && $elapsedWorkdays > 0 && $sameDayProgress >= $elapsedWorkdays,
+            'on_track' => $elapsedWorkdays > 0 && $sameDayProgress === $elapsedWorkdays,
+            'times_earned' => (int) ($timesEarned[AttendanceBadgeService::BADGE_SAME_DAY_FINISHER] ?? 0),
+            'points' => self::PTS_BADGE_SAME_DAY_FINISHER,
+            'tip' => 'File all 4 DTR events — time in, break start, break end, and time out — before midnight each day.',
             'workday_statuses' => array_values($workdayStatuses),
         ];
 
         // --- No Absences (cutoff badge) ---
         $noAbsences = [
-            'id'               => 'no_absent_cutoff',
-            'name'             => 'No Absences',
-            'tagline'          => 'Show up every scheduled day this cutoff',
-            'desc'             => 'Have at least a time-in DTR entry for every scheduled workday in the cutoff. Late days still count.',
-            'type'             => 'cutoff',
-            'color'            => '#5BBF27',
-            'bg_color'         => '#EBF7E0',
-            'border_color'     => '#C8ECA4',
-            'icon'             => '✓',
-            'progress'         => $noAbsentProgress,
-            'total'            => $elapsedWorkdays,
-            'earned'           => $cutoff && $elapsedWorkdays > 0 && $noAbsentProgress >= $elapsedWorkdays,
-            'on_track'         => $elapsedWorkdays > 0 && $noAbsentProgress === $elapsedWorkdays,
-            'times_earned'     => (int) ($timesEarned[AttendanceBadgeService::BADGE_NO_ABSENT_CUTOFF] ?? 0),
-            'points'           => self::PTS_BADGE_NO_ABSENCES,
-            'tip'              => 'Clock in for every scheduled workday this cutoff — even if you\'re late or can\'t complete your full DTR.',
+            'id' => 'no_absent_cutoff',
+            'name' => 'No Absences',
+            'tagline' => 'Show up every scheduled day this cutoff',
+            'desc' => 'Have at least a time-in DTR entry for every scheduled workday in the cutoff. Late days still count.',
+            'type' => 'cutoff',
+            'color' => '#5BBF27',
+            'bg_color' => '#071408',
+            'border_color' => '#C8ECA4',
+            'icon' => '✓',
+            'progress' => $noAbsentProgress,
+            'total' => $elapsedWorkdays,
+            'earned' => $cutoff && $elapsedWorkdays > 0 && $noAbsentProgress >= $elapsedWorkdays,
+            'on_track' => $elapsedWorkdays > 0 && $noAbsentProgress === $elapsedWorkdays,
+            'times_earned' => (int) ($timesEarned[AttendanceBadgeService::BADGE_NO_ABSENT_CUTOFF] ?? 0),
+            'points' => self::PTS_BADGE_NO_ABSENCES,
+            'tip' => 'Clock in for every scheduled workday this cutoff — even if you\'re late or can\'t complete your full DTR.',
             'workday_statuses' => array_values($workdayStatuses),
         ];
 

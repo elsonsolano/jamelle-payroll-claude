@@ -15,8 +15,11 @@ use Illuminate\Support\Facades\DB;
 class AttendanceScoringService
 {
     public const RULE_NO_LATE = 'no_late_reward';
+
     public const RULE_NO_ABSENT = 'no_absent_reward';
+
     public const RULE_SAME_DAY_COMPLETE = 'same_day_complete_dtr';
+
     public const RULE_LATE_PENALTY = 'late_penalty';
 
     public function scoreEmployeeForCutoff(PayrollCutoff $cutoff, Employee $employee): AttendanceScore
@@ -26,7 +29,7 @@ class AttendanceScoringService
 
             $score = AttendanceScore::firstOrNew([
                 'payroll_cutoff_id' => $cutoff->id,
-                'employee_id'        => $employee->id,
+                'employee_id' => $employee->id,
             ]);
 
             $score->fill($result['totals'] + [
@@ -44,10 +47,8 @@ class AttendanceScoringService
     public function estimateEmployeeForCutoff(PayrollCutoff $cutoff, Employee $employee): array
     {
         $dtrs = $employee->dtrs()
-            ->whereBetween('date', [
-                $cutoff->start_date->toDateString(),
-                $cutoff->end_date->toDateString(),
-            ])
+            ->whereDate('date', '>=', $cutoff->start_date->toDateString())
+            ->whereDate('date', '<=', $cutoff->end_date->toDateString())
             ->orderBy('date')
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
@@ -75,7 +76,8 @@ class AttendanceScoringService
         $trackingStart = $this->trackingStartDate($employee);
         $floor = $floor->max($trackingStart);
         $dtrs = $employee->dtrs()
-            ->whereBetween('date', [$floor->toDateString(), $date->toDateString()])
+            ->whereDate('date', '>=', $floor->toDateString())
+            ->whereDate('date', '<=', $date->toDateString())
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
 
@@ -86,6 +88,7 @@ class AttendanceScoringService
 
             if (! $schedule['has_schedule']) {
                 $date->subDay();
+
                 continue;
             }
 
@@ -104,15 +107,15 @@ class AttendanceScoringService
     private function scorePeriod(PayrollCutoff $cutoff, Employee $employee, Collection|\Illuminate\Support\Collection $dtrs): array
     {
         $totals = [
-            'total_points'           => 0,
-            'complete_dtr_days'      => 0,
-            'on_time_days'           => 0,
-            'proper_time_out_days'   => 0,
+            'total_points' => 0,
+            'complete_dtr_days' => 0,
+            'on_time_days' => 0,
+            'proper_time_out_days' => 0,
             'same_day_complete_days' => 0,
-            'no_absent_days'         => 0,
-            'late_days'              => 0,
-            'approved_ot_days'       => 0,
-            'late_minutes'           => 0,
+            'no_absent_days' => 0,
+            'late_days' => 0,
+            'approved_ot_days' => 0,
+            'late_minutes' => 0,
         ];
         $items = [];
         $trackingStart = $this->trackingStartDate($employee);
@@ -145,7 +148,7 @@ class AttendanceScoringService
                     $totals['same_day_complete_days']++;
                     $items[] = $this->item($dtr->id, $workDate, self::RULE_SAME_DAY_COMPLETE, 'Same-day complete DTR', 10, [
                         'required_events' => ['time_in', 'am_out', 'pm_in', 'time_out'],
-                        'work_date'       => $workDate,
+                        'work_date' => $workDate,
                     ]);
                 }
             }
@@ -154,7 +157,7 @@ class AttendanceScoringService
                 $totals['total_points'] += 8;
                 $totals['no_absent_days']++;
                 $items[] = $this->item($dtr->id, $workDate, self::RULE_NO_ABSENT, 'No absent scheduled day', 8, [
-                    'time_in'         => $dtr->time_in,
+                    'time_in' => $dtr->time_in,
                     'schedule_source' => $schedule['source'],
                 ]);
             }
@@ -163,8 +166,8 @@ class AttendanceScoringService
                 $totals['total_points'] += 5;
                 $totals['on_time_days']++;
                 $items[] = $this->item($dtr->id, $workDate, self::RULE_NO_LATE, 'No late reward', 5, [
-                    'time_in'         => $dtr->time_in,
-                    'late_mins'       => $lateMinutes,
+                    'time_in' => $dtr->time_in,
+                    'late_mins' => $lateMinutes,
                     'schedule_source' => $schedule['source'],
                     'work_start_time' => $schedule['work_start_time'],
                 ]);
@@ -174,8 +177,8 @@ class AttendanceScoringService
                 $totals['total_points'] -= 5;
                 $totals['late_days']++;
                 $items[] = $this->item($dtr->id, $workDate, self::RULE_LATE_PENALTY, 'Late penalty', -5, [
-                    'time_in'         => $dtr->time_in,
-                    'late_mins'       => $lateMinutes,
+                    'time_in' => $dtr->time_in,
+                    'late_mins' => $lateMinutes,
                     'schedule_source' => $schedule['source'],
                     'work_start_time' => $schedule['work_start_time'],
                 ]);
@@ -188,7 +191,7 @@ class AttendanceScoringService
 
         return [
             'totals' => $totals,
-            'items'  => $items,
+            'items' => $items,
         ];
     }
 
@@ -249,21 +252,21 @@ class AttendanceScoringService
 
         if ($dailySchedule) {
             return [
-                'has_schedule'    => ! $dailySchedule->is_day_off && (bool) $dailySchedule->work_start_time,
-                'source'          => 'daily_schedule',
+                'has_schedule' => ! $dailySchedule->is_day_off && (bool) $dailySchedule->work_start_time,
+                'source' => 'daily_schedule',
                 'work_start_time' => $dailySchedule->work_start_time,
             ];
         }
 
         $schedule = $employee->employeeSchedules()
-            ->where('week_start_date', '<=', $date)
+            ->whereDate('week_start_date', '<=', $date)
             ->orderByDesc('week_start_date')
             ->first();
 
         if (! $schedule) {
             return [
-                'has_schedule'    => false,
-                'source'          => null,
+                'has_schedule' => false,
+                'source' => null,
                 'work_start_time' => null,
             ];
         }
@@ -272,8 +275,8 @@ class AttendanceScoringService
         $restDays = $schedule->rest_days ?? [];
 
         return [
-            'has_schedule'    => ! in_array($dayName, $restDays, true) && (bool) $schedule->work_start_time,
-            'source'          => 'employee_schedule',
+            'has_schedule' => ! in_array($dayName, $restDays, true) && (bool) $schedule->work_start_time,
+            'source' => 'employee_schedule',
             'work_start_time' => $schedule->work_start_time,
         ];
     }
@@ -281,12 +284,12 @@ class AttendanceScoringService
     private function item(?int $dtrId, ?string $workDate, string $ruleKey, string $description, int $points, ?array $metadata = null): array
     {
         return [
-            'dtr_id'      => $dtrId,
-            'work_date'   => $workDate,
-            'rule_key'    => $ruleKey,
+            'dtr_id' => $dtrId,
+            'work_date' => $workDate,
+            'rule_key' => $ruleKey,
             'description' => $description,
-            'points'      => $points,
-            'metadata'    => $metadata,
+            'points' => $points,
+            'metadata' => $metadata,
         ];
     }
 

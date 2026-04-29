@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             AttendanceBadgeSeeder::class,
             PayrollCutoffSeeder::class,
             EmployeeSeeder::class,
+            DemoLeaderboardSeeder::class,
             HolidaySeeder::class,
         ]);
     }
