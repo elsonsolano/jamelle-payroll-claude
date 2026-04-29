@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\AttendanceScore;
 use App\Models\Branch;
+use App\Models\Dtr;
 use App\Models\Employee;
+use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -35,6 +38,52 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $response->assertSee('Main');
         $response->assertSee('90');
         $response->assertSee('Bagong Swirl');
+    }
+
+    public function test_current_time_in_points_are_net_of_live_absence_penalties(): void
+    {
+        Carbon::setTestNow('2026-04-17 08:05:00');
+
+        $branch = $this->branch('Main');
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+        $viewer->forceFill([
+            'created_at' => '2026-04-14 08:00:00',
+            'updated_at' => '2026-04-14 08:00:00',
+        ])->save();
+        $viewer->user->forceFill([
+            'created_at' => '2026-04-14 08:00:00',
+            'updated_at' => '2026-04-14 08:00:00',
+        ])->save();
+
+        EmployeeSchedule::create([
+            'employee_id' => $viewer->id,
+            'week_start_date' => '2026-04-14',
+            'rest_days' => ['Sunday'],
+            'work_start_time' => '08:00',
+            'work_end_time' => '17:00',
+        ]);
+
+        Dtr::create([
+            'employee_id' => $viewer->id,
+            'date' => '2026-04-17',
+            'time_in' => '08:00',
+            'source' => 'manual',
+            'status' => 'Pending',
+            'late_mins' => 0,
+            'undertime_mins' => 0,
+            'total_hours' => 0,
+            'overtime_hours' => 0,
+            'is_rest_day' => false,
+            'ot_status' => 'none',
+        ]);
+
+        $response = $this->actingAs($viewer->user)->get(route('staff.achievements'));
+
+        $response->assertOk();
+        $response->assertSee('1');
+        $response->assertSee('49 pts to Bagong Swirl');
+
+        Carbon::setTestNow();
     }
 
     public function test_leaderboard_only_includes_active_employees_with_staff_accounts(): void

@@ -54,13 +54,7 @@ class DashboardController extends Controller
         $todaySchedule      = $this->resolveSchedule($employee, today());
         $tomorrowSchedule   = $this->resolveSchedule($employee, today()->addDay());
         $attendanceProgress = $this->attendanceProgress($employee, $todayDtr);
-        $currentCutoff = PayrollCutoff::where('branch_id', $employee->branch_id)
-            ->where('status', '!=', 'voided')
-            ->whereDate('start_date', '<=', today())
-            ->whereDate('end_date', '>=', today())
-            ->orderByDesc('start_date')
-            ->orderByDesc('id')
-            ->first();
+        $currentCutoff = $this->gamification->currentCutoffFor($employee);
         $achievementSummary = $this->gamification->achievementsData($employee, $currentCutoff);
         $rank = $this->gamification->rankFor($achievementSummary['total_points']);
 

@@ -63,7 +63,7 @@ class GamificationService
 
         if ($next) {
             $span = $next['min'] - $current['min'];
-            $earned = $points - $current['min'];
+            $earned = max(0, $points - $current['min']);
             $progressPct = $span > 0 ? min(100, (int) round($earned / $span * 100)) : 100;
             $pointsToNext = $next['min'] - $points;
         }
@@ -162,10 +162,8 @@ class GamificationService
         if ($cutoff) {
             $today = today()->toDateString();
             $dtrs = $employee->dtrs()
-                ->whereBetween('date', [
-                    $cutoff->start_date->toDateString(),
-                    min($cutoff->end_date->toDateString(), $today),
-                ])
+                ->whereDate('date', '>=', $cutoff->start_date->toDateString())
+                ->whereDate('date', '<=', min($cutoff->end_date->toDateString(), $today))
                 ->orderBy('date')
                 ->get()
                 ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
@@ -280,10 +278,16 @@ class GamificationService
         $totalBadgesEarned = EmployeeAttendanceBadge::where('employee_id', $employee->id)
             ->whereHas('badge', fn ($q) => $q->where('active', true))
             ->count();
+        $positivePoints = collect($pointsLog)
+            ->sum(fn (array $row) => max(0, (int) $row['points']));
+        $penaltyPoints = abs(collect($pointsLog)
+            ->sum(fn (array $row) => min(0, (int) $row['points'])));
 
         return [
             'total_points' => $allTimePoints,
             'this_cutoff_points' => $thisCutoffPts,
+            'current_period_positive_points' => $positivePoints,
+            'current_period_penalty_points' => $penaltyPoints,
             'total_badges_earned' => $totalBadgesEarned,
             'points_log' => array_reverse($pointsLog),
             'badges' => $badges,
@@ -353,13 +357,54 @@ class GamificationService
 
     public function currentCutoffFor(Employee $employee): ?PayrollCutoff
     {
-        return PayrollCutoff::where('branch_id', $employee->branch_id)
+        $cutoff = PayrollCutoff::where('branch_id', $employee->branch_id)
             ->where('status', '!=', 'voided')
             ->whereDate('start_date', '<=', today())
             ->whereDate('end_date', '>=', today())
             ->orderByDesc('start_date')
             ->orderByDesc('id')
             ->first();
+
+        return $cutoff ?? $this->virtualCurrentCutoff($employee);
+    }
+
+    private function virtualCurrentCutoff(Employee $employee): PayrollCutoff
+    {
+        [$startDate, $endDate] = $this->currentAttendancePeriod(today());
+
+        return new PayrollCutoff([
+            'branch_id' => $employee->branch_id,
+            'name' => 'Current attendance period',
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => 'draft',
+        ]);
+    }
+
+    private function currentAttendancePeriod(Carbon $date): array
+    {
+        $day = (int) $date->format('j');
+
+        if ($day >= 14 && $day <= 29) {
+            return [
+                $date->copy()->day(14)->startOfDay(),
+                $date->copy()->day(29)->startOfDay(),
+            ];
+        }
+
+        if ($day >= 30) {
+            return [
+                $date->copy()->day(30)->startOfDay(),
+                $date->copy()->addMonthNoOverflow()->day(13)->startOfDay(),
+            ];
+        }
+
+        $previousMonth = $date->copy()->subMonthNoOverflow();
+
+        return [
+            $previousMonth->copy()->day(min(30, $previousMonth->daysInMonth))->startOfDay(),
+            $date->copy()->day(13)->startOfDay(),
+        ];
     }
 
     private function deductionsForPeriod(Employee $employee, string $startDate, string $endDate): int
@@ -374,7 +419,8 @@ class GamificationService
         }
 
         $dtrs = $employee->dtrs()
-            ->whereBetween('date', [$start, $end])
+            ->whereDate('date', '>=', $start)
+            ->whereDate('date', '<=', $end)
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
 
