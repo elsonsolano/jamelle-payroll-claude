@@ -7,6 +7,7 @@ php artisan view:cache
 php artisan storage:link --force
 php artisan migrate --force
 php artisan db:seed --class=AdminUserSeeder --force
+php artisan db:seed --class=AttendanceBadgeSeeder --force
 php artisan db:seed --class=HolidaySeeder --force
 
 echo "==> Writing PHP-FPM config..."
