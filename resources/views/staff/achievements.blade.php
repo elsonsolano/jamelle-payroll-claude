@@ -2,6 +2,113 @@
 
 @push('head')
 <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800,900&display=swap" rel="stylesheet" />
+@endpush
+
+@if ($comingSoon)
+
+<style>
+@keyframes floatUp {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
+}
+</style>
+<script>
+function achievementCountdown() {
+    return {
+        target: {{ $launchTimestamp }},
+        h: '00', m: '00', s: '00',
+        tick() {
+            const diff = Math.max(0, this.target - Date.now());
+            this.h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+            this.m = String(Math.floor(diff % 3600000 / 60000)).padStart(2, '0');
+            this.s = String(Math.floor(diff % 60000 / 1000)).padStart(2, '0');
+        },
+        init() { this.tick(); setInterval(() => this.tick(), 1000); }
+    };
+}
+</script>
+<div x-data="achievementCountdown()"
+     style="min-height:100dvh;background:#0d0d18;display:flex;flex-direction:column;
+            align-items:center;justify-content:center;padding:40px 24px 60px;
+            margin:-1rem -1rem 0;
+            font-family:'Plus Jakarta Sans',sans-serif;text-align:center;">
+
+    {{-- Floating icon --}}
+    <div style="font-size:64px;margin-bottom:24px;animation:floatUp 3s ease-in-out infinite;">🍦</div>
+
+    {{-- Headline --}}
+    <div style="font-size:26px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:10px;
+                letter-spacing:-.5px;">
+        Leaderboard &amp; Points<br>
+        <span style="background:linear-gradient(90deg,#f59e0b,#f97316,#ec4899);
+                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                     background-clip:text;">
+            Go Live Tomorrow
+        </span>
+    </div>
+
+    {{-- Tagline --}}
+    <div style="font-size:13px;color:rgba(255,255,255,.45);font-weight:600;
+                letter-spacing:.04em;margin-bottom:36px;line-height:1.6;">
+        Earn points · Climb 15 ranks · Win badges · Top the board
+    </div>
+
+    {{-- Countdown --}}
+    <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);
+                        border-radius:14px;padding:14px 20px;min-width:72px;
+                        box-shadow:0 0 20px rgba(249,115,22,.15);">
+                <span x-text="h"
+                      style="font-size:36px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;
+                             line-height:1;display:block;"></span>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);
+                         letter-spacing:.1em;text-transform:uppercase;">hours</span>
+        </div>
+
+        <div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.3);
+                    padding-bottom:24px;line-height:1;">:</div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);
+                        border-radius:14px;padding:14px 20px;min-width:72px;
+                        box-shadow:0 0 20px rgba(249,115,22,.15);">
+                <span x-text="m"
+                      style="font-size:36px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;
+                             line-height:1;display:block;"></span>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);
+                         letter-spacing:.1em;text-transform:uppercase;">mins</span>
+        </div>
+
+        <div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.3);
+                    padding-bottom:24px;line-height:1;">:</div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);
+                        border-radius:14px;padding:14px 20px;min-width:72px;
+                        box-shadow:0 0 20px rgba(249,115,22,.15);">
+                <span x-text="s"
+                      style="font-size:36px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;
+                             line-height:1;display:block;"></span>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);
+                         letter-spacing:.1em;text-transform:uppercase;">secs</span>
+        </div>
+    </div>
+
+    {{-- Launch date label --}}
+    <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.25);
+                letter-spacing:.08em;text-transform:uppercase;">
+        May 1 &nbsp;·&nbsp; 6:00 AM
+    </div>
+
+</div>
+
+@else
+
+@push('head')
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 .ach { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -129,7 +236,8 @@ nav.fixed {
     $earnRows = [
         ['On-time time-in',              '+' . \App\Services\GamificationService::PTS_ON_TIME,             false],
         ['Same-day DTR filed',           '+' . \App\Services\GamificationService::PTS_SAME_DAY,            false],
-        ['No-Late 5 badge earned',       '+' . \App\Services\GamificationService::PTS_BADGE_NO_LATE_5,     false],
+        ['Perfect Cutoff bonus',         '+' . \App\Services\GamificationService::PTS_PERFECT_CUTOFF,      false],
+        ['No-Late 7 badge earned',       '+' . \App\Services\GamificationService::PTS_BADGE_NO_LATE_7,     false],
         ['Same-Day Finisher badge earned','+' . \App\Services\GamificationService::PTS_BADGE_SAME_DAY_FINISHER, false],
         ['No Absences badge earned',     '+' . \App\Services\GamificationService::PTS_BADGE_NO_ABSENCES,   false],
         ['Late time-in',                 (string) \App\Services\GamificationService::PTS_PENALTY_LATE,     true],
@@ -942,5 +1050,7 @@ function avatarGradient(name) {
     return _avatarPalette[idx];
 }
 </script>
+
+@endif
 
 </x-staff-layout>

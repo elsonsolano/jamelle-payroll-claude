@@ -199,7 +199,10 @@ class DtrController extends Controller
         $loggedTimeDisplay = date('g:i A', strtotime($validated['time']));
 
         if ($request->expectsJson()) {
-            $celebration = $this->gamification->celebrationData($employee, $dtr->fresh());
+            $launchAt = \Carbon\Carbon::parse('2026-05-01 06:00:00', 'Asia/Manila');
+            $celebration = now('Asia/Manila')->gte($launchAt)
+                ? $this->gamification->celebrationData($employee, $dtr->fresh())
+                : null;
             return response()->json([
                 'success'      => true,
                 'logged_time'  => $loggedTimeDisplay,

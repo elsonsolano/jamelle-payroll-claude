@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Services\GamificationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,17 @@ class AchievementsController extends Controller
 
     public function index(Request $request): View
     {
+        $launchAt = Carbon::parse('2026-05-01 06:00:00', 'Asia/Manila');
+        $preview = app()->environment(['local', 'testing']) && $request->boolean('preview');
+        $comingSoon = now('Asia/Manila')->lt($launchAt) && ! $preview;
+
+        if ($comingSoon) {
+            return view('staff.achievements', [
+                'comingSoon' => true,
+                'launchTimestamp' => $launchAt->timestamp * 1000,
+            ]);
+        }
+
         $employee = Auth::user()->employee;
 
         $cutoff = $this->gamification->currentCutoffFor($employee);
@@ -29,6 +41,8 @@ class AchievementsController extends Controller
         $rank = $this->gamification->rankFor($data['total_points']);
 
         return view('staff.achievements', [
+            'comingSoon' => false,
+            'launchTimestamp' => $launchAt->timestamp * 1000,
             'employee' => $employee,
             'cutoff' => $cutoff,
             'totalPoints' => $data['total_points'],

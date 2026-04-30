@@ -54,9 +54,16 @@ class DashboardController extends Controller
         $todaySchedule      = $this->resolveSchedule($employee, today());
         $tomorrowSchedule   = $this->resolveSchedule($employee, today()->addDay());
         $attendanceProgress = $this->attendanceProgress($employee, $todayDtr);
-        $currentCutoff = $this->gamification->currentCutoffFor($employee);
-        $achievementSummary = $this->gamification->achievementsData($employee, $currentCutoff);
-        $rank = $this->gamification->rankFor($achievementSummary['total_points']);
+        $launchAt = Carbon::parse('2026-05-01 06:00:00', 'Asia/Manila');
+        $comingSoon = now('Asia/Manila')->lt($launchAt);
+
+        $achievementSummary = null;
+        $rank = null;
+        if (! $comingSoon) {
+            $currentCutoff = $this->gamification->currentCutoffFor($employee);
+            $achievementSummary = $this->gamification->achievementsData($employee, $currentCutoff);
+            $rank = $this->gamification->rankFor($achievementSummary['total_points']);
+        }
 
         // Clock state derived from today's DTR
         $clockState = 'none';
@@ -96,7 +103,7 @@ class DashboardController extends Controller
             'employee', 'todayDtr', 'yesterdayDtr', 'recentDtrs', 'pendingApprovalCount',
             'quote', 'todaySchedule', 'tomorrowSchedule',
             'clockState', 'nextEvent', 'yesterdayNextEvent', 'attendanceProgress',
-            'achievementSummary', 'rank'
+            'achievementSummary', 'rank', 'comingSoon'
         ));
     }
 

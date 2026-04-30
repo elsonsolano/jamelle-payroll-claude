@@ -12,19 +12,23 @@ use Carbon\CarbonPeriod;
 
 class GamificationService
 {
+    const GAMIFICATION_LAUNCH_DATE = '2026-05-01';
+
     const PTS_ON_TIME = 10;
 
     const PTS_SAME_DAY = 5;
 
-    const PTS_BADGE_NO_LATE_5 = 50;
+    const PTS_BADGE_NO_LATE_7 = 65;
 
     const PTS_BADGE_SAME_DAY_FINISHER = 30;
 
     const PTS_BADGE_NO_ABSENCES = 80;
 
-    const PTS_PENALTY_LATE = -2;
+    const PTS_PERFECT_CUTOFF = 75;
 
-    const PTS_PENALTY_ABSENT = -3;
+    const PTS_PENALTY_LATE = -5;
+
+    const PTS_PENALTY_ABSENT = -8;
 
     const RANKS = [
         ['name' => 'Empty Cup',          'min' => 0,      'desc' => 'Wala pang laman, pero may potential'],
@@ -40,8 +44,8 @@ class GamificationService
         ['name' => 'Sauce Overlord',      'min' => 5000,   'desc' => 'Hindi bitin mag-drizzle'],
         ['name' => 'Rush Hour Hero',      'min' => 7000,   'desc' => 'Buhay pa kahit peak time'],
         ['name' => 'Cup Legend',          'min' => 10000,  'desc' => 'Kilala na sa counter'],
-        ['name' => 'Froyo Titan',         'min' => 15000,  'desc' => 'Cold, calm, powerful'],
-        ['name' => 'Final Swirl Boss',    'min' => 22000,  'desc' => 'The ultimate frozen form'],
+        ['name' => 'Froyo Titan',         'min' => 13000,  'desc' => 'Cold, calm, powerful'],
+        ['name' => 'Final Swirl Boss',    'min' => 16000,  'desc' => 'The ultimate frozen form'],
     ];
 
     public function rankFor(int $points): array
@@ -130,7 +134,7 @@ class GamificationService
             'points_earned' => $isOnTime ? self::PTS_ON_TIME : 0,
             'is_on_time' => $isOnTime,
             'streak' => $streak,
-            'streak_target' => 5,
+            'streak_target' => 7,
         ];
     }
 
@@ -140,10 +144,10 @@ class GamificationService
         $streak = $this->noLateStreak($employee);
 
         return [
-            'badge_name' => 'No-Late 5',
+            'badge_name' => 'No-Late 7',
             'streak' => $streak,
-            'target' => 5,
-            'points' => self::PTS_BADGE_NO_LATE_5,
+            'target' => 7,
+            'points' => self::PTS_BADGE_NO_LATE_7,
         ];
     }
 
@@ -264,6 +268,16 @@ class GamificationService
                         'date' => Carbon::parse($award->awarded_at)->format('M j'),
                     ];
                 }
+            }
+
+            if ($cutoff->status === 'finalized' && $elapsedWorkdays > 0 && $noAbsentProgress >= $elapsedWorkdays && ! collect($workdayStatuses)->contains(fn (array $status) => ! $status['is_on_time'])) {
+                $thisCutoffPts += self::PTS_PERFECT_CUTOFF;
+                $pointsLog[] = [
+                    'type' => 'bonus',
+                    'description' => 'Perfect Cutoff bonus',
+                    'points' => self::PTS_PERFECT_CUTOFF,
+                    'date' => Carbon::parse($cutoff->finalized_at ?? $cutoff->end_date)->format('M j'),
+                ];
             }
         }
 
@@ -449,7 +463,6 @@ class GamificationService
 
     private function allTimePoints(Employee $employee, ?PayrollCutoff $currentCutoff): int
     {
-        // Sum gamification-rate points from all previously finalized cutoff scores
         $query = AttendanceScore::where('employee_id', $employee->id)
             ->whereHas('payrollCutoff', fn ($q) => $q->where('status', 'finalized'));
 
@@ -457,9 +470,27 @@ class GamificationService
             $query->where('payroll_cutoff_id', '!=', $currentCutoff->id);
         }
 
-        $pastPts = $query->get()->sum(
-            fn (AttendanceScore $s) => $s->on_time_days * self::PTS_ON_TIME + $s->same_day_complete_days * self::PTS_SAME_DAY
-        );
+        $pastPts = $query->with('payrollCutoff')->get()->sum(function (AttendanceScore $score) use ($employee) {
+            $cutoff = $score->payrollCutoff;
+            $base = $score->on_time_days * self::PTS_ON_TIME
+                + $score->same_day_complete_days * self::PTS_SAME_DAY;
+
+            if (! $cutoff) {
+                return $base;
+            }
+
+            $penalties = $this->deductionsForPeriod(
+                $employee,
+                $cutoff->start_date->toDateString(),
+                $cutoff->end_date->toDateString(),
+            );
+
+            $perfectBonus = $this->qualifiesForPerfectCutoff($score, $employee, $cutoff)
+                ? self::PTS_PERFECT_CUTOFF
+                : 0;
+
+            return $base + $penalties + $perfectBonus;
+        });
 
         // Badge points from all past cutoffs
         $badgePtsQuery = EmployeeAttendanceBadge::where('employee_id', $employee->id)
@@ -474,27 +505,25 @@ class GamificationService
             fn ($award) => $this->badgePoints($award->badge?->key)
         );
 
-        $cutoffQuery = PayrollCutoff::where('branch_id', $employee->branch_id)
-            ->where('status', 'finalized');
+        return $pastPts + $badgePts;
+    }
 
-        if ($currentCutoff?->id) {
-            $cutoffQuery->where('id', '!=', $currentCutoff->id);
-        }
+    private function qualifiesForPerfectCutoff(AttendanceScore $score, Employee $employee, PayrollCutoff $cutoff): bool
+    {
+        $scheduledWorkdays = collect(CarbonPeriod::create($cutoff->start_date, $cutoff->end_date))
+            ->filter(fn (Carbon $date) => $this->scoringService->scheduledWorkdayFor($employee, $date->toDateString())['has_schedule'])
+            ->count();
 
-        $historicalDeductions = $cutoffQuery->get()->sum(
-            fn (PayrollCutoff $c) => $this->deductionsForPeriod(
-                $employee,
-                $c->start_date->toDateString(),
-                $c->end_date->toDateString(),
-            )
-        );
-
-        return $pastPts + $badgePts + $historicalDeductions;
+        return $scheduledWorkdays > 0
+            && (int) $score->late_days === 0
+            && (int) $score->no_absent_days >= $scheduledWorkdays;
     }
 
     private function trackingStartDate(Employee $employee): Carbon
     {
         $employee->loadMissing('user');
+
+        $launch = Carbon::parse(self::GAMIFICATION_LAUNCH_DATE)->startOfDay();
 
         $candidates = array_filter([
             $employee->created_at?->copy()->startOfDay(),
@@ -503,19 +532,21 @@ class GamificationService
         ]);
 
         if ($candidates === []) {
-            return today()->copy()->startOfDay();
+            return $launch;
         }
 
-        return collect($candidates)
+        $employeeStart = collect($candidates)
             ->sortBy(fn (Carbon $date) => $date->timestamp)
             ->last()
             ->copy();
+
+        return $employeeStart->gt($launch) ? $employeeStart : $launch;
     }
 
     private function badgePoints(?string $key): int
     {
         return match ($key) {
-            AttendanceBadgeService::BADGE_ON_TIME_5 => self::PTS_BADGE_NO_LATE_5,
+            AttendanceBadgeService::BADGE_ON_TIME_7 => self::PTS_BADGE_NO_LATE_7,
             AttendanceBadgeService::BADGE_SAME_DAY_FINISHER => self::PTS_BADGE_SAME_DAY_FINISHER,
             AttendanceBadgeService::BADGE_NO_ABSENT_CUTOFF => self::PTS_BADGE_NO_ABSENCES,
             default => 0,
@@ -540,34 +571,35 @@ class GamificationService
 
         $total = max($elapsedWorkdays, 1);
 
-        // --- No-Late 5 (streak badge) ---
-        $streak5 = min($noLateStreak, 5);
+        // --- No-Late 7 (streak badge) ---
+        $streakTarget = 7;
+        $streakProgress = min($noLateStreak, $streakTarget);
         $dayStatuses = [];
-        for ($i = 1; $i <= 5; $i++) {
-            if ($i <= $streak5) {
+        for ($i = 1; $i <= $streakTarget; $i++) {
+            if ($i <= $streakProgress) {
                 $dayStatuses[] = 'done';
-            } elseif ($i === $streak5 + 1) {
+            } elseif ($i === $streakProgress + 1) {
                 $dayStatuses[] = 'current';
             } else {
                 $dayStatuses[] = 'future';
             }
         }
 
-        $noLate5 = [
-            'id' => 'on_time_5',
-            'name' => 'No-Late 5',
-            'tagline' => 'Arrive on time 5 days in a row',
-            'desc' => 'Clock in before or at your scheduled start time for 5 consecutive working days. Any late arrival resets the streak.',
+        $noLate7 = [
+            'id' => 'on_time_7',
+            'name' => 'No-Late 7',
+            'tagline' => 'Arrive on time 7 days in a row',
+            'desc' => 'Clock in before or at your scheduled start time for 7 consecutive working days. Any late arrival resets the streak.',
             'type' => 'streak',
             'color' => '#E8722A',
             'bg_color' => '#1c1408',
             'border_color' => '#FED7AA',
             'icon' => '⏱',
-            'progress' => $streak5,
-            'total' => 5,
-            'earned' => $noLateStreak >= 5,
-            'times_earned' => (int) ($timesEarned[AttendanceBadgeService::BADGE_ON_TIME_5] ?? 0),
-            'points' => self::PTS_BADGE_NO_LATE_5,
+            'progress' => $streakProgress,
+            'total' => $streakTarget,
+            'earned' => $noLateStreak >= $streakTarget,
+            'times_earned' => (int) ($timesEarned[AttendanceBadgeService::BADGE_ON_TIME_7] ?? 0),
+            'points' => self::PTS_BADGE_NO_LATE_7,
             'tip' => 'Clock in before or at your scheduled start time, every day.',
             'day_statuses' => $dayStatuses,
         ];
@@ -614,6 +646,6 @@ class GamificationService
             'workday_statuses' => array_values($workdayStatuses),
         ];
 
-        return [$noLate5, $sameDayFinisher, $noAbsences];
+        return [$noLate7, $sameDayFinisher, $noAbsences];
     }
 }

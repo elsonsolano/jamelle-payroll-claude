@@ -41,13 +41,13 @@ class AttendanceScoringServiceTest extends TestCase
             'active' => true,
         ]);
         $employee->forceFill([
-            'created_at' => '2026-03-31 10:00:00',
-            'updated_at' => '2026-03-31 10:00:00',
+            'created_at' => '2026-04-30 10:00:00',
+            'updated_at' => '2026-04-30 10:00:00',
         ])->save();
 
         EmployeeSchedule::create([
             'employee_id' => $employee->id,
-            'week_start_date' => '2026-04-01',
+            'week_start_date' => '2026-04-27',
             'rest_days' => ['Sunday'],
             'work_start_time' => '09:00',
             'work_end_time' => '18:00',
@@ -55,7 +55,7 @@ class AttendanceScoringServiceTest extends TestCase
 
         DailySchedule::create([
             'employee_id' => $employee->id,
-            'date' => '2026-04-02',
+            'date' => '2026-05-06',
             'work_start_time' => '10:00',
             'work_end_time' => '19:00',
             'is_day_off' => false,
@@ -63,11 +63,11 @@ class AttendanceScoringServiceTest extends TestCase
 
         $cutoff = PayrollCutoff::create([
             'branch_id' => $branch->id,
-            'name' => 'April 1st',
-            'start_date' => '2026-04-01',
-            'end_date' => '2026-04-03',
+            'name' => 'May 1st',
+            'start_date' => '2026-05-05',
+            'end_date' => '2026-05-07',
             'status' => 'finalized',
-            'finalized_at' => '2026-04-04 10:00:00',
+            'finalized_at' => '2026-05-08 10:00:00',
         ]);
 
         PayrollEntry::create([
@@ -77,7 +77,7 @@ class AttendanceScoringServiceTest extends TestCase
 
         $firstDtr = Dtr::create([
             'employee_id' => $employee->id,
-            'date' => '2026-04-01',
+            'date' => '2026-05-05',
             'time_in' => '09:00',
             'am_out' => '12:00',
             'pm_in' => '13:00',
@@ -91,17 +91,17 @@ class AttendanceScoringServiceTest extends TestCase
             DtrLogEvent::create([
                 'dtr_id' => $firstDtr->id,
                 'employee_id' => $employee->id,
-                'work_date' => '2026-04-01',
+                'work_date' => '2026-05-05',
                 'event_key' => $eventKey,
                 'logged_time' => $loggedTime,
-                'submitted_at' => '2026-04-01 18:05:00',
+                'submitted_at' => '2026-05-05 18:05:00',
                 'source' => 'staff_dashboard',
             ]);
         }
 
         Dtr::create([
             'employee_id' => $employee->id,
-            'date' => '2026-04-02',
+            'date' => '2026-05-06',
             'time_in' => '09:30',
             'am_out' => '12:00',
             'pm_in' => '13:00',
@@ -113,7 +113,7 @@ class AttendanceScoringServiceTest extends TestCase
 
         Dtr::create([
             'employee_id' => $employee->id,
-            'date' => '2026-04-03',
+            'date' => '2026-05-07',
             'time_in' => '09:15',
             'time_out' => '18:00',
             'late_mins' => 15,
@@ -123,23 +123,23 @@ class AttendanceScoringServiceTest extends TestCase
 
         $estimate = $service->estimateEmployeeForCutoff($cutoff, $employee);
 
-        $this->assertSame(39, $estimate['totals']['total_points']);
+        $this->assertSame(20, $estimate['totals']['total_points']);
         $this->assertSame(0, $estimate['totals']['approved_ot_days']);
         $this->assertSame(1, $estimate['totals']['same_day_complete_days']);
         $this->assertSame(3, $estimate['totals']['no_absent_days']);
         $this->assertSame(1, $estimate['totals']['late_days']);
-        $this->assertCount(7, $estimate['items']);
+        $this->assertCount(4, $estimate['items']);
         $this->assertDatabaseCount('attendance_scores', 0);
         $this->assertDatabaseCount('attendance_score_items', 0);
         $this->assertSame(2, $service->completeDtrStreak(
             $employee,
-            Carbon::parse('2026-04-02'),
-            Carbon::parse('2026-04-01'),
+            Carbon::parse('2026-05-06'),
+            Carbon::parse('2026-05-05'),
         ));
 
         $score = $service->scoreEmployeeForCutoff($cutoff, $employee);
 
-        $this->assertSame(39, $score->total_points);
+        $this->assertSame(20, $score->total_points);
         $this->assertSame(2, $score->complete_dtr_days);
         $this->assertSame(2, $score->on_time_days);
         $this->assertSame(3, $score->proper_time_out_days);
@@ -148,7 +148,7 @@ class AttendanceScoringServiceTest extends TestCase
         $this->assertSame(0, $score->approved_ot_days);
         $this->assertSame(1, $score->late_days);
         $this->assertSame(15, $score->late_minutes);
-        $this->assertCount(7, $score->items);
+        $this->assertCount(4, $score->items);
 
         AttendanceScoreItem::create([
             'attendance_score_id' => $score->id,
@@ -160,8 +160,8 @@ class AttendanceScoringServiceTest extends TestCase
         $rescored = $service->scoreEmployeeForCutoff($cutoff, $employee);
 
         $this->assertSame($score->id, $rescored->id);
-        $this->assertSame(39, $rescored->total_points);
-        $this->assertCount(7, $rescored->items);
+        $this->assertSame(20, $rescored->total_points);
+        $this->assertCount(4, $rescored->items);
         $this->assertDatabaseMissing('attendance_score_items', [
             'attendance_score_id' => $score->id,
             'rule_key' => 'stale_item',
@@ -176,5 +176,94 @@ class AttendanceScoringServiceTest extends TestCase
         $badgeService->awardBadgesForEmployee($cutoff, $employee);
 
         $this->assertSame(1, EmployeeAttendanceBadge::where('employee_id', $employee->id)->count());
+    }
+
+    public function test_perfect_cutoff_bonus_and_no_late_7_badge_stack_with_no_absences(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Main',
+            'address' => 'Test',
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $employee = Employee::create([
+            'first_name' => 'Grace',
+            'last_name' => 'Hopper',
+            'employee_code' => 'EMP-002',
+            'branch_id' => $branch->id,
+            'salary_type' => 'daily',
+            'rate' => 500,
+            'active' => true,
+        ]);
+        $employee->forceFill([
+            'created_at' => '2026-04-30 10:00:00',
+            'updated_at' => '2026-04-30 10:00:00',
+        ])->save();
+
+        EmployeeSchedule::create([
+            'employee_id' => $employee->id,
+            'week_start_date' => '2026-05-04',
+            'rest_days' => [],
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $cutoff = PayrollCutoff::create([
+            'branch_id' => $branch->id,
+            'name' => 'Perfect May',
+            'start_date' => '2026-05-04',
+            'end_date' => '2026-05-10',
+            'status' => 'finalized',
+            'finalized_at' => '2026-05-12 10:00:00',
+        ]);
+
+        PayrollEntry::create([
+            'payroll_cutoff_id' => $cutoff->id,
+            'employee_id' => $employee->id,
+        ]);
+
+        foreach (Carbon::parse('2026-05-04')->daysUntil('2026-05-10') as $date) {
+            $dtr = Dtr::create([
+                'employee_id' => $employee->id,
+                'date' => $date->toDateString(),
+                'time_in' => '09:00',
+                'am_out' => '12:00',
+                'pm_in' => '13:00',
+                'time_out' => '18:00',
+                'late_mins' => 0,
+                'overtime_hours' => 0,
+                'ot_status' => 'none',
+            ]);
+
+            foreach (['time_in' => '09:00', 'am_out' => '12:00', 'pm_in' => '13:00', 'time_out' => '18:00'] as $eventKey => $loggedTime) {
+                DtrLogEvent::create([
+                    'dtr_id' => $dtr->id,
+                    'employee_id' => $employee->id,
+                    'work_date' => $date->toDateString(),
+                    'event_key' => $eventKey,
+                    'logged_time' => $loggedTime,
+                    'submitted_at' => $date->toDateString().' 18:05:00',
+                    'source' => 'staff_dashboard',
+                ]);
+            }
+        }
+
+        $score = app(AttendanceScoringService::class)->scoreEmployeeForCutoff($cutoff, $employee);
+
+        $this->assertSame(180, $score->total_points);
+        $this->assertSame(7, $score->on_time_days);
+        $this->assertSame(7, $score->same_day_complete_days);
+        $this->assertSame(7, $score->no_absent_days);
+        $this->assertSame(0, $score->late_days);
+        $this->assertCount(15, $score->items);
+        $this->assertTrue($score->items->contains('rule_key', AttendanceScoringService::RULE_PERFECT_CUTOFF_BONUS));
+
+        $awards = app(AttendanceBadgeService::class)->awardBadgesForEmployee($cutoff, $employee);
+
+        $this->assertEqualsCanonicalizing(
+            ['no_absent_cutoff', 'on_time_7', 'same_day_finisher'],
+            $awards->pluck('badge.key')->all(),
+        );
     }
 }

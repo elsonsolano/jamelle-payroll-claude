@@ -14,14 +14,14 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceBadgeService
 {
-    public const BADGE_ON_TIME_5 = 'on_time_5';
+    public const BADGE_ON_TIME_7 = 'on_time_7';
     public const BADGE_SAME_DAY_FINISHER = 'same_day_finisher';
     public const BADGE_NO_ABSENT_CUTOFF = 'no_absent_cutoff';
 
     public const DEFAULT_BADGES = [
-        self::BADGE_ON_TIME_5 => [
-            'name'        => 'No-Late 5',
-            'description' => 'Had a 5 scheduled-workday streak with no late minutes.',
+        self::BADGE_ON_TIME_7 => [
+            'name'        => 'No-Late 7',
+            'description' => 'Had a 7 scheduled-workday streak with no late minutes.',
             'icon'        => 'calendar-check',
         ],
         self::BADGE_SAME_DAY_FINISHER => [
@@ -40,6 +40,7 @@ class AttendanceBadgeService
         'complete_cutoff',
         'reliable_closer',
         'ot_pro',
+        'on_time_5',
     ];
 
     public function __construct(protected AttendanceScoringService $attendanceScoringService)
@@ -96,7 +97,8 @@ class AttendanceBadgeService
         }
 
         $dtrs = $employee->dtrs()
-            ->whereBetween('date', [$cutoff->start_date->toDateString(), $cutoff->end_date->toDateString()])
+            ->whereDate('date', '>=', $cutoff->start_date->toDateString())
+            ->whereDate('date', '<=', $cutoff->end_date->toDateString())
             ->orderBy('date')
             ->get()
             ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
@@ -147,8 +149,8 @@ class AttendanceBadgeService
         $qualified = [];
 
         $onTimeStreak = $this->onTimeStreak($cutoff, $employee, $dtrs);
-        if ($onTimeStreak['max_streak'] >= 5) {
-            $qualified[self::BADGE_ON_TIME_5] = $onTimeStreak;
+        if ($onTimeStreak['max_streak'] >= 7) {
+            $qualified[self::BADGE_ON_TIME_7] = $onTimeStreak;
         }
 
         if ($scheduledDates->isNotEmpty() && $score->same_day_complete_days >= $scheduledDates->count()) {
@@ -216,7 +218,7 @@ class AttendanceBadgeService
             $currentStart = null;
         }
 
-        return $best + ['required_streak' => 5];
+        return $best + ['required_streak' => 7];
     }
 
     private function dateRangeMetadata(\Illuminate\Support\Collection $dates): array

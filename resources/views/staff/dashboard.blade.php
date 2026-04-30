@@ -516,6 +516,24 @@
 </div>{{-- /agenda --}}
 
 {{-- ── Rank Progress Strip ── --}}
+@if($comingSoon)
+<a href="{{ route('staff.achievements') }}" style="text-decoration:none;">
+<div class="mt-3 flex items-center gap-3 rounded-2xl border px-4 py-3"
+     style="background:#FFF7ED; border-color:#FCD9B0;">
+    <div class="rank-mascot-shell shrink-0 w-20 h-20">
+        <div class="rank-mascot-core" style="background:#FFE9CC;">
+            <span style="font-size:32px; line-height:1;">🍦</span>
+        </div>
+    </div>
+    <div class="flex-1 min-w-0">
+        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#C2510A; letter-spacing:.08em;">Coming Tomorrow</p>
+        <p class="text-base font-black leading-tight mt-0.5" style="color:#111;">Leaderboard &amp; Points</p>
+        <p class="text-xs mt-1" style="color:#A0683A;">Earn points, climb ranks, and compete with your team — launching May 1 · 6:00 AM</p>
+        <p class="text-[11px] font-bold mt-2" style="color:#E8722A;">Tap to see the countdown →</p>
+    </div>
+</div>
+</a>
+@else
 @php
     $rankMascotFile = str_pad($rank['number'], 2, '0', STR_PAD_LEFT);
     $rankHasMascot = file_exists(public_path("images/rank-mascots/mascot-{$rankMascotFile}.png"));
@@ -575,7 +593,7 @@
     </svg>
     </a>
 </div>
-
+@endif
 
 {{-- ── Approvals waiting (approvers only) ── --}}
 @if($pendingApprovalCount > 0)
@@ -736,19 +754,19 @@
              class="w-full mt-2.5 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:400ms;">
             <div class="rounded-2xl px-4 py-3.5" style="background:#FFF7ED; border:1.5px solid #FED7AA;">
                 <p class="text-xs font-bold" style="color:#92400E;">
-                    ⏱ No-Late 5 —
+                    ⏱ No-Late 7 —
                     Day <span x-text="celebration ? celebration.streak : 0"></span>
-                    of <span x-text="celebration ? celebration.streak_target : 5"></span>
+                    of <span x-text="celebration ? celebration.streak_target : 7"></span>
                 </p>
                 <div class="flex gap-1 mt-2">
-                    <template x-for="i in (celebration ? celebration.streak_target : 5)" :key="i">
+                    <template x-for="i in (celebration ? celebration.streak_target : 7)" :key="i">
                         <div class="flex-1 rounded-full" style="height:8px;"
                              :style="i <= (celebration ? celebration.streak : 0) ? 'background:#E8722A;' : 'background:#F0F0F0;'"></div>
                     </template>
                 </div>
                 <p class="text-xs mt-1.5" style="color:#B45309;">
-                    <span x-text="celebration ? (celebration.streak_target - celebration.streak) : 5"></span>
-                    more on-time days → earn badge + 50 pts
+                    <span x-text="celebration ? (celebration.streak_target - celebration.streak) : 7"></span>
+                    more on-time days → earn badge + 65 pts
                 </p>
             </div>
         </div>
@@ -757,8 +775,8 @@
         <div x-show="celebration && celebration.streak >= celebration.streak_target"
              class="w-full mt-2.5 celeb-fade" :class="celebReady ? 'celeb-in' : 'celeb-out'" style="transition-delay:400ms;">
             <div class="rounded-2xl px-4 py-3.5 text-center" style="background:#FFF7ED; border:1.5px solid #FED7AA;">
-                <p class="font-bold" style="color:#E8722A;">🏅 No-Late 5 — Badge Earned!</p>
-                <p class="text-xs mt-1" style="color:#B45309;">+50 pts awarded · Keep it up!</p>
+                <p class="font-bold" style="color:#E8722A;">🏅 No-Late 7 — Badge Earned!</p>
+                <p class="text-xs mt-1" style="color:#B45309;">+65 pts awarded · Keep it up!</p>
             </div>
         </div>
 

@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Services\GamificationService;
 
 class AttendanceScoringService
 {
@@ -21,6 +22,10 @@ class AttendanceScoringService
     public const RULE_SAME_DAY_COMPLETE = 'same_day_complete_dtr';
 
     public const RULE_LATE_PENALTY = 'late_penalty';
+
+    public const RULE_ABSENT_PENALTY = 'absent_penalty';
+
+    public const RULE_PERFECT_CUTOFF_BONUS = 'perfect_cutoff_bonus';
 
     public function scoreEmployeeForCutoff(PayrollCutoff $cutoff, Employee $employee): AttendanceScore
     {
@@ -119,6 +124,8 @@ class AttendanceScoringService
         ];
         $items = [];
         $trackingStart = $this->trackingStartDate($employee);
+        $scheduledWorkdays = 0;
+        $absentDays = 0;
 
         foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
             $workDate = $date->toDateString();
@@ -133,8 +140,17 @@ class AttendanceScoringService
                 continue;
             }
 
+            $scheduledWorkdays++;
+
             $dtr = $dtrs->get($workDate);
-            if (! $dtr) {
+            if (! $dtr || ! $dtr->time_in) {
+                $absentDays++;
+                $totals['total_points'] += GamificationService::PTS_PENALTY_ABSENT;
+                $items[] = $this->item(null, $workDate, self::RULE_ABSENT_PENALTY, 'Absent scheduled workday', GamificationService::PTS_PENALTY_ABSENT, [
+                    'schedule_source' => $schedule['source'],
+                    'work_start_time' => $schedule['work_start_time'],
+                ]);
+
                 continue;
             }
 
@@ -144,28 +160,21 @@ class AttendanceScoringService
             if ($this->isCompleteDtr($dtr)) {
                 $totals['complete_dtr_days']++;
                 if ($this->wasCompletedPromptly($dtr)) {
-                    $totals['total_points'] += 10;
+                    $totals['total_points'] += GamificationService::PTS_SAME_DAY;
                     $totals['same_day_complete_days']++;
-                    $items[] = $this->item($dtr->id, $workDate, self::RULE_SAME_DAY_COMPLETE, 'Same-day complete DTR', 10, [
+                    $items[] = $this->item($dtr->id, $workDate, self::RULE_SAME_DAY_COMPLETE, 'Same-day DTR filed', GamificationService::PTS_SAME_DAY, [
                         'required_events' => ['time_in', 'am_out', 'pm_in', 'time_out'],
                         'work_date' => $workDate,
                     ]);
                 }
             }
 
-            if ($dtr->time_in) {
-                $totals['total_points'] += 8;
-                $totals['no_absent_days']++;
-                $items[] = $this->item($dtr->id, $workDate, self::RULE_NO_ABSENT, 'No absent scheduled day', 8, [
-                    'time_in' => $dtr->time_in,
-                    'schedule_source' => $schedule['source'],
-                ]);
-            }
+            $totals['no_absent_days']++;
 
             if ($dtr->time_in && $lateMinutes === 0) {
-                $totals['total_points'] += 5;
+                $totals['total_points'] += GamificationService::PTS_ON_TIME;
                 $totals['on_time_days']++;
-                $items[] = $this->item($dtr->id, $workDate, self::RULE_NO_LATE, 'No late reward', 5, [
+                $items[] = $this->item($dtr->id, $workDate, self::RULE_NO_LATE, 'On-time time-in', GamificationService::PTS_ON_TIME, [
                     'time_in' => $dtr->time_in,
                     'late_mins' => $lateMinutes,
                     'schedule_source' => $schedule['source'],
@@ -174,9 +183,9 @@ class AttendanceScoringService
             }
 
             if ($dtr->time_in && $lateMinutes > 0) {
-                $totals['total_points'] -= 5;
+                $totals['total_points'] += GamificationService::PTS_PENALTY_LATE;
                 $totals['late_days']++;
-                $items[] = $this->item($dtr->id, $workDate, self::RULE_LATE_PENALTY, 'Late penalty', -5, [
+                $items[] = $this->item($dtr->id, $workDate, self::RULE_LATE_PENALTY, 'Late time-in', GamificationService::PTS_PENALTY_LATE, [
                     'time_in' => $dtr->time_in,
                     'late_mins' => $lateMinutes,
                     'schedule_source' => $schedule['source'],
@@ -187,6 +196,15 @@ class AttendanceScoringService
             if ($dtr->time_out) {
                 $totals['proper_time_out_days']++;
             }
+        }
+
+        if ($scheduledWorkdays > 0 && $totals['late_days'] === 0 && $absentDays === 0) {
+            $totals['total_points'] += GamificationService::PTS_PERFECT_CUTOFF;
+            $items[] = $this->item(null, $cutoff->end_date->toDateString(), self::RULE_PERFECT_CUTOFF_BONUS, 'Perfect Cutoff bonus', GamificationService::PTS_PERFECT_CUTOFF, [
+                'scheduled_workdays' => $scheduledWorkdays,
+                'late_days' => $totals['late_days'],
+                'absent_days' => $absentDays,
+            ]);
         }
 
         return [
@@ -297,6 +315,8 @@ class AttendanceScoringService
     {
         $employee->loadMissing('user');
 
+        $launch = Carbon::parse(GamificationService::GAMIFICATION_LAUNCH_DATE)->startOfDay();
+
         $candidates = array_filter([
             $employee->created_at?->copy()->startOfDay(),
             $employee->user?->created_at?->copy()->startOfDay(),
@@ -304,12 +324,14 @@ class AttendanceScoringService
         ]);
 
         if ($candidates === []) {
-            return today()->copy()->startOfDay();
+            return $launch;
         }
 
-        return collect($candidates)
+        $employeeStart = collect($candidates)
             ->sortBy(fn (Carbon $date) => $date->timestamp)
             ->last()
             ->copy();
+
+        return $employeeStart->gt($launch) ? $employeeStart : $launch;
     }
 }

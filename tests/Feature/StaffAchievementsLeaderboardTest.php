@@ -18,6 +18,18 @@ class StaffAchievementsLeaderboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow('2026-05-02 08:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_staff_can_view_company_wide_leaderboard_on_achievements_page(): void
     {
         $branch = $this->branch('Main');
@@ -40,24 +52,45 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $response->assertSee('Bagong Swirl');
     }
 
+    public function test_local_preview_query_bypasses_achievements_launch_countdown(): void
+    {
+        Carbon::setTestNow('2026-04-30 08:00:00');
+
+        $branch = $this->branch('Main');
+        $cutoff = $this->finalizedCutoff($branch);
+
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+        $this->score($cutoff, $viewer, 40);
+
+        $response = $this->actingAs($viewer->user)->get(route('staff.achievements', ['preview' => 1]));
+
+        $response->assertOk();
+        $response->assertSee('Leaderboard');
+        $response->assertSee('Top 10 Staff');
+        $response->assertSee('40');
+        $response->assertDontSee('Go Live Tomorrow');
+    }
+
     public function test_current_time_in_points_are_net_of_live_absence_penalties(): void
     {
-        Carbon::setTestNow('2026-04-17 08:05:00');
+        // May 1 is the gamification launch date. Schedule from May 1 gives 3 absent days
+        // (May 1 Fri, May 2 Sat, May 4 Mon) before an on-time May 5, netting -14 points.
+        Carbon::setTestNow('2026-05-05 08:05:00');
 
         $branch = $this->branch('Main');
         $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
         $viewer->forceFill([
-            'created_at' => '2026-04-14 08:00:00',
-            'updated_at' => '2026-04-14 08:00:00',
+            'created_at' => '2026-05-01 08:00:00',
+            'updated_at' => '2026-05-01 08:00:00',
         ])->save();
         $viewer->user->forceFill([
-            'created_at' => '2026-04-14 08:00:00',
-            'updated_at' => '2026-04-14 08:00:00',
+            'created_at' => '2026-05-01 08:00:00',
+            'updated_at' => '2026-05-01 08:00:00',
         ])->save();
 
         EmployeeSchedule::create([
             'employee_id' => $viewer->id,
-            'week_start_date' => '2026-04-14',
+            'week_start_date' => '2026-05-01',
             'rest_days' => ['Sunday'],
             'work_start_time' => '08:00',
             'work_end_time' => '17:00',
@@ -65,7 +98,7 @@ class StaffAchievementsLeaderboardTest extends TestCase
 
         Dtr::create([
             'employee_id' => $viewer->id,
-            'date' => '2026-04-17',
+            'date' => '2026-05-05',
             'time_in' => '08:00',
             'source' => 'manual',
             'status' => 'Pending',
@@ -80,8 +113,8 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $response = $this->actingAs($viewer->user)->get(route('staff.achievements'));
 
         $response->assertOk();
-        $response->assertSee('1');
-        $response->assertSee('49 pts to Bagong Swirl');
+        $response->assertSee('-14');
+        $response->assertSee('64 pts to Bagong Swirl');
 
         Carbon::setTestNow();
     }
