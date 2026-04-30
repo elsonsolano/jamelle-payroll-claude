@@ -106,6 +106,31 @@
                                 this.sync();
                             },
 
+                            alignSelectedImage(cmd) {
+                                if (!this.selectedImage) {
+                                    return false;
+                                }
+
+                                const alignments = {
+                                    justifyLeft: 'left',
+                                    justifyCenter: 'center',
+                                    justifyRight: 'right',
+                                    justifyFull: 'justify',
+                                };
+
+                                if (!alignments[cmd]) {
+                                    return false;
+                                }
+
+                                const block = this.selectedImage.closest('p, div, h2, h3, li') || this.selectedImage.parentElement;
+                                if (block && this.$refs.editorEl.contains(block)) {
+                                    block.style.textAlign = alignments[cmd];
+                                    this.sync();
+                                }
+
+                                return true;
+                            },
+
                             restoreSelection() {
                                 this.$refs.editorEl.focus();
                                 if (!this.savedRange) {
@@ -118,6 +143,10 @@
                             },
 
                             exec(cmd, value = null) {
+                                if (this.alignSelectedImage(cmd)) {
+                                    return;
+                                }
+
                                 this.clearImageSelection();
                                 this.restoreSelection();
                                 if (cmd === 'formatBlock' && value && !/^</.test(value)) {
