@@ -3,22 +3,71 @@
 
     <div class="space-y-4">
 
-        @if(session('success'))
-        <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 text-sm font-medium text-green-700">
-            {{ session('success') }}
-        </div>
-        @endif
-
         {{-- Identity card --}}
-        <div class="bg-green-500 rounded-2xl p-5 text-white">
+        <script>
+        function profilePhotoCard() {
+            return {
+                isOpen: false,
+                previewUrl: null,
+
+                open() {
+                    this.isOpen = true;
+                },
+
+                close() {
+                    this.isOpen = false;
+                    this.previewUrl = null;
+                    if (this.$refs.photoInput) {
+                        this.$refs.photoInput.value = '';
+                    }
+                },
+
+                choosePhoto() {
+                    this.$refs.photoInput.click();
+                },
+
+                preview(event) {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        this.previewUrl = null;
+                        return;
+                    }
+
+                    if (this.previewUrl) {
+                        URL.revokeObjectURL(this.previewUrl);
+                    }
+
+                    this.previewUrl = URL.createObjectURL(file);
+                },
+            };
+        }
+        </script>
+        <div class="bg-green-500 rounded-2xl p-5 text-white" x-data="profilePhotoCard()">
             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                    <span class="text-2xl font-bold text-white">{{ strtoupper(substr($employee->first_name, 0, 1)) }}</span>
-                </div>
+                <button type="button"
+                        @click="open"
+                        class="relative w-16 h-16 rounded-full bg-white/20 flex items-center justify-center shrink-0 ring-2 ring-white/40 overflow-hidden group"
+                        aria-label="Update profile photo">
+                    @if(Auth::user()->profile_photo_url)
+                        <img src="{{ Auth::user()->profile_photo_url }}" alt="{{ $employee->full_name }}" class="w-full h-full object-cover">
+                    @else
+                        <span class="text-2xl font-bold text-white">{{ strtoupper(substr($employee->first_name, 0, 1)) }}</span>
+                    @endif
+                    <span class="absolute right-0 bottom-0 w-6 h-6 rounded-full bg-white text-green-700 flex items-center justify-center shadow-sm border border-green-100">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 9a2 2 0 012-2h2.5l1-1.5A2 2 0 0110.2 4h3.6a2 2 0 011.7.9L16.5 7H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <circle cx="12" cy="13" r="3" stroke-width="2"/>
+                        </svg>
+                    </span>
+                </button>
                 <div class="min-w-0">
                     <p class="text-lg font-bold leading-tight truncate">{{ $employee->full_name }}</p>
                     <p class="text-sm text-green-100 truncate">{{ $employee->position ?? '—' }}</p>
                     <p class="text-xs text-green-200 mt-0.5">{{ $employee->branch->name }}</p>
+                    <button type="button" @click="open" class="mt-2 text-xs font-semibold text-white/95 underline decoration-white/40 underline-offset-4">
+                        {{ Auth::user()->profile_photo_url ? 'Change photo' : 'Add photo' }}
+                    </button>
                 </div>
             </div>
             <div class="mt-4 pt-4 border-t border-white/20 flex gap-6 text-sm">
@@ -33,6 +82,88 @@
                 <div>
                     <p class="text-green-200 text-xs">Birthday</p>
                     <p class="font-semibold">{{ $employee->birthday ? $employee->birthday->format('M d, Y') : '—' }}</p>
+                </div>
+            </div>
+
+            @error('photo')
+                <div class="mt-4 rounded-xl bg-white/15 border border-white/20 px-3 py-2 text-xs font-medium">
+                    {{ $message }}
+                </div>
+            @enderror
+
+            {{-- Photo bottom sheet --}}
+            <div x-show="isOpen" x-cloak
+                 class="fixed inset-0 z-50 flex flex-col justify-end text-gray-900"
+                 @keydown.escape.window="close">
+
+                <div class="absolute inset-0 bg-black/40" @click="close"></div>
+
+                <div class="relative bg-white rounded-t-2xl p-5 space-y-4 shadow-xl">
+                    <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto"></div>
+
+                    <div class="flex items-center justify-between">
+                        <p class="font-semibold text-gray-800">Profile Photo</p>
+                        <button type="button" @click="close" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form method="POST" action="{{ route('staff.profile.photo') }}" enctype="multipart/form-data" class="space-y-4">
+                        @csrf
+
+                        <div class="flex items-center gap-4">
+                            <button type="button"
+                                    @click="choosePhoto"
+                                    class="w-20 h-20 rounded-full bg-green-50 border border-green-100 flex items-center justify-center overflow-hidden shrink-0">
+                                <template x-if="previewUrl">
+                                    <img :src="previewUrl" alt="" class="w-full h-full object-cover">
+                                </template>
+                                <template x-if="!previewUrl">
+                                    @if(Auth::user()->profile_photo_url)
+                                        <img src="{{ Auth::user()->profile_photo_url }}" alt="" class="w-full h-full object-cover">
+                                    @else
+                                        <span class="text-2xl font-bold text-green-700">{{ strtoupper(substr($employee->first_name, 0, 1)) }}</span>
+                                    @endif
+                                </template>
+                            </button>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800">Choose a clear, friendly photo.</p>
+                                <p class="text-xs text-gray-500 mt-1">JPG, PNG, or WebP up to 2 MB.</p>
+                            </div>
+                        </div>
+
+                        <input x-ref="photoInput"
+                               type="file"
+                               name="photo"
+                               accept="image/jpeg,image/png,image/webp"
+                               class="hidden"
+                               @change="preview">
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button"
+                                    @click="choosePhoto"
+                                    class="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition">
+                                Choose Photo
+                            </button>
+                            <button type="submit"
+                                    class="py-3 rounded-xl bg-green-600 hover:bg-green-700 text-sm font-semibold text-white transition">
+                                Save Photo
+                            </button>
+                        </div>
+                    </form>
+
+                    @if(Auth::user()->profile_photo_url)
+                        <form method="POST" action="{{ route('staff.profile.photo.destroy') }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="w-full py-3 rounded-xl border border-red-100 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition">
+                                Remove Photo
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -72,6 +203,17 @@
             <div class="px-5 py-3 flex justify-between text-sm">
                 <span class="text-gray-500">TIN</span>
                 <span class="font-medium text-gray-800 font-mono">{{ $employee->tin_no ?? '—' }}</span>
+            </div>
+        </div>
+
+        {{-- Bank Details --}}
+        <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100">
+            <div class="px-5 py-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Bank Details</p>
+            </div>
+            <div class="px-5 py-3 flex justify-between text-sm">
+                <span class="text-gray-500">BDO #</span>
+                <span class="font-medium text-gray-800 font-mono">{{ $employee->bdo_account_number ?? '—' }}</span>
             </div>
         </div>
 

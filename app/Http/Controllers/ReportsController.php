@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\DailySchedule;
 use App\Models\Dtr;
+use App\Models\Employee;
+use App\Models\EmployeeSchedule;
 use App\Models\PayrollEntry;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 
 class ReportsController extends Controller
@@ -101,6 +105,115 @@ class ReportsController extends Controller
             ->values();
 
         return view('reports.lates', compact('branches', 'grouped', 'from', 'to', 'branchId', 'search'));
+    }
+
+    public function absences(Request $request)
+    {
+        $branches = Branch::orderBy('name')->get();
+
+        $month    = (int) $request->input('month', now()->month);
+        $year     = (int) $request->input('year', now()->year);
+        $branchId = $request->input('branch_id');
+        $search   = $request->input('search');
+
+        $from  = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $to    = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        $today = now()->toDateString();
+        if ($to > $today) {
+            $to = $today;
+        }
+
+        $employeeQuery = Employee::with('branch')
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($search, function ($q) use ($search) {
+                $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+            });
+
+        $employees   = $employeeQuery->get();
+        $employeeIds = $employees->pluck('id')->all();
+
+        $dailySchedulesByEmployee = DailySchedule::whereIn('employee_id', $employeeIds)
+            ->whereBetween('date', [$from, $to])
+            ->get()
+            ->groupBy('employee_id')
+            ->map(fn($rows) => $rows->keyBy(fn($ds) => $ds->date->toDateString()));
+
+        $employeeSchedulesByEmployee = EmployeeSchedule::whereIn('employee_id', $employeeIds)
+            ->where('week_start_date', '<=', $to)
+            ->orderBy('week_start_date')
+            ->get()
+            ->groupBy('employee_id');
+
+        $dtrDatesByEmployee = Dtr::whereIn('employee_id', $employeeIds)
+            ->whereBetween('date', [$from, $to])
+            ->select('employee_id', 'date')
+            ->get()
+            ->groupBy('employee_id')
+            ->map(fn($rows) => $rows->pluck('date')
+                ->map(fn($d) => $d instanceof Carbon ? $d->toDateString() : (string) $d)
+                ->flip()
+            );
+
+        $dateRange = CarbonPeriod::create($from, $to);
+
+        $grouped = [];
+        foreach ($employees as $employee) {
+            $empDailySchedules  = $dailySchedulesByEmployee->get($employee->id, collect());
+            $empWeeklySchedules = $employeeSchedulesByEmployee->get($employee->id, collect());
+            $empDtrDates        = $dtrDatesByEmployee->get($employee->id, collect());
+
+            if ($empDailySchedules->isEmpty() && $empWeeklySchedules->isEmpty()) {
+                continue;
+            }
+
+            $absences = [];
+            foreach ($dateRange as $date) {
+                $dateStr = $date->toDateString();
+                $dayName = $date->format('l');
+
+                $daily = $empDailySchedules->get($dateStr);
+                if ($daily) {
+                    if ($daily->is_day_off) continue;
+                    $workStart = $daily->work_start_time;
+                    $workEnd   = $daily->work_end_time;
+                } else {
+                    $schedule = $empWeeklySchedules
+                        ->filter(fn($s) => $s->week_start_date->toDateString() <= $dateStr)
+                        ->last();
+
+                    if (! $schedule) continue;
+
+                    if (in_array($dayName, $schedule->rest_days ?? [])) continue;
+
+                    $workStart = $schedule->work_start_time;
+                    $workEnd   = $schedule->work_end_time;
+                }
+
+                if ($empDtrDates->has($dateStr)) continue;
+
+                $absences[] = [
+                    'date'            => $dateStr,
+                    'work_start_time' => $workStart,
+                    'work_end_time'   => $workEnd,
+                ];
+            }
+
+            if (! empty($absences)) {
+                $grouped[] = [
+                    'employee'    => $employee,
+                    'occurrences' => count($absences),
+                    'absences'    => $absences,
+                ];
+            }
+        }
+
+        usort($grouped, fn($a, $b) => strcmp($a['employee']->full_name, $b['employee']->full_name));
+
+        $months = collect(range(1, 12))->mapWithKeys(fn($m) => [$m => Carbon::create(null, $m)->format('F')]);
+        $years  = range(2026, max(now()->year, 2026));
+
+        return view('reports.absences', compact('branches', 'grouped', 'month', 'year', 'months', 'years', 'branchId', 'search'));
     }
 
     public function thirteenthMonth(Request $request)

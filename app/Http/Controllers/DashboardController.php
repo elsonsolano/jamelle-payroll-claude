@@ -59,7 +59,10 @@ class DashboardController extends Controller
 
         $branches = Branch::with(['employees' => function ($q) {
             $q->where('active', true)->orderBy('last_name')->orderBy('first_name');
-        }])->where('name', 'not like', '%Head Office%')->get();
+        }])
+        ->orderByRaw('CASE WHEN id = 6 THEN 1 ELSE 0 END')
+        ->orderBy('name')
+        ->get();
 
         $allEmployeeIds = $branches->flatMap(fn ($b) => $b->employees->pluck('id'));
 

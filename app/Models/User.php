@@ -23,6 +23,7 @@ class User extends Authenticatable
         'employee_id',
         'can_approve_ot',
         'signature',
+        'profile_photo_path',
         'must_change_password',
     ];
 
@@ -34,10 +35,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at'    => 'datetime',
-            'password'             => 'hashed',
-            'permissions'          => 'array',
-            'can_approve_ot'       => 'boolean',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'permissions' => 'array',
+            'can_approve_ot' => 'boolean',
             'must_change_password' => 'boolean',
         ];
     }
@@ -50,6 +51,18 @@ class User extends Authenticatable
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if (! $this->profile_photo_path) {
+            return null;
+        }
+
+        return route('profile-photos.show', [
+            'user' => $this,
+            'filename' => basename($this->profile_photo_path),
+        ]);
     }
 
     public function isAdmin(): bool

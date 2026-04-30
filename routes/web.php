@@ -15,6 +15,7 @@ use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PayrollEntryRefundController;
 use App\Http\Controllers\PayrollEntryVariableDeductionController;
+use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScheduleUploadController;
 use App\Http\Controllers\SetupSignatureController;
@@ -32,6 +33,7 @@ Route::middleware("auth")->group(function () {
     Route::post("/setup-signature", [SetupSignatureController::class, "store"])->name("signature.setup.store");
     Route::post("/impersonation/exit", [ImpersonationController::class, "exit"])->name("impersonation.exit");
     Route::post("/push-subscriptions", [\App\Http\Controllers\PushSubscriptionController::class, "store"])->name("push-subscriptions.store");
+    Route::get("/profile-photos/{user}/{filename}", [ProfilePhotoController::class, "show"])->name("profile-photos.show");
 });
 
 Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(function () {
@@ -56,6 +58,8 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::get("/notifications", [\App\Http\Controllers\Staff\NotificationController::class, "index"])->name("notifications.index");
     Route::post("/notifications/mark-read", [\App\Http\Controllers\Staff\NotificationController::class, "markAllRead"])->name("notifications.mark-read");
     Route::get("/profile", [\App\Http\Controllers\Staff\ProfileController::class, "index"])->name("profile");
+    Route::post("/profile/photo", [\App\Http\Controllers\Staff\ProfileController::class, "updatePhoto"])->name("profile.photo");
+    Route::delete("/profile/photo", [\App\Http\Controllers\Staff\ProfileController::class, "destroyPhoto"])->name("profile.photo.destroy");
     Route::post("/profile/signature", [\App\Http\Controllers\Staff\ProfileController::class, "updateSignature"])->name("profile.signature");
     Route::get("/schedule", [\App\Http\Controllers\Staff\ScheduleController::class, "index"])->name("schedule");
     Route::get("/payslips", [\App\Http\Controllers\Staff\PayslipController::class, "index"])->name("payslips.index");
@@ -188,6 +192,7 @@ Route::middleware(["auth", "admin"])->group(function () {
         // Reports
         Route::get("reports/lates", [\App\Http\Controllers\ReportsController::class, "lates"])->name("reports.lates");
         Route::get("reports/overtime", [\App\Http\Controllers\ReportsController::class, "overtime"])->name("reports.overtime");
+        Route::get("reports/absences", [\App\Http\Controllers\ReportsController::class, "absences"])->name("reports.absences");
         Route::get("reports/thirteenth-month", [\App\Http\Controllers\ReportsController::class, "thirteenthMonth"])->name("reports.thirteenth-month");
 
         // Holidays

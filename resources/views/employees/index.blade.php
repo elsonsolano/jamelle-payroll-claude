@@ -119,9 +119,15 @@
                         onclick="window.location='{{ route('employees.show', $employee) }}'">
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                    {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1)) }}
-                                </div>
+                                @if($employee->user?->profile_photo_url)
+                                    <img src="{{ $employee->user->profile_photo_url }}"
+                                         alt="{{ $employee->full_name }}"
+                                         class="w-8 h-8 rounded-full object-cover flex-shrink-0">
+                                @else
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                        {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name, 0, 1)) }}
+                                    </div>
+                                @endif
                                 <div>
                                     <div class="flex items-center gap-1.5">
                                         <p class="font-medium text-gray-900">{{ $employee->full_name }}</p>

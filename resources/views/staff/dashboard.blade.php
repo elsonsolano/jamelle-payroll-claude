@@ -292,13 +292,19 @@
             @endif
         </a>
         {{-- Avatar --}}
-        <div class="relative w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
-             style="background:#cfe7a4; color:#3f5e1b; border:2px solid #fff; box-shadow:0 1px 2px rgba(15,20,16,.1);">
-            {{ $initials }}
+        <a href="{{ route('staff.profile') }}"
+           class="relative w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden"
+           style="background:#cfe7a4; color:#3f5e1b; border:2px solid #fff; box-shadow:0 1px 2px rgba(15,20,16,.1);"
+           aria-label="Profile">
+            @if(Auth::user()->profile_photo_url)
+                <img src="{{ Auth::user()->profile_photo_url }}" alt="" class="w-full h-full object-cover">
+            @else
+                {{ $initials }}
+            @endif
             @if($unread > 0)
                 <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white" style="background:#f4a53c;"></span>
             @endif
-        </div>
+        </a>
     </div>
 </div>
 

@@ -226,6 +226,21 @@ class PayrollComputationService
             );
         }
 
+        // When PhilHealth is enabled on the cutoff, recompute the PHILHEALTH Premium amount
+        // on every generation/regeneration so it stays accurate as basic_pay changes.
+        if ($cutoff->has_philhealth && $cutoff->philhealth_partner_cutoff_id) {
+            $partnerEntry = PayrollEntry::where('payroll_cutoff_id', $cutoff->philhealth_partner_cutoff_id)
+                ->where('employee_id', $employee->id)
+                ->first();
+            $partnerBasicPay  = $partnerEntry ? (float) $partnerEntry->basic_pay : 0;
+            $philhealthAmount = round(($partnerBasicPay + $basicPay) * 0.025, 2);
+
+            PayrollEntryVariableDeduction::updateOrCreate(
+                ['payroll_entry_id' => $entry->id, 'description' => 'PHILHEALTH Premium'],
+                ['amount' => $philhealthAmount],
+            );
+        }
+
         $totalDeductions = round(
             (float) $entry->payrollDeductions()->sum('amount') +
             (float) $entry->payrollVariableDeductions()->sum('amount'),

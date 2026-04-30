@@ -13,12 +13,6 @@
 
     @php $fmt12 = fn($t) => $t ? date('g:i A', strtotime($t)) : '—'; @endphp
 
-    @if(session('success'))
-        <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-            {{ session('success') }}
-        </div>
-    @endif
-
     @if($errors->any())
         <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
             {{ $errors->first() }}
@@ -222,8 +216,11 @@
                                         <span class="text-xs text-indigo-400">to {{ $fmt12($req->requested_work_end_time) }}</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3 text-gray-600 max-w-[200px]">
-                                    <p class="line-clamp-2 text-xs leading-relaxed">{{ $req->reason }}</p>
+                                <td class="px-5 py-3 text-gray-600 max-w-[220px]">
+                                    <p class="line-clamp-2 hover:line-clamp-none focus:line-clamp-none text-xs leading-relaxed cursor-default"
+                                       tabindex="0">
+                                        {{ $req->reason }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-3 whitespace-nowrap">
                                     @if($req->status === 'pending')
@@ -263,7 +260,10 @@
                                             @endif
                                         </div>
                                     @elseif($req->status === 'rejected' && $req->rejection_reason)
-                                        <p class="text-xs text-red-500 max-w-[160px] text-right line-clamp-2">{{ $req->rejection_reason }}</p>
+                                        <p class="text-xs text-red-500 max-w-[160px] text-right line-clamp-2 hover:line-clamp-none focus:line-clamp-none cursor-default"
+                                           tabindex="0">
+                                            {{ $req->rejection_reason }}
+                                        </p>
                                     @endif
                                 </td>
                             </tr>
@@ -345,5 +345,4 @@
             </div>
         @endif
     @endif
-
 </x-app-layout>

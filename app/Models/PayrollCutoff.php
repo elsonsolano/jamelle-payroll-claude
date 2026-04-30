@@ -16,12 +16,15 @@ class PayrollCutoff extends Model
         'status',
         'void_reason',
         'finalized_at',
+        'has_philhealth',
+        'philhealth_partner_cutoff_id',
     ];
 
     protected $casts = [
-        'start_date'  => 'date',
-        'end_date'    => 'date',
-        'finalized_at'=> 'datetime',
+        'start_date'    => 'date',
+        'end_date'      => 'date',
+        'finalized_at'  => 'datetime',
+        'has_philhealth'=> 'boolean',
     ];
 
     public function branch(): BelongsTo
@@ -42,5 +45,10 @@ class PayrollCutoff extends Model
     public function employeeAttendanceBadges(): HasMany
     {
         return $this->hasMany(EmployeeAttendanceBadge::class);
+    }
+
+    public function philhealthPartnerCutoff(): BelongsTo
+    {
+        return $this->belongsTo(PayrollCutoff::class, 'philhealth_partner_cutoff_id');
     }
 }
