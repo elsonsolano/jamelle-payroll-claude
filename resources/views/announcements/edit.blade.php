@@ -40,6 +40,7 @@
                     function announcementEditor() {
                         return {
                             savedRange: null,
+                            selectedImage: null,
 
                             init() {
                                 document.execCommand('defaultParagraphSeparator', false, 'p');
@@ -47,6 +48,24 @@
                                 const content = tpl ? tpl.innerHTML.trim() : '';
                                 this.$refs.editorEl.innerHTML = content || '<p><br></p>';
                                 this.$refs.bodyField.value = this.$refs.editorEl.innerHTML;
+
+                                this.$refs.editorEl.addEventListener('click', (e) => {
+                                    if (e.target.tagName === 'IMG') {
+                                        this.selectImage(e.target);
+                                        return;
+                                    }
+
+                                    this.clearImageSelection();
+                                });
+
+                                this.$refs.editorEl.addEventListener('keydown', (e) => {
+                                    if (!this.selectedImage || !['Backspace', 'Delete'].includes(e.key)) {
+                                        return;
+                                    }
+
+                                    e.preventDefault();
+                                    this.removeSelectedImage();
+                                });
 
                                 // Continuously track selection so we can restore it after a
                                 // toolbar button click moves focus away from the editor.
@@ -62,7 +81,36 @@
                             },
 
                             sync() {
-                                this.$refs.bodyField.value = this.$refs.editorEl.innerHTML;
+                                const content = this.$refs.editorEl.cloneNode(true);
+                                content.querySelectorAll('img').forEach((image) => {
+                                    image.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2');
+                                });
+                                this.$refs.bodyField.value = content.innerHTML;
+                            },
+
+                            selectImage(image) {
+                                this.clearImageSelection();
+                                this.selectedImage = image;
+                                image.classList.add('ring-2', 'ring-red-400', 'ring-offset-2');
+                            },
+
+                            clearImageSelection() {
+                                if (this.selectedImage) {
+                                    this.selectedImage.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2');
+                                }
+
+                                this.selectedImage = null;
+                            },
+
+                            removeSelectedImage() {
+                                if (!this.selectedImage) {
+                                    return;
+                                }
+
+                                const image = this.selectedImage;
+                                this.clearImageSelection();
+                                image.remove();
+                                this.sync();
                             },
 
                             restoreSelection() {
@@ -77,6 +125,7 @@
                             },
 
                             exec(cmd, value = null) {
+                                this.clearImageSelection();
                                 this.restoreSelection();
                                 if (cmd === 'formatBlock' && value && !/^</.test(value)) {
                                     value = '<' + value + '>';
@@ -88,6 +137,7 @@
                             insertLink() {
                                 const url = prompt('Enter URL (include https://):');
                                 if (!url) return;
+                                this.clearImageSelection();
                                 this.restoreSelection();
                                 document.execCommand('createLink', false, url);
                                 this.sync();
@@ -103,6 +153,7 @@
                                     const r = await fetch('{{ route('announcements.upload-image') }}', { method: 'POST', body: fd });
                                     if (!r.ok) throw new Error();
                                     const d = await r.json();
+                                    this.clearImageSelection();
                                     this.restoreSelection();
                                     document.execCommand('insertImage', false, d.url);
                                     this.sync();
@@ -164,6 +215,10 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     <input type="file" @change="uploadImage($event)" accept="image/*" class="hidden">
                                 </label>
+                                <button type="button" x-show="selectedImage" @mousedown.prevent @click="removeSelectedImage()"
+                                        class="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition" title="Remove selected image">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0h10"/></svg>
+                                </button>
                             </div>
 
                             {{-- Editable area --}}
