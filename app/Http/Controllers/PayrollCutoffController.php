@@ -77,7 +77,11 @@ class PayrollCutoffController extends Controller
             return $this->pdf($cutoff);
         }
 
-        $cutoff->load('branch');
+        $cutoff->load(['branch', 'philhealthPartnerCutoff.branch']);
+        $partnerEntryCount = $cutoff->has_philhealth && $cutoff->philhealthPartnerCutoff
+            ? $cutoff->philhealthPartnerCutoff->payrollEntries()->count()
+            : null;
+
         $entries = $cutoff->payrollEntries()
             ->with('employee')
             ->join('employees', 'employees.id', '=', 'payroll_entries.employee_id')
@@ -119,7 +123,7 @@ class PayrollCutoffController extends Controller
         }
         $pendingDtrCount = $pendingDtrQuery->count();
 
-        return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary', 'pendingDtrCount'));
+        return view('payroll.cutoffs.show', compact('cutoff', 'entries', 'summary', 'pendingDtrCount', 'partnerEntryCount'));
     }
 
     public function pdf(PayrollCutoff $cutoff): Response
@@ -172,20 +176,40 @@ class PayrollCutoffController extends Controller
     public function edit(PayrollCutoff $cutoff): View
     {
         $branches = Branch::orderBy('name')->get();
-        return view('payroll.cutoffs.edit', compact('cutoff', 'branches'));
+
+        $partnerOptions = PayrollCutoff::where('branch_id', $cutoff->branch_id)
+            ->where('id', '!=', $cutoff->id)
+            ->where('status', '!=', 'voided')
+            ->whereYear('end_date', $cutoff->end_date->year)
+            ->whereMonth('end_date', $cutoff->end_date->month)
+            ->orderBy('end_date')
+            ->get();
+
+        $suggestedPartnerId = $cutoff->philhealth_partner_cutoff_id
+            ?? ($cutoff->end_date->day > 15
+                ? $partnerOptions->first(fn ($c) => $c->end_date->day <= 15)?->id
+                : null);
+
+        return view('payroll.cutoffs.edit', compact('cutoff', 'branches', 'partnerOptions', 'suggestedPartnerId'));
     }
 
     public function update(Request $request, PayrollCutoff $cutoff): RedirectResponse
     {
         $validated = $request->validate([
-            'branch_id'  => 'required|exists:branches,id',
-            'name'       => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
-            'status'     => 'required|in:draft,processing,finalized,voided',
+            'branch_id'                    => 'required|exists:branches,id',
+            'name'                         => 'required|string|max:255',
+            'start_date'                   => 'required|date',
+            'end_date'                     => 'required|date|after_or_equal:start_date',
+            'status'                       => 'required|in:draft,processing,finalized,voided',
+            'philhealth_partner_cutoff_id' => 'nullable|exists:payroll_cutoffs,id',
         ]);
 
-        $cutoff->update($validated);
+        $hasPhilhealth = $request->boolean('has_philhealth');
+
+        $cutoff->update(array_merge($validated, [
+            'has_philhealth'               => $hasPhilhealth,
+            'philhealth_partner_cutoff_id' => $hasPhilhealth ? ($validated['philhealth_partner_cutoff_id'] ?? null) : null,
+        ]));
 
         return redirect()->route('payroll.cutoffs.show', $cutoff)->with('success', 'Cutoff updated successfully.');
     }

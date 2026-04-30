@@ -94,6 +94,47 @@
         </select>
         @error('status')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
+
+    <div x-data="{ hasPhilhealth: {{ old('has_philhealth', $cutoff->has_philhealth) ? 'true' : 'false' }} }"
+         class="rounded-lg border border-gray-200 p-4 space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" name="has_philhealth" value="1"
+                   x-model="hasPhilhealth"
+                   class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="text-sm font-medium text-gray-700">Apply PhilHealth Deduction to this cutoff</span>
+        </label>
+
+        <div x-show="hasPhilhealth" x-cloak class="space-y-2 pl-7">
+            @if($partnerOptions->isEmpty())
+                <p class="text-xs text-amber-600">No other cutoffs found for this branch in the same month. Generate the partner cutoff first.</p>
+            @else
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Partner Cutoff (1st half of month)</label>
+                    <select name="philhealth_partner_cutoff_id"
+                            class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">Select partner cutoff…</option>
+                        @foreach($partnerOptions as $partner)
+                            <option value="{{ $partner->id }}"
+                                {{ old('philhealth_partner_cutoff_id', $suggestedPartnerId) == $partner->id ? 'selected' : '' }}>
+                                {{ $partner->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('philhealth_partner_cutoff_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+            @endif
+            <div class="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-100 p-3">
+                <svg class="w-4 h-4 text-blue-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="text-xs text-blue-700 space-y-1">
+                    <p><strong>Formula:</strong> 2.5% × (partner basic pay + this cutoff's basic pay) per employee.</p>
+                    <p><strong>Step 1:</strong> Generate the partner cutoff's payroll first.</p>
+                    <p><strong>Step 2:</strong> Come back and generate this cutoff — PhilHealth amounts will be filled in automatically.</p>
+                </div>
+            </div>
+        </div>
+    </div>
     @endisset
 
 </div>

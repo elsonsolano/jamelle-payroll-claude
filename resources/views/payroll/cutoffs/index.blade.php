@@ -75,8 +75,14 @@
                         <td class="px-5 py-3 font-medium text-gray-900">
                             <div x-data="{ editing: false, name: '{{ addslashes($cutoff->name) }}' }" class="flex items-center gap-1.5">
                                 <template x-if="!editing">
-                                    <div class="flex items-center gap-1.5">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
                                         <a href="{{ route('payroll.cutoffs.show', $cutoff) }}" class="hover:text-indigo-600" x-text="name"></a>
+                                        @if($cutoff->has_philhealth)
+                                            <span class="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700 leading-none">
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                PhilHealth
+                                            </span>
+                                        @endif
                                         <button @click.prevent="editing = true"
                                                 class="text-gray-300 hover:text-gray-500 transition"
                                                 title="Rename">

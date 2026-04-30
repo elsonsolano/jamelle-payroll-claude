@@ -108,6 +108,21 @@
                     <p class="text-xs text-gray-400 mb-0.5">Duration</p>
                     <p class="font-semibold text-gray-800">{{ $cutoff->start_date->diffInDays($cutoff->end_date) + 1 }} days</p>
                 </div>
+                @if($cutoff->has_philhealth)
+                <div>
+                    <p class="text-xs text-gray-400 mb-0.5">PhilHealth</p>
+                    <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full
+                        {{ $cutoff->philhealthPartnerCutoff && $partnerEntryCount > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
+                        @if($cutoff->philhealthPartnerCutoff && $partnerEntryCount > 0)
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            Ready
+                        @else
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Needs attention
+                        @endif
+                    </span>
+                </div>
+                @endif
                 <div class="ml-auto">
                     <span @class([
                         'text-sm font-medium px-3 py-1 rounded-full',
@@ -144,6 +159,67 @@
                 <p class="text-sm text-red-600 mt-0.5">{{ $cutoff->void_reason }}</p>
             </div>
         </div>
+        @endif
+
+        {{-- PhilHealth Banner --}}
+        @if($cutoff->has_philhealth)
+            @php $partner = $cutoff->philhealthPartnerCutoff; @endphp
+
+            @if(!$partner)
+                {{-- No partner selected --}}
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-amber-700">PhilHealth deduction is enabled — setup incomplete</p>
+                        <p class="text-sm text-amber-600 mt-0.5">No partner cutoff has been selected. PhilHealth amounts cannot be computed without the 1st-half payroll to pair with.</p>
+                        @if(in_array($cutoff->status, ['draft', 'processing']))
+                        <a href="{{ route('payroll.cutoffs.edit', $cutoff) }}"
+                           class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900">
+                            Edit cutoff to select a partner
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                        @endif
+                    </div>
+                </div>
+
+            @elseif($partnerEntryCount === 0)
+                {{-- Partner exists but not generated yet --}}
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-amber-700">PhilHealth deduction is enabled — partner payroll not generated yet</p>
+                        <p class="text-sm text-amber-600 mt-0.5">
+                            The partner cutoff <strong>{{ $partner->name }}</strong> has no payroll entries yet.
+                            Generate its payroll first so the 1st-half basic pay is available, then come back and generate this one.
+                        </p>
+                        <a href="{{ route('payroll.cutoffs.show', $partner) }}"
+                           class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900">
+                            Go to {{ $partner->name }}
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+            @else
+                {{-- Partner ready --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-blue-700">PhilHealth deduction is enabled and ready</p>
+                        <p class="text-sm text-blue-600 mt-0.5">
+                            Partner Cutoff: <strong>{{ $partner->name }}</strong> ({{ $partnerEntryCount }} {{ Str::plural('employee', $partnerEntryCount) }}).
+                            When you Generate Payroll, each employee's <em>PHILHEALTH Premium</em> will be auto-set to
+                            <strong>2.5% of ({{ $partner->name }} basic pay + this cutoff's basic pay)</strong>.
+                        </p>
+                    </div>
+                </div>
+            @endif
         @endif
 
         @if($summary['total_employees'] > 0)
