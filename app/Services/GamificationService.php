@@ -16,6 +16,8 @@ class GamificationService
 
     const PTS_ON_TIME = 10;
 
+    const MIN_LEADERBOARD_POINTS = 10;
+
     const PTS_SAME_DAY = 5;
 
     const PTS_BADGE_NO_LATE_7 = 65;
@@ -334,6 +336,7 @@ class GamificationService
                     'is_viewer' => $employee->id === $viewer->id,
                 ];
             })
+            ->filter(fn (array $row) => $row['points'] >= self::MIN_LEADERBOARD_POINTS)
             ->sortBy([
                 ['points', 'desc'],
                 ['name', 'asc'],

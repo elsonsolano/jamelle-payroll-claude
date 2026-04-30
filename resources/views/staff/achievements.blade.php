@@ -226,6 +226,10 @@ nav.fixed {
         $podiumByPos[1] ?? null,
         $podiumByPos[3] ?? null,
     ]);
+    $hasLeaderboard = count($top10) > 0;
+    if ($hasLeaderboard && count($podiumOrder) < 3) {
+        $rows = $top10;
+    }
 
     $podiumMeta = [
         1 => ['crown'=>'👑','ht'=>72,'from'=>'#FFD700','to'=>'#B8860B','glow'=>'rgba(255,215,0,0.3)','chip_bg'=>'#FFD700','chip_text'=>'#5a3a00','size'=>52,'font'=>22],
@@ -530,7 +534,76 @@ function achievementsPage() {
         </div>
 
         {{-- Podium --}}
-        @if(count($podiumOrder) >= 3)
+        @if(!$hasLeaderboard)
+        <div style="background:#0d0d18;padding:18px 20px 0;">
+            <div style="position:relative;height:154px;margin:0 auto;max-width:320px;">
+                <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);
+                            color:rgba(245,158,11,.26);font-size:18px;line-height:1;">♛</div>
+
+                <div style="position:absolute;left:50%;top:30px;transform:translateX(-50%);
+                            width:54px;height:54px;border-radius:50%;
+                            border:2px dashed rgba(245,158,11,.32);
+                            background:rgba(245,158,11,.04);
+                            display:flex;align-items:center;justify-content:center;
+                            color:rgba(255,255,255,.08);font-size:18px;font-weight:900;">?</div>
+                <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+                            width:90px;height:72px;border-radius:8px 8px 0 0;
+                            background:linear-gradient(180deg,rgba(245,158,11,.13),rgba(245,158,11,.035));
+                            border:1px solid rgba(245,158,11,.12);border-bottom:none;
+                            display:flex;align-items:flex-start;justify-content:center;padding-top:24px;">
+                    <span style="font-size:23px;font-weight:900;color:rgba(255,255,255,.08);">#1</span>
+                </div>
+
+                <div style="position:absolute;left:22px;top:54px;width:46px;height:46px;border-radius:50%;
+                            border:2px dashed rgba(148,163,184,.2);
+                            background:rgba(255,255,255,.025);
+                            display:flex;align-items:center;justify-content:center;
+                            color:rgba(255,255,255,.07);font-size:15px;font-weight:900;">?</div>
+                <div style="position:absolute;left:0;bottom:0;width:88px;height:54px;border-radius:8px 8px 0 0;
+                            background:linear-gradient(180deg,rgba(148,163,184,.09),rgba(148,163,184,.025));
+                            border:1px solid rgba(148,163,184,.08);border-bottom:none;
+                            display:flex;align-items:flex-start;justify-content:center;padding-top:20px;">
+                    <span style="font-size:18px;font-weight:900;color:rgba(255,255,255,.07);">#2</span>
+                </div>
+
+                <div style="position:absolute;right:22px;top:62px;width:46px;height:46px;border-radius:50%;
+                            border:2px dashed rgba(180,83,9,.18);
+                            background:rgba(180,83,9,.025);
+                            display:flex;align-items:center;justify-content:center;
+                            color:rgba(255,255,255,.07);font-size:15px;font-weight:900;">?</div>
+                <div style="position:absolute;right:0;bottom:0;width:88px;height:44px;border-radius:8px 8px 0 0;
+                            background:linear-gradient(180deg,rgba(180,83,9,.08),rgba(180,83,9,.025));
+                            border:1px solid rgba(180,83,9,.07);border-bottom:none;
+                            display:flex;align-items:flex-start;justify-content:center;padding-top:15px;">
+                    <span style="font-size:18px;font-weight:900;color:rgba(255,255,255,.07);">#3</span>
+                </div>
+            </div>
+
+            <div style="padding:30px 10px 26px;text-align:center;">
+                <div style="width:68px;height:68px;border-radius:50%;margin:0 auto 18px;
+                            background:rgba(234,179,8,.035);
+                            border:1px solid rgba(234,179,8,.18);
+                            display:flex;align-items:center;justify-content:center;
+                            box-shadow:0 0 24px rgba(234,179,8,.08);">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                        <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"
+                              stroke="rgba(234,179,8,.68)" stroke-width="1.7"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 7H4v1a4 4 0 004 4M17 7h3v1a4 4 0 01-4 4"
+                              stroke="rgba(234,179,8,.68)" stroke-width="1.7"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-.01em;">
+                    No Champions Yet
+                </div>
+                <div style="font-size:13px;color:rgba(148,163,184,.78);font-weight:600;
+                            line-height:1.55;max-width:250px;margin:10px auto 0;">
+                    The leaderboard is waiting for its first hero. Start earning points and claim your spot!
+                </div>
+            </div>
+        </div>
+        @elseif(count($podiumOrder) >= 3)
         <div style="background:#0d0d18;padding-bottom:0;">
             <div style="display:flex;align-items:flex-end;gap:4px;padding:16px 20px 0;">
                 @foreach($podiumOrder as $person)
@@ -594,7 +667,23 @@ function achievementsPage() {
         @endif
 
         {{-- Rows #4-10 --}}
-        <div style="padding:4px 12px 8px;display:flex;flex-direction:column;gap:2px;">
+        <div style="padding:{{ $hasLeaderboard ? '4px 12px 8px' : '0 6px 8px' }};display:flex;flex-direction:column;gap:{{ $hasLeaderboard ? '2px' : '10px' }};">
+            @unless($hasLeaderboard)
+                @for($i = 0; $i < 3; $i++)
+                <div style="height:58px;border-radius:10px;
+                            background:rgba(255,255,255,{{ $i === 0 ? '.026' : ($i === 1 ? '.02' : '.015') }});
+                            border:1px solid rgba(255,255,255,{{ $i === 0 ? '.045' : ($i === 1 ? '.035' : '.025') }});
+                            display:flex;align-items:center;gap:12px;padding:0 14px;opacity:{{ 1 - ($i * .18) }};">
+                    <div style="width:22px;height:10px;border-radius:99px;background:rgba(255,255,255,.045);"></div>
+                    <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.045);"></div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="width:{{ [112, 92, 68][$i] }}px;max-width:80%;height:8px;border-radius:99px;background:rgba(255,255,255,.045);"></div>
+                        <div style="width:{{ [76, 62, 46][$i] }}px;max-width:60%;height:6px;border-radius:99px;background:rgba(255,255,255,.03);margin-top:7px;"></div>
+                    </div>
+                    <div style="width:32px;height:10px;border-radius:99px;background:rgba(255,255,255,.04);"></div>
+                </div>
+                @endfor
+            @endunless
             @foreach($rows as $i => $row)
             @php $av = $avatarFor($row['name']); @endphp
             <div class="ach-fadein"

@@ -161,7 +161,7 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $cutoff = $this->finalizedCutoff($branch);
         $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
 
-        $this->score($cutoff, $viewer, 5);
+        $this->score($cutoff, $viewer, 10);
 
         for ($i = 1; $i <= 11; $i++) {
             $employee = $this->staffEmployee($branch, 'Staff', str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'EMP'.$i);
@@ -176,6 +176,29 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $response->assertSee('Your rank');
         $response->assertSee('#12');
         $response->assertSee('Viewer Person');
+    }
+
+    public function test_leaderboard_shows_empty_champions_state_until_someone_reaches_ten_points(): void
+    {
+        $branch = $this->branch('Main');
+        $cutoff = $this->finalizedCutoff($branch);
+
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+        $nearMiss = $this->staffEmployee($branch, 'Almost', 'There', 'ALMOST');
+
+        $this->score($cutoff, $nearMiss, 9);
+
+        $response = $this->actingAs($viewer->user)->get(route('staff.achievements'));
+
+        $response->assertOk();
+        $response->assertSee('No Champions Yet');
+        $response->assertSee('The leaderboard is waiting for its first hero.');
+        $response->assertDontSee('Almost There');
+
+        $searchResponse = $this->actingAs($viewer->user)->getJson(route('staff.achievements.search', ['q' => 'Almost']));
+
+        $searchResponse->assertOk();
+        $searchResponse->assertExactJson(['results' => []]);
     }
 
     public function test_staff_can_search_leaderboard_for_rank_and_points_outside_top_10(): void
