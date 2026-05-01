@@ -219,6 +219,21 @@ nav.fixed {
     $hasMascot  = file_exists(public_path("images/rank-mascots/mascot-{$mascotFile}.png"));
     $viewerRankNum = $leaderboard['viewerRank']['rank'] ?? null;
     $viewerBranch  = $leaderboard['viewerRank']['branch'] ?? ($employee->branch?->name ?? '');
+    $commendationTypeMap = collect($commendationTypes)->keyBy('id');
+    $myCommendationEntries = collect($myCommendations['counts'] ?? [])
+        ->map(function ($count, $id) use ($commendationTypeMap) {
+            $trait = $commendationTypeMap->get($id);
+
+            if (! $trait || (int) $count <= 0) {
+                return null;
+            }
+
+            return $trait + ['count' => (int) $count];
+        })
+        ->filter()
+        ->sortByDesc('count')
+        ->values();
+    $myCommendationTotal = (int) ($myCommendations['total'] ?? 0);
 
     // Split leaderboard into podium (1-3) and rows (4-10)
     $top10  = $leaderboard['top10'];
@@ -533,61 +548,100 @@ function achievementsPage() {
 
         {{-- Rank card --}}
         <div style="background:rgba(255,255,255,.04);border:1px solid rgba(91,191,39,.2);
-                    border-radius:20px;padding:16px;margin-bottom:16px;
-                    display:flex;align-items:center;gap:14px;">
-            {{-- Mascot --}}
-            <div style="flex-shrink:0;width:58px;height:58px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                @if($hasMascot)
-                    <img src="{{ asset("images/rank-mascots/mascot-{$mascotFile}.png") }}"
-                         alt="{{ $rank['name'] }}"
-                         class="ach-mascot"
-                         style="width:58px;height:58px;object-fit:cover;">
-                @else
-                    {{-- Empty Cup SVG fallback --}}
-                    <svg width="58" height="58" viewBox="0 0 64 64" fill="none" class="ach-mascot">
-                        <circle cx="32" cy="36" r="18" fill="#D1FAE5" stroke="#6EE7B7" stroke-width="2"/>
-                        <circle cx="26" cy="34" r="2.5" fill="#065F46"/>
-                        <circle cx="38" cy="34" r="2.5" fill="#065F46"/>
-                        <path d="M26 42 Q32 47 38 42" stroke="#065F46" stroke-width="2" stroke-linecap="round" fill="none"/>
-                        <path d="M32 18 Q32 12 38 10" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                        <ellipse cx="38" cy="9" rx="5" ry="3.5" fill="#34D399" transform="rotate(-20 38 9)"/>
-                        <path d="M32 18 Q32 12 26 9" stroke="#34D399" stroke-width="2" stroke-linecap="round" fill="none"/>
-                        <ellipse cx="26" cy="9" rx="4" ry="3" fill="#6EE7B7" transform="rotate(20 26 9)"/>
-                        <circle cx="22" cy="38" r="3" fill="#FCA5A5" opacity=".5"/>
-                        <circle cx="42" cy="38" r="3" fill="#FCA5A5" opacity=".5"/>
-                    </svg>
-                @endif
-            </div>
+                    border-radius:20px;padding:16px;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                {{-- Mascot --}}
+                <div style="flex-shrink:0;width:58px;height:58px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                    @if($hasMascot)
+                        <img src="{{ asset("images/rank-mascots/mascot-{$mascotFile}.png") }}"
+                             alt="{{ $rank['name'] }}"
+                             class="ach-mascot"
+                             style="width:58px;height:58px;object-fit:cover;">
+                    @else
+                        {{-- Empty Cup SVG fallback --}}
+                        <svg width="58" height="58" viewBox="0 0 64 64" fill="none" class="ach-mascot">
+                            <circle cx="32" cy="36" r="18" fill="#D1FAE5" stroke="#6EE7B7" stroke-width="2"/>
+                            <circle cx="26" cy="34" r="2.5" fill="#065F46"/>
+                            <circle cx="38" cy="34" r="2.5" fill="#065F46"/>
+                            <path d="M26 42 Q32 47 38 42" stroke="#065F46" stroke-width="2" stroke-linecap="round" fill="none"/>
+                            <path d="M32 18 Q32 12 38 10" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                            <ellipse cx="38" cy="9" rx="5" ry="3.5" fill="#34D399" transform="rotate(-20 38 9)"/>
+                            <path d="M32 18 Q32 12 26 9" stroke="#34D399" stroke-width="2" stroke-linecap="round" fill="none"/>
+                            <ellipse cx="26" cy="9" rx="4" ry="3" fill="#6EE7B7" transform="rotate(20 26 9)"/>
+                            <circle cx="22" cy="38" r="3" fill="#FCA5A5" opacity=".5"/>
+                            <circle cx="42" cy="38" r="3" fill="#FCA5A5" opacity=".5"/>
+                        </svg>
+                    @endif
+                </div>
 
-            {{-- Rank info --}}
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.35);
-                            letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;">
-                    Your Rank
-                </div>
-                <div style="font-size:18px;font-weight:900;color:#5BBF27;letter-spacing:-.01em;">
-                    {{ $rank['name'] }}
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.3;">
-                    {{ $rank['desc'] }}
-                </div>
-            </div>
-
-            {{-- Points + rank position --}}
-            <div style="text-align:center;flex-shrink:0;">
-                <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;">
-                    {{ number_format($totalPoints) }}
-                </div>
-                <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);
-                            letter-spacing:.08em;text-transform:uppercase;margin-top:2px;">
-                    pts
-                </div>
-                @if($viewerRankNum)
-                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.25);margin-top:2px;">
-                        #{{ $viewerRankNum }}
+                {{-- Rank info --}}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.35);
+                                letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;">
+                        Your Rank
                     </div>
-                @endif
+                    <div style="font-size:18px;font-weight:900;color:#5BBF27;letter-spacing:-.01em;">
+                        {{ $rank['name'] }}
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.3;">
+                        {{ $rank['desc'] }}
+                    </div>
+                </div>
+
+                {{-- Points + rank position --}}
+                <div style="text-align:center;flex-shrink:0;">
+                    <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;">
+                        {{ number_format($totalPoints) }}
+                    </div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);
+                                letter-spacing:.08em;text-transform:uppercase;margin-top:2px;">
+                        pts
+                    </div>
+                    @if($viewerRankNum)
+                        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.25);margin-top:2px;">
+                            #{{ $viewerRankNum }}
+                        </div>
+                    @endif
+                </div>
             </div>
+
+            @if($myCommendationTotal > 0)
+                <div style="height:1px;background:rgba(255,255,255,.08);margin:14px 0 10px;"></div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px;">
+                    <div style="display:flex;align-items:center;gap:6px;min-width:0;
+                                font-size:9px;font-weight:900;color:rgba(255,255,255,.38);
+                                letter-spacing:.1em;text-transform:uppercase;">
+                        <span style="font-size:11px;letter-spacing:0;">👏</span>
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            Commendations from teammates
+                        </span>
+                    </div>
+                    <div style="flex-shrink:0;font-size:10px;font-weight:900;color:#5BBF27;">
+                        {{ number_format($myCommendationTotal) }} total
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px;">
+                    @foreach($myCommendationEntries as $commendation)
+                        <div style="display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;
+                                    max-width:220px;padding:7px 11px;border-radius:99px;
+                                    background:{{ $commendation['color'] }}18;
+                                    border:1px solid {{ $commendation['color'] }}45;">
+                            <span style="font-size:12px;line-height:1;">{{ $commendation['icon'] }}</span>
+                            <span style="font-size:10px;font-weight:900;color:#fff;line-height:1.15;
+                                         overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                {{ $commendation['label'] }}
+                            </span>
+                            <span style="font-size:10px;font-weight:900;color:{{ $commendation['color'] }};
+                                         background:{{ $commendation['color'] }}25;border-radius:99px;
+                                         padding:2px 6px;line-height:1;flex-shrink:0;">
+                                ×{{ number_format($commendation['count']) }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         {{-- XP bar --}}

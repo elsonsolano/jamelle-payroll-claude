@@ -62,6 +62,7 @@ class AchievementsController extends Controller
             'noLateStreak' => $data['no_late_streak'],
             'rank' => $rank,
             'leaderboard' => $leaderboard,
+            'myCommendations' => $this->commendations->summaryFor($employee, Auth::user()),
             'commendationTypes' => $this->commendations->traitsForClient(),
         ]);
     }
