@@ -11,6 +11,7 @@ use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
 use App\Notifications\ScheduleChangeApproved;
 use App\Notifications\ScheduleChangeRejected;
+use App\Services\AttendanceRecalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,8 @@ use Illuminate\View\View;
 
 class ApprovalsController extends Controller
 {
+    public function __construct(private AttendanceRecalculationService $attendanceRecalculation) {}
+
     // ─────────────────────────────────────────────
     // Index — tabbed view: OT + Schedule Changes
     // ─────────────────────────────────────────────
@@ -124,6 +127,11 @@ class ApprovalsController extends Controller
             'approved_end_time'   => $isDayOff ? null : $validated['approved_end_time'],
             'daily_schedule_id'   => $daily->id,
         ]);
+
+        $this->attendanceRecalculation->recomputeDtrAndRefreshGamification(
+            $scheduleChangeRequest->employee,
+            $scheduleChangeRequest->date->toDateString(),
+        );
 
         $staffUser = $scheduleChangeRequest->employee->user;
         if ($staffUser) {

@@ -4,17 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\DailySchedule;
-use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
-use App\Services\DtrComputationService;
+use App\Services\AttendanceRecalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class EmployeeScheduleController extends Controller
 {
-    public function __construct(private DtrComputationService $computer) {}
+    public function __construct(private AttendanceRecalculationService $attendanceRecalculation) {}
     public function index(Employee $employee): View
     {
         $employee->load('branch');
@@ -49,7 +48,7 @@ class EmployeeScheduleController extends Controller
 
         // Recompute all existing DTRs so late/undertime reflects the new default schedule
         $employee->dtrs()->whereNotNull('time_in')->get()->each(function ($dtr) use ($employee) {
-            $this->recomputeDtr($employee, $dtr->date);
+            $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $dtr->date->toDateString());
         });
 
         return redirect()->route('employees.schedules.index', $employee)
@@ -88,7 +87,7 @@ class EmployeeScheduleController extends Controller
             ->whereNotNull('time_in')
             ->where('date', '>=', $validated['week_start_date'])
             ->get()
-            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+            ->each(fn ($dtr) => $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $dtr->date->toDateString()));
 
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule added successfully.');
@@ -115,7 +114,7 @@ class EmployeeScheduleController extends Controller
             ->whereNotNull('time_in')
             ->where('date', '>=', $validated['week_start_date'])
             ->get()
-            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+            ->each(fn ($dtr) => $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $dtr->date->toDateString()));
 
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule updated successfully.');
@@ -130,7 +129,7 @@ class EmployeeScheduleController extends Controller
             ->whereNotNull('time_in')
             ->where('date', '>=', $weekStartDate)
             ->get()
-            ->each(fn ($dtr) => $this->recomputeDtr($employee, $dtr->date->toDateString()));
+            ->each(fn ($dtr) => $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $dtr->date->toDateString()));
 
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Schedule deleted.');
@@ -162,7 +161,7 @@ class EmployeeScheduleController extends Controller
             $validated
         );
 
-        $this->recomputeDtr($employee, $validated['date']);
+        $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $validated['date']);
 
         $redirectTo = $request->input('redirect_to');
 
@@ -192,7 +191,7 @@ class EmployeeScheduleController extends Controller
 
         $daily->update($validated);
 
-        $this->recomputeDtr($employee, $validated['date']);
+        $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $validated['date']);
 
         $redirectTo = $request->input('redirect_to');
 
@@ -205,35 +204,10 @@ class EmployeeScheduleController extends Controller
         $date = $daily->date->toDateString();
         $daily->delete();
 
-        $this->recomputeDtr($employee, $date);
+        $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $date);
 
         return redirect()->route('employees.schedules.index', $employee)
             ->with('success', 'Daily schedule deleted.');
     }
 
-    private function recomputeDtr(Employee $employee, string $date): void
-    {
-        $dtr = Dtr::where('employee_id', $employee->id)->where('date', $date)->first();
-
-        if (! $dtr) {
-            return;
-        }
-
-        $computed = $this->computer->compute(
-            $employee,
-            $date,
-            $dtr->time_in,
-            $dtr->am_out,
-            $dtr->pm_in,
-            $dtr->time_out,
-            $dtr->overtime_hours > 0 ? (float) $dtr->overtime_hours : null,
-        );
-
-        $dtr->update([
-            'total_hours'    => $computed['total_hours'],
-            'late_mins'      => $computed['late_mins'],
-            'undertime_mins' => $computed['undertime_mins'],
-            'is_rest_day'    => $computed['is_rest_day'],
-        ]);
-    }
 }

@@ -8,7 +8,7 @@ use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\ScheduleChangeRequest;
 use App\Models\ScheduleUpload;
-use App\Services\DtrComputationService;
+use App\Services\AttendanceRecalculationService;
 use App\Services\ScheduleParserService;
 use Illuminate\Http\Request;
 
@@ -16,7 +16,7 @@ class ScheduleUploadController extends Controller
 {
     public function __construct(
         private ScheduleParserService $parser,
-        private DtrComputationService $computer,
+        private AttendanceRecalculationService $attendanceRecalculation,
     ) {}
 
     public function index(Request $request)
@@ -198,22 +198,7 @@ class ScheduleUploadController extends Controller
             }
 
             $employee = Employee::find($affected['employee_id']);
-            $computed = $this->computer->compute(
-                $employee,
-                $affected['date'],
-                $dtr->time_in,
-                $dtr->am_out,
-                $dtr->pm_in,
-                $dtr->time_out,
-                $dtr->overtime_hours > 0 ? (float) $dtr->overtime_hours : null,
-            );
-
-            $dtr->update([
-                'total_hours'    => $computed['total_hours'],
-                'late_mins'      => $computed['late_mins'],
-                'undertime_mins' => $computed['undertime_mins'],
-                'is_rest_day'    => $computed['is_rest_day'],
-            ]);
+            $this->attendanceRecalculation->recomputeDtrAndRefreshGamification($employee, $affected['date']);
         }
 
         $schedule->update(['status' => 'applied']);

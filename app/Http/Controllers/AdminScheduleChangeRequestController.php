@@ -6,12 +6,15 @@ use App\Models\DailySchedule;
 use App\Models\ScheduleChangeRequest;
 use App\Notifications\ScheduleChangeApproved;
 use App\Notifications\ScheduleChangeRejected;
+use App\Services\AttendanceRecalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AdminScheduleChangeRequestController extends Controller
 {
+    public function __construct(private AttendanceRecalculationService $attendanceRecalculation) {}
+
     public function approve(Request $request, ScheduleChangeRequest $scheduleChangeRequest): RedirectResponse
     {
         abort_unless(Auth::user()->hasPermission('schedules'), 403);
@@ -53,6 +56,11 @@ class AdminScheduleChangeRequestController extends Controller
             'approved_end_time'   => $isDayOff ? null : $validated['approved_end_time'],
             'daily_schedule_id'   => $daily->id,
         ]);
+
+        $this->attendanceRecalculation->recomputeDtrAndRefreshGamification(
+            $scheduleChangeRequest->employee,
+            $scheduleChangeRequest->date->toDateString(),
+        );
 
         $staffUser = $scheduleChangeRequest->employee->user;
         if ($staffUser) {

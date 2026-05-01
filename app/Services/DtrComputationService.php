@@ -22,7 +22,7 @@ class DtrComputationService
 
         // Check date-specific DailySchedule first (takes priority over weekly schedule)
         $dailySchedule = DailySchedule::where('employee_id', $employee->id)
-            ->where('date', $date)
+            ->whereDate('date', $date)
             ->first();
 
         if ($dailySchedule) {

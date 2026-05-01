@@ -10,6 +10,7 @@ use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use App\Notifications\OtApproved;
 use App\Notifications\OtRejected;
+use App\Services\AttendanceRecalculationService;
 use App\Services\DtrComputationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -25,7 +26,10 @@ use Illuminate\View\View;
 
 class DtrController extends Controller
 {
-    public function __construct(private DtrComputationService $computer) {}
+    public function __construct(
+        private DtrComputationService $computer,
+        private AttendanceRecalculationService $attendanceRecalculation,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -413,6 +417,8 @@ class DtrController extends Controller
             'status_changed_at' => $statusChanged ? now()       : $dtr->status_changed_at,
             ...$computed,
         ]);
+
+        $this->attendanceRecalculation->refreshFinalizedGamificationForDtr($dtr->fresh());
 
         return redirect()->route('dtr.show', $dtr)
             ->with('success', 'DTR updated successfully.');

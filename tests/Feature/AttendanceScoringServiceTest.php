@@ -14,6 +14,7 @@ use App\Models\Holiday;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollEntry;
 use App\Services\AttendanceBadgeService;
+use App\Services\AttendanceRecalculationService;
 use App\Services\AttendanceScoringService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -356,5 +357,94 @@ class AttendanceScoringServiceTest extends TestCase
                 && $item->rule_key === AttendanceScoringService::RULE_LATE_PENALTY
                 && $item->metadata['schedule_source'] === 'employee_schedule'
         ));
+    }
+
+    public function test_schedule_correction_recomputes_dtr_and_finalized_gamification_score(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Main',
+            'address' => 'Test',
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $employee = Employee::create([
+            'first_name' => 'Maya',
+            'last_name' => 'Santos',
+            'employee_code' => 'EMP-004',
+            'branch_id' => $branch->id,
+            'salary_type' => 'daily',
+            'rate' => 500,
+            'active' => true,
+        ]);
+        $employee->forceFill([
+            'created_at' => '2026-04-30 10:00:00',
+            'updated_at' => '2026-04-30 10:00:00',
+        ])->save();
+
+        EmployeeSchedule::create([
+            'employee_id' => $employee->id,
+            'week_start_date' => '2026-05-01',
+            'rest_days' => [],
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $cutoff = PayrollCutoff::create([
+            'branch_id' => $branch->id,
+            'name' => 'Corrected Schedule',
+            'start_date' => '2026-05-01',
+            'end_date' => '2026-05-01',
+            'status' => 'finalized',
+            'finalized_at' => '2026-05-02 10:00:00',
+        ]);
+
+        PayrollEntry::create([
+            'payroll_cutoff_id' => $cutoff->id,
+            'employee_id' => $employee->id,
+        ]);
+
+        $dtr = Dtr::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-05-01',
+            'time_in' => '12:35',
+            'am_out' => '16:00',
+            'pm_in' => '17:00',
+            'time_out' => '21:00',
+            'total_hours' => 7.4167,
+            'late_mins' => 215,
+            'undertime_mins' => 0,
+            'overtime_hours' => 0,
+            'ot_status' => 'none',
+            'is_rest_day' => false,
+        ]);
+
+        $score = app(AttendanceScoringService::class)->scoreEmployeeForCutoff($cutoff, $employee);
+
+        $this->assertSame(-5, $score->total_points);
+        $this->assertSame(1, $score->late_days);
+        $this->assertTrue($score->items->contains('rule_key', AttendanceScoringService::RULE_LATE_PENALTY));
+
+        DailySchedule::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-05-01',
+            'work_start_time' => '13:00',
+            'work_end_time' => '22:00',
+            'is_day_off' => false,
+        ]);
+
+        app(AttendanceRecalculationService::class)
+            ->recomputeDtrAndRefreshGamification($employee, '2026-05-01');
+
+        $dtr->refresh();
+        $score->refresh()->load('items');
+
+        $this->assertSame(0, (int) $dtr->late_mins);
+        $this->assertSame(85, $score->total_points);
+        $this->assertSame(1, $score->on_time_days);
+        $this->assertSame(0, $score->late_days);
+        $this->assertFalse($score->items->contains('rule_key', AttendanceScoringService::RULE_LATE_PENALTY));
+        $this->assertTrue($score->items->contains('rule_key', AttendanceScoringService::RULE_NO_LATE));
+        $this->assertTrue($score->items->contains('rule_key', AttendanceScoringService::RULE_PERFECT_CUTOFF_BONUS));
     }
 }
