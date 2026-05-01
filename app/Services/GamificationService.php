@@ -241,7 +241,7 @@ class GamificationService
                             'date' => Carbon::parse($dateStr)->format('M j'),
                         ];
                     }
-                } else {
+                } elseif (! $isToday) {
                     $thisCutoffPts += self::PTS_PENALTY_ABSENT;
                     $pointsLog[] = [
                         'type' => 'penalty',
