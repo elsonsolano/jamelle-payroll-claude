@@ -334,15 +334,6 @@ class GamificationService
         }
 
         $employeeIds = $employees->pluck('id')->all();
-
-        // 60-day window covers both the streak lookback and any current cutoff period
-        $fromDate = today()->subDays(60)->toDateString();
-        $toDate = today()->toDateString();
-
-        // Fix 1+2: bulk-fill the schedule cache — eliminates O(N×D) per-day DB queries
-        $this->scoringService->preloadSchedules($employees, $fromDate, $toDate);
-
-        // One query per shared resource instead of one per employee
         $branchIds = $employees->pluck('branch_id')->unique()->filter()->values()->all();
 
         $cutoffsByBranch = PayrollCutoff::where('status', '!=', 'voided')
@@ -354,6 +345,26 @@ class GamificationService
             ->get()
             ->groupBy('branch_id');
 
+        $cutoffsByEmployee = $employees->mapWithKeys(function (Employee $employee) use ($cutoffsByBranch) {
+            return [
+                $employee->id => $cutoffsByBranch->get($employee->branch_id)?->first()
+                    ?? $this->virtualCurrentCutoff($employee),
+            ];
+        });
+
+        // 60-day window covers streak lookback; extending to cutoff end prevents
+        // future dates in the current cutoff from falling back to per-day queries.
+        $fromDate = today()->subDays(60)->toDateString();
+        $toDate = $cutoffsByEmployee
+            ->map(fn (PayrollCutoff $cutoff) => $cutoff->end_date)
+            ->filter()
+            ->push(today())
+            ->max()
+            ->toDateString();
+
+        $this->scoringService->preloadSchedules($employees, $fromDate, $toDate);
+
+        // One query per shared resource instead of one per employee
         $allDtrs = Dtr::whereIn('employee_id', $employeeIds)
             ->whereBetween('date', [$fromDate, $toDate])
             ->with('logEvents')
@@ -374,10 +385,8 @@ class GamificationService
             ->groupBy('employee_id');
 
         $allMapped = $employees
-            ->map(function (Employee $employee) use ($viewer, $cutoffsByBranch, $allDtrs, $allScores, $allBadges) {
-                $cutoff = $cutoffsByBranch->get($employee->branch_id)?->first()
-                    ?? $this->virtualCurrentCutoff($employee);
-
+            ->map(function (Employee $employee) use ($viewer, $cutoffsByEmployee, $allDtrs, $allScores, $allBadges) {
+                $cutoff = $cutoffsByEmployee->get($employee->id);
                 $cutoffId = $cutoff->id ?? null;
                 $employeeBadges = $allBadges->get($employee->id, collect());
 

@@ -332,15 +332,20 @@ class AttendanceScoringService
             ->get()
             ->groupBy('employee_id');
 
-        $period = CarbonPeriod::create($fromDate, $toDate);
+        $dates = collect(CarbonPeriod::create($fromDate, $toDate))
+            ->map(fn (Carbon $date) => [
+                'date' => $date->toDateString(),
+                'day_name' => $date->format('l'),
+            ])
+            ->all();
 
         foreach ($employees as $employee) {
             $empDailySchedules = $dailySchedules->get($employee->id, collect());
             // Already ordered desc — first() gives the most recent schedule for any date
             $empSchedules = $employeeSchedules->get($employee->id, collect());
 
-            foreach ($period as $date) {
-                $dateStr = $date->toDateString();
+            foreach ($dates as $date) {
+                $dateStr = $date['date'];
                 $cacheKey = $employee->id . ':' . $dateStr;
 
                 if (array_key_exists($cacheKey, $this->scheduleCache)) {
@@ -372,11 +377,10 @@ class AttendanceScoringService
                     continue;
                 }
 
-                $dayName = $date->format('l');
                 $restDays = $schedule->rest_days ?? [];
 
                 $this->scheduleCache[$cacheKey] = [
-                    'has_schedule' => ! in_array($dayName, $restDays, true) && (bool) $schedule->work_start_time,
+                    'has_schedule' => ! in_array($date['day_name'], $restDays, true) && (bool) $schedule->work_start_time,
                     'source' => 'employee_schedule',
                     'work_start_time' => $schedule->work_start_time,
                 ];

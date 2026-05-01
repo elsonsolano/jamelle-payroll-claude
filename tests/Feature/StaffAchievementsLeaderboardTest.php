@@ -9,8 +9,10 @@ use App\Models\Employee;
 use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use App\Models\User;
+use App\Services\GamificationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -242,6 +244,40 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $response = $this->actingAs($viewer->user)->get($leader->user->profile_photo_url);
 
         $response->assertOk();
+    }
+
+    public function test_leaderboard_preloads_schedules_without_per_employee_date_queries(): void
+    {
+        $branch = $this->branch('Main');
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+
+        $employees = collect([$viewer]);
+
+        for ($i = 1; $i <= 5; $i++) {
+            $employees->push($this->staffEmployee($branch, 'Staff', (string) $i, 'EMP'.$i));
+        }
+
+        foreach ($employees as $employee) {
+            EmployeeSchedule::create([
+                'employee_id' => $employee->id,
+                'week_start_date' => '2026-04-01',
+                'rest_days' => ['Sunday'],
+                'work_start_time' => '08:00',
+                'work_end_time' => '17:00',
+            ]);
+        }
+
+        $scheduleQueries = 0;
+
+        DB::listen(function ($query) use (&$scheduleQueries) {
+            if (str_contains($query->sql, 'daily_schedules') || str_contains($query->sql, 'employee_schedules')) {
+                $scheduleQueries++;
+            }
+        });
+
+        app(GamificationService::class)->leaderboard($viewer);
+
+        $this->assertLessThanOrEqual(2, $scheduleQueries);
     }
 
     public function test_staff_search_shows_empty_state_when_no_leaderboard_match_exists(): void
