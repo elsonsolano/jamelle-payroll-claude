@@ -316,7 +316,7 @@ class GamificationService
         $employees = Employee::query()
             ->where('active', true)
             ->whereHas('user', fn ($query) => $query->where('role', 'staff'))
-            ->with('branch')
+            ->with(['branch', 'user'])
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
@@ -325,6 +325,7 @@ class GamificationService
             return [
                 'top10' => [],
                 'allEntries' => [],
+                'allEmployees' => [],
                 'viewerRank' => null,
                 'viewerInTop10' => false,
                 'searchQuery' => trim((string) $search),
@@ -372,7 +373,7 @@ class GamificationService
             ->get()
             ->groupBy('employee_id');
 
-        $ranked = $employees
+        $allMapped = $employees
             ->map(function (Employee $employee) use ($viewer, $cutoffsByBranch, $allDtrs, $allScores, $allBadges) {
                 $cutoff = $cutoffsByBranch->get($employee->branch_id)?->first()
                     ?? $this->virtualCurrentCutoff($employee);
@@ -403,26 +404,33 @@ class GamificationService
                 );
 
                 return [
-                    'rank' => 0,
+                    'rank' => null,
                     'employee_id' => $employee->id,
                     'name' => $employee->full_name,
                     'branch' => $employee->branch?->name ?? 'No branch',
                     'points' => $points,
                     'rank_name' => $this->rankFor($points)['name'],
                     'is_viewer' => $employee->id === $viewer->id,
+                    'profile_photo_url' => $employee->user?->profile_photo_url,
                 ];
             })
-            ->filter(fn (array $row) => $row['points'] >= self::MIN_LEADERBOARD_POINTS)
             ->sortBy([
                 ['points', 'desc'],
                 ['name', 'asc'],
             ])
-            ->values()
-            ->map(function (array $row, int $index) {
-                $row['rank'] = $index + 1;
+            ->values();
 
-                return $row;
-            });
+        // Assign sequential rank only to leaderboard-eligible employees
+        $leaderboardRank = 0;
+        $allWithRanks = $allMapped->map(function (array $row) use (&$leaderboardRank) {
+            if ($row['points'] >= self::MIN_LEADERBOARD_POINTS) {
+                $row['rank'] = ++$leaderboardRank;
+            }
+
+            return $row;
+        });
+
+        $ranked = $allWithRanks->filter(fn (array $row) => $row['rank'] !== null)->values();
 
         $top = $ranked->take($limit)->values();
         $viewerRow = $ranked->firstWhere('employee_id', $viewer->id);
@@ -441,6 +449,7 @@ class GamificationService
         return [
             'top10' => $top->all(),
             'allEntries' => $ranked->all(),
+            'allEmployees' => $allWithRanks->all(),
             'viewerRank' => $viewerRow,
             'viewerInTop10' => $viewerRow ? $top->contains('employee_id', $viewer->id) : false,
             'searchQuery' => $searchQuery,

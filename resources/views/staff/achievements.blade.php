@@ -619,14 +619,20 @@ function achievementsPage() {
 
                     {{-- Avatar --}}
                     <div style="position:relative;">
-                        <div style="width:{{ $pm['size'] }}px;height:{{ $pm['size'] }}px;border-radius:50%;
-                                    background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
-                                    display:flex;align-items:center;justify-content:center;
-                                    font-size:{{ round($pm['size']*.32) }}px;font-weight:800;color:#fff;
-                                    letter-spacing:.02em;
-                                    {{ $pos===1 ? 'box-shadow:0 0 0 2px #0d0d18,0 0 0 4px '.$pm['from'].'80,0 0 16px '.$pm['from'].'40;' : '' }}">
-                            {{ $av['initials'] }}
-                        </div>
+                        @if($person['profile_photo_url'] ?? null)
+                            <img src="{{ $person['profile_photo_url'] }}" alt="{{ $person['name'] }}"
+                                 style="width:{{ $pm['size'] }}px;height:{{ $pm['size'] }}px;border-radius:50%;object-fit:cover;flex-shrink:0;
+                                        {{ $pos===1 ? 'box-shadow:0 0 0 2px #0d0d18,0 0 0 4px '.$pm['from'].'80,0 0 16px '.$pm['from'].'40;' : '' }}">
+                        @else
+                            <div style="width:{{ $pm['size'] }}px;height:{{ $pm['size'] }}px;border-radius:50%;
+                                        background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-size:{{ round($pm['size']*.32) }}px;font-weight:800;color:#fff;
+                                        letter-spacing:.02em;
+                                        {{ $pos===1 ? 'box-shadow:0 0 0 2px #0d0d18,0 0 0 4px '.$pm['from'].'80,0 0 16px '.$pm['from'].'40;' : '' }}">
+                                {{ $av['initials'] }}
+                            </div>
+                        @endif
                         {{-- Points chip --}}
                         <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
                                     background:{{ $pm['chip_bg'] }};color:{{ $pm['chip_text'] }};
@@ -695,12 +701,17 @@ function achievementsPage() {
                              color:{{ $row['is_viewer'] ? '#5BBF27' : 'rgba(255,255,255,.3)' }};">
                     #{{ $row['rank'] }}
                 </span>
-                <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;
-                            background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
-                            display:flex;align-items:center;justify-content:center;
-                            font-size:12px;font-weight:800;color:#fff;letter-spacing:.02em;">
-                    {{ $av['initials'] }}
-                </div>
+                @if($row['profile_photo_url'] ?? null)
+                    <img src="{{ $row['profile_photo_url'] }}" alt="{{ $row['name'] }}"
+                         style="width:36px;height:36px;border-radius:50%;flex-shrink:0;object-fit:cover;">
+                @else
+                    <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;
+                                background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:12px;font-weight:800;color:#fff;letter-spacing:.02em;">
+                        {{ $av['initials'] }}
+                    </div>
+                @endif
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:6px;">
                         <span style="font-size:13px;font-weight:700;color:#fff;
@@ -744,12 +755,17 @@ function achievementsPage() {
                 <span style="font-size:12px;font-weight:800;width:22px;text-align:center;flex-shrink:0;color:#5BBF27;">
                     #{{ $vr['rank'] }}
                 </span>
-                <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;
-                            background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
-                            display:flex;align-items:center;justify-content:center;
-                            font-size:12px;font-weight:800;color:#fff;letter-spacing:.02em;">
-                    {{ $av['initials'] }}
-                </div>
+                @if($vr['profile_photo_url'] ?? null)
+                    <img src="{{ $vr['profile_photo_url'] }}" alt="{{ $vr['name'] }}"
+                         style="width:36px;height:36px;border-radius:50%;flex-shrink:0;object-fit:cover;">
+                @else
+                    <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;
+                                background:linear-gradient(135deg,{{ $av['from'] }},{{ $av['to'] }});
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:12px;font-weight:800;color:#fff;letter-spacing:.02em;">
+                        {{ $av['initials'] }}
+                    </div>
+                @endif
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:6px;">
                         <span style="font-size:13px;font-weight:700;color:#fff;
@@ -967,12 +983,18 @@ function achievementsPage() {
                                        background:rgba(255,255,255,.045);
                                        border:1px solid rgba(255,255,255,.08);
                                        color:inherit;text-align:left;cursor:pointer;">
-                            <div :style="`width:42px;height:42px;border-radius:50%;flex-shrink:0;
-                                          background:linear-gradient(135deg,${avatarGradient(player.name)[0]},${avatarGradient(player.name)[1]});
-                                          display:flex;align-items:center;justify-content:center;
-                                          font-size:13px;font-weight:900;color:#fff;letter-spacing:.02em;`"
-                                 x-text="avatarInitials(player.name)">
-                            </div>
+                            <template x-if="player.profile_photo_url">
+                                <img :src="player.profile_photo_url" :alt="player.name"
+                                     style="width:42px;height:42px;border-radius:50%;flex-shrink:0;object-fit:cover;">
+                            </template>
+                            <template x-if="!player.profile_photo_url">
+                                <div :style="`width:42px;height:42px;border-radius:50%;flex-shrink:0;
+                                              background:linear-gradient(135deg,${avatarGradient(player.name)[0]},${avatarGradient(player.name)[1]});
+                                              display:flex;align-items:center;justify-content:center;
+                                              font-size:13px;font-weight:900;color:#fff;letter-spacing:.02em;`"
+                                     x-text="avatarInitials(player.name)">
+                                </div>
+                            </template>
                             <div style="flex:1;min-width:0;">
                                 <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.25;
                                             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
@@ -988,7 +1010,7 @@ function achievementsPage() {
                                     <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);"> pts</span>
                                 </div>
                                 <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.3);margin-top:1px;"
-                                     x-text="`#${player.rank}`"></div>
+                                     x-text="player.rank ? `#${player.rank}` : '—'"></div>
                             </div>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
                                 <path d="M9 18l6-6-6-6" stroke="rgba(255,255,255,.25)" stroke-width="2"
@@ -1021,13 +1043,22 @@ function achievementsPage() {
                                     border-radius:99px;padding:4px 10px;
                                     color:#5BBF27;font-size:11px;font-weight:900;"
                              x-text="`#${selectedPlayer?.rank || '?'}`"></div>
-                        <div :style="`width:78px;height:78px;border-radius:50%;margin:0 auto 12px;
-                                      background:linear-gradient(135deg,${avatarGradient(selectedPlayer?.name||'')[0]},${avatarGradient(selectedPlayer?.name||'')[1]});
-                                      display:flex;align-items:center;justify-content:center;
-                                      font-size:24px;font-weight:900;color:#fff;
-                                      border:3px solid #0d0d18;
-                                      box-shadow:0 0 0 2px ${avatarGradient(selectedPlayer?.name||'')[0]},0 8px 24px rgba(0,0,0,.35);`"
-                             x-text="avatarInitials(selectedPlayer?.name || '')"></div>
+                        <template x-if="selectedPlayer?.profile_photo_url">
+                            <img :src="selectedPlayer.profile_photo_url" :alt="selectedPlayer.name"
+                                 style="width:78px;height:78px;border-radius:50%;margin:0 auto 12px;
+                                        object-fit:cover;display:block;
+                                        border:3px solid #0d0d18;
+                                        box-shadow:0 0 0 2px rgba(91,191,39,.6),0 8px 24px rgba(0,0,0,.35);">
+                        </template>
+                        <template x-if="!selectedPlayer?.profile_photo_url">
+                            <div :style="`width:78px;height:78px;border-radius:50%;margin:0 auto 12px;
+                                          background:linear-gradient(135deg,${avatarGradient(selectedPlayer?.name||'')[0]},${avatarGradient(selectedPlayer?.name||'')[1]});
+                                          display:flex;align-items:center;justify-content:center;
+                                          font-size:24px;font-weight:900;color:#fff;
+                                          border:3px solid #0d0d18;
+                                          box-shadow:0 0 0 2px ${avatarGradient(selectedPlayer?.name||'')[0]},0 8px 24px rgba(0,0,0,.35);`"
+                                 x-text="avatarInitials(selectedPlayer?.name || '')"></div>
+                        </template>
                         <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.2;"
                              x-text="selectedPlayer?.name"></div>
                         <div style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;
