@@ -7,16 +7,18 @@ use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
+use App\Models\Holiday;
 use App\Models\PayrollCutoff;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use App\Services\GamificationService;
 
 class AttendanceScoringService
 {
     private array $scheduleCache = [];
+
+    private array $holidayCache = [];
 
     public const RULE_NO_LATE = 'no_late_reward';
 
@@ -92,15 +94,22 @@ class AttendanceScoringService
         $streak = 0;
 
         while ($date->gte($floor)) {
-            $schedule = $this->scheduledWorkdayFor($employee, $date->toDateString());
+            $dateString = $date->toDateString();
+            $schedule = $this->scheduledWorkdayFor($employee, $dateString);
+            $dtr = $dtrs->get($dateString);
 
             if (! $schedule['has_schedule']) {
-                $date->subDay();
+                if ($schedule['source'] === 'holiday' && $dtr?->time_in) {
+                    $schedule = $this->scheduledWorkdayFor($employee, $dateString, false);
+                }
 
-                continue;
+                if (! $schedule['has_schedule']) {
+                    $date->subDay();
+
+                    continue;
+                }
             }
 
-            $dtr = $dtrs->get($date->toDateString());
             if (! $dtr || ! $this->isCompleteDtr($dtr)) {
                 break;
             }
@@ -110,6 +119,17 @@ class AttendanceScoringService
         }
 
         return $streak;
+    }
+
+    public function scheduledWorkdayForDtr(Employee $employee, string $date, ?Dtr $dtr): array
+    {
+        $schedule = $this->scheduledWorkdayFor($employee, $date);
+
+        if ($schedule['has_schedule'] || $schedule['source'] !== 'holiday' || ! $dtr?->time_in) {
+            return $schedule;
+        }
+
+        return $this->scheduledWorkdayFor($employee, $date, false);
     }
 
     private function scorePeriod(PayrollCutoff $cutoff, Employee $employee, Collection|\Illuminate\Support\Collection $dtrs): array
@@ -137,15 +157,14 @@ class AttendanceScoringService
                 continue;
             }
 
-            $schedule = $this->scheduledWorkdayFor($employee, $workDate);
+            $dtr = $dtrs->get($workDate);
+            $schedule = $this->scheduledWorkdayForDtr($employee, $workDate, $dtr);
 
             if (! $schedule['has_schedule']) {
                 continue;
             }
 
             $scheduledWorkdays++;
-
-            $dtr = $dtrs->get($workDate);
             if (! $dtr || ! $dtr->time_in) {
                 $absentDays++;
                 $totals['total_points'] += GamificationService::PTS_PENALTY_ABSENT;
@@ -265,9 +284,9 @@ class AttendanceScoringService
             ->lte(Carbon::createFromTimeString($dtr->time_in));
     }
 
-    public function scheduledWorkdayFor(Employee $employee, string $date): array
+    public function scheduledWorkdayFor(Employee $employee, string $date, bool $excludeHolidays = true): array
     {
-        $cacheKey = $employee->id . ':' . $date;
+        $cacheKey = $employee->id.':'.$date.':'.($excludeHolidays ? 'exclude_holidays' : 'include_holidays');
         if (array_key_exists($cacheKey, $this->scheduleCache)) {
             return $this->scheduleCache[$cacheKey];
         }
@@ -281,6 +300,14 @@ class AttendanceScoringService
                 'has_schedule' => ! $dailySchedule->is_day_off && (bool) $dailySchedule->work_start_time,
                 'source' => 'daily_schedule',
                 'work_start_time' => $dailySchedule->work_start_time,
+            ];
+        }
+
+        if ($excludeHolidays && $this->isHoliday($date)) {
+            return $this->scheduleCache[$cacheKey] = [
+                'has_schedule' => false,
+                'source' => 'holiday',
+                'work_start_time' => null,
             ];
         }
 
@@ -318,6 +345,10 @@ class AttendanceScoringService
         }
 
         $employeeIds = $employees->pluck('id')->all();
+        $holidayDates = Holiday::whereBetween('date', [$fromDate, $toDate])
+            ->pluck('date')
+            ->map(fn ($date) => $date instanceof Carbon ? $date->toDateString() : Carbon::parse($date)->toDateString())
+            ->flip();
 
         // One query for all daily overrides in the date range
         $dailySchedules = DailySchedule::whereIn('employee_id', $employeeIds)
@@ -346,7 +377,7 @@ class AttendanceScoringService
 
             foreach ($dates as $date) {
                 $dateStr = $date['date'];
-                $cacheKey = $employee->id . ':' . $dateStr;
+                $cacheKey = $employee->id.':'.$dateStr.':exclude_holidays';
 
                 if (array_key_exists($cacheKey, $this->scheduleCache)) {
                     continue;
@@ -360,6 +391,17 @@ class AttendanceScoringService
                         'source' => 'daily_schedule',
                         'work_start_time' => $dailySchedule->work_start_time,
                     ];
+
+                    continue;
+                }
+
+                if ($holidayDates->has($dateStr)) {
+                    $this->scheduleCache[$cacheKey] = [
+                        'has_schedule' => false,
+                        'source' => 'holiday',
+                        'work_start_time' => null,
+                    ];
+
                     continue;
                 }
 
@@ -374,6 +416,7 @@ class AttendanceScoringService
                         'source' => null,
                         'work_start_time' => null,
                     ];
+
                     continue;
                 }
 
@@ -422,5 +465,14 @@ class AttendanceScoringService
             ->copy();
 
         return $employeeStart->gt($launch) ? $employeeStart : $launch;
+    }
+
+    private function isHoliday(string $date): bool
+    {
+        if (! array_key_exists($date, $this->holidayCache)) {
+            $this->holidayCache[$date] = Holiday::whereDate('date', $date)->exists();
+        }
+
+        return $this->holidayCache[$date];
     }
 }

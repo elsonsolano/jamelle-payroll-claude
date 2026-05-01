@@ -7,6 +7,7 @@ use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
+use App\Models\Holiday;
 use App\Models\PayrollEntry;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -18,11 +19,11 @@ class ReportsController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
 
-        $from     = $request->input('from', now()->startOfMonth()->toDateString());
-        $to       = $request->input('to', now()->toDateString());
+        $from = $request->input('from', now()->startOfMonth()->toDateString());
+        $to = $request->input('to', now()->toDateString());
         $branchId = $request->input('branch_id');
-        $search   = $request->input('search');
-        $status   = $request->input('status'); // approved | pending | rejected | '' (all)
+        $search = $request->input('search');
+        $status = $request->input('status'); // approved | pending | rejected | '' (all)
 
         $query = Dtr::query()
             ->where('ot_status', '!=', 'none')
@@ -32,13 +33,13 @@ class ReportsController extends Controller
             ->orderBy('date');
 
         if ($branchId) {
-            $query->whereHas('employee', fn($q) => $q->where('branch_id', $branchId));
+            $query->whereHas('employee', fn ($q) => $q->where('branch_id', $branchId));
         }
 
         if ($search) {
             $query->whereHas('employee', function ($q) use ($search) {
                 $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -50,15 +51,16 @@ class ReportsController extends Controller
             ->groupBy('employee_id')
             ->map(function ($dtrs) {
                 $employee = $dtrs->first()->employee;
+
                 return [
-                    'employee'           => $employee,
-                    'occurrences'        => $dtrs->count(),
-                    'total_ot_hours'     => $dtrs->sum('overtime_hours'),
-                    'pending_count'      => $dtrs->where('ot_status', 'pending')->count(),
-                    'dtrs'               => $dtrs->sortBy('date')->values(),
+                    'employee' => $employee,
+                    'occurrences' => $dtrs->count(),
+                    'total_ot_hours' => $dtrs->sum('overtime_hours'),
+                    'pending_count' => $dtrs->where('ot_status', 'pending')->count(),
+                    'dtrs' => $dtrs->sortBy('date')->values(),
                 ];
             })
-            ->sortBy(fn($row) => $row['employee']->full_name)
+            ->sortBy(fn ($row) => $row['employee']->full_name)
             ->values();
 
         return view('reports.overtime', compact('branches', 'grouped', 'from', 'to', 'branchId', 'search', 'status'));
@@ -68,10 +70,10 @@ class ReportsController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
 
-        $from     = $request->input('from', now()->startOfMonth()->toDateString());
-        $to       = $request->input('to', now()->toDateString());
+        $from = $request->input('from', now()->startOfMonth()->toDateString());
+        $to = $request->input('to', now()->toDateString());
         $branchId = $request->input('branch_id');
-        $search   = $request->input('search');
+        $search = $request->input('search');
 
         $query = Dtr::query()
             ->where('late_mins', '>', 0)
@@ -80,13 +82,13 @@ class ReportsController extends Controller
             ->orderBy('date');
 
         if ($branchId) {
-            $query->whereHas('employee', fn($q) => $q->where('branch_id', $branchId));
+            $query->whereHas('employee', fn ($q) => $q->where('branch_id', $branchId));
         }
 
         if ($search) {
             $query->whereHas('employee', function ($q) use ($search) {
                 $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -94,14 +96,15 @@ class ReportsController extends Controller
             ->groupBy('employee_id')
             ->map(function ($dtrs) {
                 $employee = $dtrs->first()->employee;
+
                 return [
-                    'employee'        => $employee,
-                    'occurrences'     => $dtrs->count(),
+                    'employee' => $employee,
+                    'occurrences' => $dtrs->count(),
                     'total_late_mins' => $dtrs->sum('late_mins'),
-                    'dtrs'            => $dtrs->sortBy('date')->values(),
+                    'dtrs' => $dtrs->sortBy('date')->values(),
                 ];
             })
-            ->sortBy(fn($row) => $row['employee']->full_name)
+            ->sortBy(fn ($row) => $row['employee']->full_name)
             ->values();
 
         return view('reports.lates', compact('branches', 'grouped', 'from', 'to', 'branchId', 'search'));
@@ -111,33 +114,33 @@ class ReportsController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
 
-        $month    = (int) $request->input('month', now()->month);
-        $year     = (int) $request->input('year', now()->year);
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
         $branchId = $request->input('branch_id');
-        $search   = $request->input('search');
+        $search = $request->input('search');
 
-        $from  = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
-        $to    = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        $from = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $to = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
         $today = now()->toDateString();
         if ($to > $today) {
             $to = $today;
         }
 
         $employeeQuery = Employee::with('branch')
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($q) use ($search) {
                 $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
 
-        $employees   = $employeeQuery->get();
+        $employees = $employeeQuery->get();
         $employeeIds = $employees->pluck('id')->all();
 
         $dailySchedulesByEmployee = DailySchedule::whereIn('employee_id', $employeeIds)
             ->whereBetween('date', [$from, $to])
             ->get()
             ->groupBy('employee_id')
-            ->map(fn($rows) => $rows->keyBy(fn($ds) => $ds->date->toDateString()));
+            ->map(fn ($rows) => $rows->keyBy(fn ($ds) => $ds->date->toDateString()));
 
         $employeeSchedulesByEmployee = EmployeeSchedule::whereIn('employee_id', $employeeIds)
             ->where('week_start_date', '<=', $to)
@@ -145,13 +148,18 @@ class ReportsController extends Controller
             ->get()
             ->groupBy('employee_id');
 
+        $holidayDates = Holiday::whereBetween('date', [$from, $to])
+            ->pluck('date')
+            ->map(fn ($date) => $date instanceof Carbon ? $date->toDateString() : Carbon::parse($date)->toDateString())
+            ->flip();
+
         $dtrDatesByEmployee = Dtr::whereIn('employee_id', $employeeIds)
             ->whereBetween('date', [$from, $to])
             ->select('employee_id', 'date')
             ->get()
             ->groupBy('employee_id')
-            ->map(fn($rows) => $rows->pluck('date')
-                ->map(fn($d) => $d instanceof Carbon ? $d->toDateString() : (string) $d)
+            ->map(fn ($rows) => $rows->pluck('date')
+                ->map(fn ($d) => $d instanceof Carbon ? $d->toDateString() : (string) $d)
                 ->flip()
             );
 
@@ -159,9 +167,9 @@ class ReportsController extends Controller
 
         $grouped = [];
         foreach ($employees as $employee) {
-            $empDailySchedules  = $dailySchedulesByEmployee->get($employee->id, collect());
+            $empDailySchedules = $dailySchedulesByEmployee->get($employee->id, collect());
             $empWeeklySchedules = $employeeSchedulesByEmployee->get($employee->id, collect());
-            $empDtrDates        = $dtrDatesByEmployee->get($employee->id, collect());
+            $empDtrDates = $dtrDatesByEmployee->get($employee->id, collect());
 
             if ($empDailySchedules->isEmpty() && $empWeeklySchedules->isEmpty()) {
                 continue;
@@ -174,44 +182,56 @@ class ReportsController extends Controller
 
                 $daily = $empDailySchedules->get($dateStr);
                 if ($daily) {
-                    if ($daily->is_day_off) continue;
+                    if ($daily->is_day_off) {
+                        continue;
+                    }
                     $workStart = $daily->work_start_time;
-                    $workEnd   = $daily->work_end_time;
+                    $workEnd = $daily->work_end_time;
                 } else {
+                    if ($holidayDates->has($dateStr)) {
+                        continue;
+                    }
+
                     $schedule = $empWeeklySchedules
-                        ->filter(fn($s) => $s->week_start_date->toDateString() <= $dateStr)
+                        ->filter(fn ($s) => $s->week_start_date->toDateString() <= $dateStr)
                         ->last();
 
-                    if (! $schedule) continue;
+                    if (! $schedule) {
+                        continue;
+                    }
 
-                    if (in_array($dayName, $schedule->rest_days ?? [])) continue;
+                    if (in_array($dayName, $schedule->rest_days ?? [])) {
+                        continue;
+                    }
 
                     $workStart = $schedule->work_start_time;
-                    $workEnd   = $schedule->work_end_time;
+                    $workEnd = $schedule->work_end_time;
                 }
 
-                if ($empDtrDates->has($dateStr)) continue;
+                if ($empDtrDates->has($dateStr)) {
+                    continue;
+                }
 
                 $absences[] = [
-                    'date'            => $dateStr,
+                    'date' => $dateStr,
                     'work_start_time' => $workStart,
-                    'work_end_time'   => $workEnd,
+                    'work_end_time' => $workEnd,
                 ];
             }
 
             if (! empty($absences)) {
                 $grouped[] = [
-                    'employee'    => $employee,
+                    'employee' => $employee,
                     'occurrences' => count($absences),
-                    'absences'    => $absences,
+                    'absences' => $absences,
                 ];
             }
         }
 
-        usort($grouped, fn($a, $b) => strcmp($a['employee']->full_name, $b['employee']->full_name));
+        usort($grouped, fn ($a, $b) => strcmp($a['employee']->full_name, $b['employee']->full_name));
 
-        $months = collect(range(1, 12))->mapWithKeys(fn($m) => [$m => Carbon::create(null, $m)->format('F')]);
-        $years  = range(2026, max(now()->year, 2026));
+        $months = collect(range(1, 12))->mapWithKeys(fn ($m) => [$m => Carbon::create(null, $m)->format('F')]);
+        $years = range(2026, max(now()->year, 2026));
 
         return view('reports.absences', compact('branches', 'grouped', 'month', 'year', 'months', 'years', 'branchId', 'search'));
     }
@@ -220,12 +240,12 @@ class ReportsController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
 
-        $year     = (int) $request->input('year', now()->year);
+        $year = (int) $request->input('year', now()->year);
         $branchId = $request->input('branch_id');
-        $search   = $request->input('search');
+        $search = $request->input('search');
 
         $query = PayrollEntry::query()
-            ->whereHas('payrollCutoff', fn($q) => $q
+            ->whereHas('payrollCutoff', fn ($q) => $q
                 ->where('status', 'finalized')
                 ->whereYear('end_date', $year)
             )
@@ -233,30 +253,31 @@ class ReportsController extends Controller
             ->orderBy('id');
 
         if ($branchId) {
-            $query->whereHas('employee', fn($q) => $q->where('branch_id', $branchId));
+            $query->whereHas('employee', fn ($q) => $q->where('branch_id', $branchId));
         }
 
         if ($search) {
             $query->whereHas('employee', function ($q) use ($search) {
                 $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
         $grouped = $query->get()
             ->groupBy('employee_id')
             ->map(function ($entries) {
-                $employee        = $entries->first()->employee;
+                $employee = $entries->first()->employee;
                 $total_basic_pay = $entries->sum('basic_pay');
+
                 return [
-                    'employee'           => $employee,
-                    'total_basic_pay'    => $total_basic_pay,
-                    'thirteenth_month'   => $total_basic_pay / 12,
-                    'cutoff_count'       => $entries->count(),
-                    'entries'            => $entries->sortBy('payrollCutoff.end_date')->values(),
+                    'employee' => $employee,
+                    'total_basic_pay' => $total_basic_pay,
+                    'thirteenth_month' => $total_basic_pay / 12,
+                    'cutoff_count' => $entries->count(),
+                    'entries' => $entries->sortBy('payrollCutoff.end_date')->values(),
                 ];
             })
-            ->sortBy(fn($row) => $row['employee']->full_name)
+            ->sortBy(fn ($row) => $row['employee']->full_name)
             ->values();
 
         $years = range(now()->year, max(now()->year - 5, 2020));

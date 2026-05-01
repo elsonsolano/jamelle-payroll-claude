@@ -15,24 +15,26 @@ use Illuminate\Support\Facades\DB;
 class AttendanceBadgeService
 {
     public const BADGE_ON_TIME_7 = 'on_time_7';
+
     public const BADGE_SAME_DAY_FINISHER = 'same_day_finisher';
+
     public const BADGE_NO_ABSENT_CUTOFF = 'no_absent_cutoff';
 
     public const DEFAULT_BADGES = [
         self::BADGE_ON_TIME_7 => [
-            'name'        => 'No-Late 7',
+            'name' => 'No-Late 7',
             'description' => 'Had a 7 scheduled-workday streak with no late minutes.',
-            'icon'        => 'calendar-check',
+            'icon' => 'calendar-check',
         ],
         self::BADGE_SAME_DAY_FINISHER => [
-            'name'        => 'Same-Day Finisher',
+            'name' => 'Same-Day Finisher',
             'description' => 'Completed every scheduled workday DTR on the same day during the cutoff.',
-            'icon'        => 'sparkles',
+            'icon' => 'sparkles',
         ],
         self::BADGE_NO_ABSENT_CUTOFF => [
-            'name'        => 'No Absences',
+            'name' => 'No Absences',
             'description' => 'Had a DTR for every scheduled workday in the cutoff.',
-            'icon'        => 'shield-check',
+            'icon' => 'shield-check',
         ],
     ];
 
@@ -43,13 +45,11 @@ class AttendanceBadgeService
         'on_time_5',
     ];
 
-    public function __construct(protected AttendanceScoringService $attendanceScoringService)
-    {
-    }
+    public function __construct(protected AttendanceScoringService $attendanceScoringService) {}
 
     public function ensureDefaultBadges(): Collection
     {
-        $badges = new Collection();
+        $badges = new Collection;
 
         foreach (self::DEFAULT_BADGES as $key => $definition) {
             $badges->push(AttendanceBadge::updateOrCreate(
@@ -93,7 +93,7 @@ class AttendanceBadgeService
             ->first();
 
         if (! $score || $cutoff->status !== 'finalized') {
-            return new Collection();
+            return new Collection;
         }
 
         $dtrs = $employee->dtrs()
@@ -106,7 +106,7 @@ class AttendanceBadgeService
         $qualified = $this->qualifiedBadges($cutoff, $employee, $score, $dtrs);
 
         return DB::transaction(function () use ($employee, $cutoff, $score, $badges, $qualified) {
-            $awards = new Collection();
+            $awards = new Collection;
             $qualifiedKeys = array_keys($qualified);
             $qualifiedBadgeIds = collect($qualifiedKeys)
                 ->map(fn (string $key) => $badges->get($key)?->id)
@@ -127,14 +127,14 @@ class AttendanceBadgeService
 
                 $awards->push(EmployeeAttendanceBadge::updateOrCreate(
                     [
-                        'employee_id'          => $employee->id,
-                        'attendance_badge_id'  => $badge->id,
-                        'payroll_cutoff_id'    => $cutoff->id,
+                        'employee_id' => $employee->id,
+                        'attendance_badge_id' => $badge->id,
+                        'payroll_cutoff_id' => $cutoff->id,
                     ],
                     [
                         'attendance_score_id' => $score->id,
-                        'awarded_at'          => $cutoff->finalized_at ?? now(),
-                        'metadata'            => $metadata,
+                        'awarded_at' => $cutoff->finalized_at ?? now(),
+                        'metadata' => $metadata,
                     ],
                 )->load('badge'));
             }
@@ -145,7 +145,7 @@ class AttendanceBadgeService
 
     private function qualifiedBadges(PayrollCutoff $cutoff, Employee $employee, AttendanceScore $score, \Illuminate\Support\Collection $dtrs): array
     {
-        $scheduledDates = $this->scheduledDates($cutoff, $employee);
+        $scheduledDates = $this->scheduledDates($cutoff, $employee, $dtrs);
         $qualified = [];
 
         $onTimeStreak = $this->onTimeStreak($cutoff, $employee, $dtrs);
@@ -155,28 +155,28 @@ class AttendanceBadgeService
 
         if ($scheduledDates->isNotEmpty() && $score->same_day_complete_days >= $scheduledDates->count()) {
             $qualified[self::BADGE_SAME_DAY_FINISHER] = [
-                'scheduled_workdays'       => $scheduledDates->count(),
-                'same_day_complete_days'   => $score->same_day_complete_days,
-                'date_range'               => $this->dateRangeMetadata($scheduledDates),
+                'scheduled_workdays' => $scheduledDates->count(),
+                'same_day_complete_days' => $score->same_day_complete_days,
+                'date_range' => $this->dateRangeMetadata($scheduledDates),
             ];
         }
 
         if ($scheduledDates->isNotEmpty() && $score->no_absent_days >= $scheduledDates->count()) {
             $qualified[self::BADGE_NO_ABSENT_CUTOFF] = [
                 'scheduled_workdays' => $scheduledDates->count(),
-                'no_absent_days'     => $score->no_absent_days,
-                'date_range'         => $this->dateRangeMetadata($scheduledDates),
+                'no_absent_days' => $score->no_absent_days,
+                'date_range' => $this->dateRangeMetadata($scheduledDates),
             ];
         }
 
         return $qualified;
     }
 
-    private function scheduledDates(PayrollCutoff $cutoff, Employee $employee): \Illuminate\Support\Collection
+    private function scheduledDates(PayrollCutoff $cutoff, Employee $employee, \Illuminate\Support\Collection $dtrs): \Illuminate\Support\Collection
     {
         return collect(CarbonPeriod::create($cutoff->start_date, $cutoff->end_date))
             ->map(fn ($date) => $date->toDateString())
-            ->filter(fn (string $date) => $this->attendanceScoringService->scheduledWorkdayFor($employee, $date)['has_schedule'])
+            ->filter(fn (string $date) => $this->attendanceScoringService->scheduledWorkdayForDtr($employee, $date, $dtrs->get($date))['has_schedule'])
             ->values();
     }
 
@@ -187,18 +187,18 @@ class AttendanceBadgeService
         $best = [
             'max_streak' => 0,
             'start_date' => null,
-            'end_date'   => null,
+            'end_date' => null,
         ];
 
         foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
             $dateString = $date->toDateString();
-            $schedule = $this->attendanceScoringService->scheduledWorkdayFor($employee, $dateString);
+            $dtr = $dtrs->get($dateString);
+            $schedule = $this->attendanceScoringService->scheduledWorkdayForDtr($employee, $dateString, $dtr);
 
             if (! $schedule['has_schedule']) {
                 continue;
             }
 
-            $dtr = $dtrs->get($dateString);
             if ($dtr && $dtr->time_in && (int) $dtr->late_mins === 0) {
                 $currentStart ??= $dateString;
                 $current++;
@@ -207,7 +207,7 @@ class AttendanceBadgeService
                     $best = [
                         'max_streak' => $current,
                         'start_date' => $currentStart,
-                        'end_date'   => $dateString,
+                        'end_date' => $dateString,
                     ];
                 }
 
@@ -225,7 +225,7 @@ class AttendanceBadgeService
     {
         return [
             'start_date' => $dates->first(),
-            'end_date'   => $dates->last(),
+            'end_date' => $dates->last(),
         ];
     }
 }

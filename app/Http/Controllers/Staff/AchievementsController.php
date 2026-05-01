@@ -73,7 +73,7 @@ class AchievementsController extends Controller
         $employee = Auth::user()->employee;
         $needle = mb_strtolower($query);
 
-        $results = collect($this->gamification->leaderboard($employee)['allEmployees'])
+        $results = collect($this->gamification->leaderboard($employee)['allEntries'])
             ->filter(fn (array $row) => str_contains(mb_strtolower($row['name']), $needle))
             ->take(10)
             ->values()

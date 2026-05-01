@@ -9,6 +9,7 @@ use App\Models\EmployeeAttendanceBadge;
 use App\Models\PayrollCutoff;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Collection;
 
 class GamificationService
 {
@@ -105,15 +106,15 @@ class GamificationService
         $current = $date->copy();
 
         while ($current->gte($floor) && $current->gte($trackingStart)) {
-            $schedule = $this->scoringService->scheduledWorkdayFor($employee, $current->toDateString());
+            $dateString = $current->toDateString();
+            $dtr = $dtrs->get($dateString);
+            $schedule = $this->scoringService->scheduledWorkdayForDtr($employee, $dateString, $dtr);
 
             if (! $schedule['has_schedule']) {
                 $current->subDay();
 
                 continue;
             }
-
-            $dtr = $dtrs->get($current->toDateString());
 
             if (! $dtr || ! $dtr->time_in || (int) $dtr->late_mins > 0) {
                 break;
@@ -181,7 +182,8 @@ class GamificationService
                     continue;
                 }
 
-                $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
+                $dtr = $dtrs->get($dateStr);
+                $schedule = $this->scoringService->scheduledWorkdayForDtr($employee, $dateStr, $dtr);
 
                 if (! $schedule['has_schedule']) {
                     continue;
@@ -189,7 +191,6 @@ class GamificationService
 
                 $isFuture = $dateStr > $today;
                 $isToday = $dateStr === $today;
-                $dtr = $dtrs->get($dateStr);
                 $hasDtr = $dtr && $dtr->time_in;
                 $isOnTime = $hasDtr && (int) $dtr->late_mins === 0;
                 $isSameDay = $hasDtr && $this->scoringService->wasCompletedPromptly($dtr);
@@ -470,18 +471,18 @@ class GamificationService
      * Lightweight point total for leaderboard use — same math as achievementsData()
      * but skips badge-display building, points log, and workday status arrays.
      *
-     * @param  \Illuminate\Support\Collection  $cutoffDtrs      DTRs keyed by date string (current cutoff range)
-     * @param  \Illuminate\Support\Collection  $pastScores      AttendanceScore rows for past finalized cutoffs
-     * @param  \Illuminate\Support\Collection  $currentCutoffBadges  EmployeeAttendanceBadge rows for the current cutoff
-     * @param  \Illuminate\Support\Collection  $pastBadges      EmployeeAttendanceBadge rows for all other cutoffs
+     * @param  Collection  $cutoffDtrs  DTRs keyed by date string (current cutoff range)
+     * @param  Collection  $pastScores  AttendanceScore rows for past finalized cutoffs
+     * @param  Collection  $currentCutoffBadges  EmployeeAttendanceBadge rows for the current cutoff
+     * @param  Collection  $pastBadges  EmployeeAttendanceBadge rows for all other cutoffs
      */
     private function computeTotalPoints(
         Employee $employee,
         ?PayrollCutoff $cutoff,
-        \Illuminate\Support\Collection $cutoffDtrs,
-        \Illuminate\Support\Collection $pastScores,
-        \Illuminate\Support\Collection $currentCutoffBadges,
-        \Illuminate\Support\Collection $pastBadges,
+        Collection $cutoffDtrs,
+        Collection $pastScores,
+        Collection $currentCutoffBadges,
+        Collection $pastBadges,
     ): int {
         $trackingStart = $this->trackingStartDate($employee);
         $today = today()->toDateString();
@@ -498,7 +499,8 @@ class GamificationService
                     continue;
                 }
 
-                $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
+                $dtr = $cutoffDtrs->get($dateStr);
+                $schedule = $this->scoringService->scheduledWorkdayForDtr($employee, $dateStr, $dtr);
 
                 if (! $schedule['has_schedule']) {
                     continue;
@@ -515,7 +517,6 @@ class GamificationService
                     continue;
                 }
 
-                $dtr = $cutoffDtrs->get($dateStr);
                 $hasDtr = $dtr && $dtr->time_in;
 
                 if ($hasDtr) {
@@ -655,13 +656,13 @@ class GamificationService
 
         foreach (CarbonPeriod::create($start, $end) as $date) {
             $dateStr = $date->toDateString();
-            $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
+            $dtr = $dtrs->get($dateStr);
+            $schedule = $this->scoringService->scheduledWorkdayForDtr($employee, $dateStr, $dtr);
 
             if (! $schedule['has_schedule']) {
                 continue;
             }
 
-            $dtr = $dtrs->get($dateStr);
             $hasDtr = $dtr && $dtr->time_in;
 
             if (! $hasDtr) {
@@ -723,8 +724,18 @@ class GamificationService
 
     private function qualifiesForPerfectCutoff(AttendanceScore $score, Employee $employee, PayrollCutoff $cutoff): bool
     {
+        $dtrs = $employee->dtrs()
+            ->whereDate('date', '>=', $cutoff->start_date->toDateString())
+            ->whereDate('date', '<=', $cutoff->end_date->toDateString())
+            ->get()
+            ->keyBy(fn (Dtr $dtr) => $dtr->date->toDateString());
+
         $scheduledWorkdays = collect(CarbonPeriod::create($cutoff->start_date, $cutoff->end_date))
-            ->filter(fn (Carbon $date) => $this->scoringService->scheduledWorkdayFor($employee, $date->toDateString())['has_schedule'])
+            ->filter(fn (Carbon $date) => $this->scoringService->scheduledWorkdayForDtr(
+                $employee,
+                $date->toDateString(),
+                $dtrs->get($date->toDateString()),
+            )['has_schedule'])
             ->count();
 
         return $scheduledWorkdays > 0

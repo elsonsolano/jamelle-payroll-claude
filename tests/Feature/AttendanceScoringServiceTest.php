@@ -10,6 +10,7 @@ use App\Models\DtrLogEvent;
 use App\Models\Employee;
 use App\Models\EmployeeAttendanceBadge;
 use App\Models\EmployeeSchedule;
+use App\Models\Holiday;
 use App\Models\PayrollCutoff;
 use App\Models\PayrollEntry;
 use App\Services\AttendanceBadgeService;
@@ -265,5 +266,95 @@ class AttendanceScoringServiceTest extends TestCase
             ['no_absent_cutoff', 'on_time_7', 'same_day_finisher'],
             $awards->pluck('badge.key')->all(),
         );
+    }
+
+    public function test_holidays_without_dtr_are_exempt_but_worked_holidays_are_scored_normally(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Main',
+            'address' => 'Test',
+            'work_start_time' => '08:00',
+            'work_end_time' => '17:00',
+        ]);
+
+        $employee = Employee::create([
+            'first_name' => 'Katherine',
+            'last_name' => 'Johnson',
+            'employee_code' => 'EMP-003',
+            'branch_id' => $branch->id,
+            'salary_type' => 'daily',
+            'rate' => 500,
+            'active' => true,
+        ]);
+        $employee->forceFill([
+            'created_at' => '2026-04-30 10:00:00',
+            'updated_at' => '2026-04-30 10:00:00',
+        ])->save();
+
+        EmployeeSchedule::create([
+            'employee_id' => $employee->id,
+            'week_start_date' => '2026-05-04',
+            'rest_days' => ['Sunday'],
+            'work_start_time' => '08:00',
+            'work_end_time' => '17:00',
+        ]);
+
+        Holiday::create([
+            'date' => '2026-05-06',
+            'name' => 'No Work Holiday',
+            'type' => 'regular',
+        ]);
+        Holiday::create([
+            'date' => '2026-05-07',
+            'name' => 'Worked Holiday',
+            'type' => 'regular',
+        ]);
+
+        $cutoff = PayrollCutoff::create([
+            'branch_id' => $branch->id,
+            'name' => 'Holiday May',
+            'start_date' => '2026-05-05',
+            'end_date' => '2026-05-07',
+            'status' => 'finalized',
+            'finalized_at' => '2026-05-08 10:00:00',
+        ]);
+
+        PayrollEntry::create([
+            'payroll_cutoff_id' => $cutoff->id,
+            'employee_id' => $employee->id,
+        ]);
+
+        Dtr::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-05-05',
+            'time_in' => '08:00',
+            'am_out' => '12:00',
+            'pm_in' => '13:00',
+            'time_out' => '17:00',
+            'late_mins' => 0,
+        ]);
+
+        Dtr::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-05-07',
+            'time_in' => '08:15',
+            'am_out' => '12:00',
+            'pm_in' => '13:00',
+            'time_out' => '17:00',
+            'late_mins' => 15,
+        ]);
+
+        $score = app(AttendanceScoringService::class)->scoreEmployeeForCutoff($cutoff, $employee);
+
+        $this->assertSame(5, $score->total_points);
+        $this->assertSame(2, $score->no_absent_days);
+        $this->assertSame(1, $score->on_time_days);
+        $this->assertSame(1, $score->late_days);
+        $this->assertFalse($score->items->contains('rule_key', AttendanceScoringService::RULE_ABSENT_PENALTY));
+        $this->assertTrue($score->items->contains(
+            fn ($item) => $item->work_date->toDateString() === '2026-05-07'
+                && $item->rule_key === AttendanceScoringService::RULE_LATE_PENALTY
+                && $item->metadata['schedule_source'] === 'employee_schedule'
+        ));
     }
 }
