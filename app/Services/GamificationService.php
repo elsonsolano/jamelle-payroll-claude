@@ -456,7 +456,7 @@ class GamificationService
         if ($searchQuery !== '') {
             $needle = mb_strtolower($searchQuery);
 
-            $searchResults = $ranked
+            $searchResults = $allWithRanks
                 ->filter(fn (array $row) => str_contains(mb_strtolower($row['name']), $needle))
                 ->take(5)
                 ->values();

@@ -201,7 +201,12 @@ class StaffAchievementsLeaderboardTest extends TestCase
         $searchResponse = $this->actingAs($viewer->user)->getJson(route('staff.achievements.search', ['q' => 'Almost']));
 
         $searchResponse->assertOk();
-        $searchResponse->assertExactJson(['results' => []]);
+        $searchResponse->assertJsonFragment([
+            'name' => 'Almost There',
+            'points' => 0,
+            'rank' => null,
+            'rank_name' => 'Empty Cup',
+        ]);
     }
 
     public function test_staff_can_search_leaderboard_for_rank_and_points_outside_top_10(): void
@@ -225,6 +230,24 @@ class StaffAchievementsLeaderboardTest extends TestCase
             'points' => 1090,
             'rank' => 11,
             'rank_name' => 'Crunch Keeper',
+        ]);
+    }
+
+    public function test_staff_can_search_active_staff_who_are_not_ranked_yet(): void
+    {
+        $branch = $this->branch('Main');
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+        $unranked = $this->staffEmployee($branch, 'Ervin', 'Soberano', 'ERVIN');
+
+        $response = $this->actingAs($viewer->user)->getJson(route('staff.achievements.search', ['q' => 'Ervin Soberano']));
+
+        $response->assertOk();
+        $response->assertJsonFragment([
+            'employee_id' => $unranked->id,
+            'name' => 'Ervin Soberano',
+            'points' => 0,
+            'rank' => null,
+            'rank_name' => 'Empty Cup',
         ]);
     }
 

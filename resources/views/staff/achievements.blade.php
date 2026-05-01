@@ -1261,7 +1261,7 @@ function achievementsPage() {
                                     background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);
                                     border-radius:99px;padding:4px 10px;
                                     color:#5BBF27;font-size:11px;font-weight:900;"
-                             x-text="`#${selectedPlayer?.rank || '?'}`"></div>
+                             x-text="selectedPlayer?.rank ? `#${selectedPlayer.rank}` : 'Unranked'"></div>
                         <template x-if="selectedPlayer?.profile_photo_url">
                             <img :src="selectedPlayer.profile_photo_url" :alt="selectedPlayer.name"
                                  style="width:78px;height:78px;border-radius:50%;margin:0 auto 12px;
