@@ -233,8 +233,8 @@ nav.fixed {
 
     $podiumMeta = [
         1 => ['crown'=>'👑','ht'=>72,'from'=>'#FFD700','to'=>'#B8860B','glow'=>'rgba(255,215,0,0.3)','chip_bg'=>'#FFD700','chip_text'=>'#5a3a00','size'=>52,'font'=>22],
-        2 => ['crown'=>'🥈','ht'=>54,'from'=>'#C0C0C0','to'=>'#808080','glow'=>'rgba(192,192,192,0.2)','chip_bg'=>'#C0C0C0','chip_text'=>'#fff','size'=>42,'font'=>18],
-        3 => ['crown'=>'🥉','ht'=>44,'from'=>'#CD7F32','to'=>'#8B4513','glow'=>'rgba(205,127,50,0.2)','chip_bg'=>'#CD7F32','chip_text'=>'#fff','size'=>42,'font'=>18],
+        2 => ['crown'=>'🥈','ht'=>54,'from'=>'#C0C0C0','to'=>'#808080','glow'=>'rgba(192,192,192,0.2)','chip_bg'=>'#C0C0C0','chip_text'=>'#111827','size'=>42,'font'=>18],
+        3 => ['crown'=>'🥉','ht'=>44,'from'=>'#CD7F32','to'=>'#8B4513','glow'=>'rgba(205,127,50,0.2)','chip_bg'=>'#CD7F32','chip_text'=>'#111827','size'=>42,'font'=>18],
     ];
 
     $earnRows = [
@@ -636,8 +636,11 @@ function achievementsPage() {
                         {{-- Points chip --}}
                         <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
                                     background:{{ $pm['chip_bg'] }};color:{{ $pm['chip_text'] }};
-                                    font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;
-                                    white-space:nowrap;letter-spacing:.03em;">
+                                    font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;
+                                    min-width:25px;text-align:center;
+                                    white-space:nowrap;letter-spacing:0;
+                                    border:2px solid #0d0d18;
+                                    box-shadow:0 2px 8px rgba(0,0,0,.28);">
                             {{ number_format($person['points']) }}
                         </div>
                     </div>
@@ -659,10 +662,15 @@ function achievementsPage() {
                                 background:linear-gradient(180deg,{{ $pm['from'] }},{{ $pm['to'] }});
                                 border-radius:8px 8px 0 0;
                                 display:flex;align-items:flex-start;justify-content:center;
-                                padding-top:8px;
+                                padding-top:10px;
                                 box-shadow:0 -4px 20px {{ $pm['glow'] }};">
-                        <span style="font-size:{{ $pm['font'] }}px;font-weight:900;
-                                     color:rgba(255,255,255,.25);font-style:italic;">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;
+                                     min-width:36px;height:28px;padding:0 9px;border-radius:999px;
+                                     background:rgba(13,13,24,.78);
+                                     border:1px solid rgba(255,255,255,.28);
+                                     box-shadow:0 2px 8px rgba(0,0,0,.22);
+                                     font-size:{{ $pos===1 ? 16 : 14 }}px;font-weight:900;
+                                     color:#fff;line-height:1;letter-spacing:0;">
                             #{{ $pos }}
                         </span>
                     </div>
