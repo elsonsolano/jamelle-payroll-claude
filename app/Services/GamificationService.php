@@ -321,18 +321,94 @@ class GamificationService
             ->orderBy('first_name')
             ->get();
 
+        if ($employees->isEmpty()) {
+            return [
+                'top10' => [],
+                'allEntries' => [],
+                'viewerRank' => null,
+                'viewerInTop10' => false,
+                'searchQuery' => trim((string) $search),
+                'searchResults' => [],
+            ];
+        }
+
+        $employeeIds = $employees->pluck('id')->all();
+
+        // 60-day window covers both the streak lookback and any current cutoff period
+        $fromDate = today()->subDays(60)->toDateString();
+        $toDate = today()->toDateString();
+
+        // Fix 1+2: bulk-fill the schedule cache — eliminates O(N×D) per-day DB queries
+        $this->scoringService->preloadSchedules($employees, $fromDate, $toDate);
+
+        // One query per shared resource instead of one per employee
+        $branchIds = $employees->pluck('branch_id')->unique()->filter()->values()->all();
+
+        $cutoffsByBranch = PayrollCutoff::where('status', '!=', 'voided')
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->whereIn('branch_id', $branchIds)
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('branch_id');
+
+        $allDtrs = Dtr::whereIn('employee_id', $employeeIds)
+            ->whereBetween('date', [$fromDate, $toDate])
+            ->with('logEvents')
+            ->get()
+            ->groupBy('employee_id')
+            ->map(fn ($group) => $group->keyBy(fn ($dtr) => $dtr->date->toDateString()));
+
+        $allScores = AttendanceScore::whereIn('employee_id', $employeeIds)
+            ->whereHas('payrollCutoff', fn ($q) => $q->where('status', 'finalized'))
+            ->with('payrollCutoff')
+            ->get()
+            ->groupBy('employee_id');
+
+        $allBadges = EmployeeAttendanceBadge::whereIn('employee_id', $employeeIds)
+            ->whereHas('badge', fn ($q) => $q->where('active', true))
+            ->with('badge')
+            ->get()
+            ->groupBy('employee_id');
+
         $ranked = $employees
-            ->map(function (Employee $employee) use ($viewer) {
-                $cutoff = $this->currentCutoffFor($employee);
-                $data = $this->achievementsData($employee, $cutoff);
+            ->map(function (Employee $employee) use ($viewer, $cutoffsByBranch, $allDtrs, $allScores, $allBadges) {
+                $cutoff = $cutoffsByBranch->get($employee->branch_id)?->first()
+                    ?? $this->virtualCurrentCutoff($employee);
+
+                $cutoffId = $cutoff->id ?? null;
+                $employeeBadges = $allBadges->get($employee->id, collect());
+
+                $currentCutoffBadges = $cutoffId !== null
+                    ? $employeeBadges->where('payroll_cutoff_id', $cutoffId)
+                    : collect();
+
+                $pastBadges = $cutoffId !== null
+                    ? $employeeBadges->where('payroll_cutoff_id', '!=', $cutoffId)
+                    : $employeeBadges;
+
+                // Exclude current cutoff from stored scores (its points are computed live below)
+                $pastScores = $cutoffId !== null
+                    ? $allScores->get($employee->id, collect())->where('payroll_cutoff_id', '!=', $cutoffId)
+                    : $allScores->get($employee->id, collect());
+
+                $points = $this->computeTotalPoints(
+                    $employee,
+                    $cutoff,
+                    $allDtrs->get($employee->id, collect()),
+                    $pastScores,
+                    $currentCutoffBadges,
+                    $pastBadges,
+                );
 
                 return [
                     'rank' => 0,
                     'employee_id' => $employee->id,
                     'name' => $employee->full_name,
                     'branch' => $employee->branch?->name ?? 'No branch',
-                    'points' => $data['total_points'],
-                    'rank_name' => $this->rankFor($data['total_points'])['name'],
+                    'points' => $points,
+                    'rank_name' => $this->rankFor($points)['name'],
                     'is_viewer' => $employee->id === $viewer->id,
                 ];
             })
@@ -370,6 +446,122 @@ class GamificationService
             'searchQuery' => $searchQuery,
             'searchResults' => $searchResults->all(),
         ];
+    }
+
+    /**
+     * Lightweight point total for leaderboard use — same math as achievementsData()
+     * but skips badge-display building, points log, and workday status arrays.
+     *
+     * @param  \Illuminate\Support\Collection  $cutoffDtrs      DTRs keyed by date string (current cutoff range)
+     * @param  \Illuminate\Support\Collection  $pastScores      AttendanceScore rows for past finalized cutoffs
+     * @param  \Illuminate\Support\Collection  $currentCutoffBadges  EmployeeAttendanceBadge rows for the current cutoff
+     * @param  \Illuminate\Support\Collection  $pastBadges      EmployeeAttendanceBadge rows for all other cutoffs
+     */
+    private function computeTotalPoints(
+        Employee $employee,
+        ?PayrollCutoff $cutoff,
+        \Illuminate\Support\Collection $cutoffDtrs,
+        \Illuminate\Support\Collection $pastScores,
+        \Illuminate\Support\Collection $currentCutoffBadges,
+        \Illuminate\Support\Collection $pastBadges,
+    ): int {
+        $trackingStart = $this->trackingStartDate($employee);
+        $today = today()->toDateString();
+        $thisCutoffPts = 0;
+        $elapsedWorkdays = 0;
+        $noAbsentProgress = 0;
+        $allOnTime = true;
+
+        if ($cutoff) {
+            foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
+                $dateStr = $date->toDateString();
+
+                if ($date->lt($trackingStart)) {
+                    continue;
+                }
+
+                $schedule = $this->scoringService->scheduledWorkdayFor($employee, $dateStr);
+
+                if (! $schedule['has_schedule']) {
+                    continue;
+                }
+
+                $isFuture = $dateStr > $today;
+                $isToday = $dateStr === $today;
+
+                if (! $isFuture) {
+                    $elapsedWorkdays++;
+                }
+
+                if ($isFuture) {
+                    continue;
+                }
+
+                $dtr = $cutoffDtrs->get($dateStr);
+                $hasDtr = $dtr && $dtr->time_in;
+
+                if ($hasDtr) {
+                    $noAbsentProgress++;
+                    $isOnTime = (int) $dtr->late_mins === 0;
+
+                    if ($isOnTime) {
+                        $thisCutoffPts += self::PTS_ON_TIME;
+                    } else {
+                        $thisCutoffPts += self::PTS_PENALTY_LATE;
+                        $allOnTime = false;
+                    }
+
+                    if ($this->scoringService->wasCompletedPromptly($dtr)) {
+                        $thisCutoffPts += self::PTS_SAME_DAY;
+                    }
+                } elseif (! $isToday) {
+                    $thisCutoffPts += self::PTS_PENALTY_ABSENT;
+                    $allOnTime = false;
+                }
+            }
+
+            // Badge points awarded for this cutoff
+            foreach ($currentCutoffBadges as $award) {
+                $thisCutoffPts += $this->badgePoints($award->badge?->key);
+            }
+
+            // Perfect cutoff bonus (only when cutoff is already finalized)
+            if ($cutoff->status === 'finalized'
+                && $elapsedWorkdays > 0
+                && $noAbsentProgress >= $elapsedWorkdays
+                && $allOnTime
+            ) {
+                $thisCutoffPts += self::PTS_PERFECT_CUTOFF;
+            }
+        }
+
+        // Points from past finalized cutoffs (pre-loaded, no extra queries)
+        $pastPts = $pastScores->sum(function (AttendanceScore $score) use ($employee) {
+            $pastCutoff = $score->payrollCutoff;
+
+            $base = $score->on_time_days * self::PTS_ON_TIME
+                + $score->same_day_complete_days * self::PTS_SAME_DAY;
+
+            if (! $pastCutoff) {
+                return $base;
+            }
+
+            $penalties = $this->deductionsForPeriod(
+                $employee,
+                $pastCutoff->start_date->toDateString(),
+                $pastCutoff->end_date->toDateString(),
+            );
+
+            $perfectBonus = $this->qualifiesForPerfectCutoff($score, $employee, $pastCutoff)
+                ? self::PTS_PERFECT_CUTOFF
+                : 0;
+
+            return $base + $penalties + $perfectBonus;
+        });
+
+        $pastBadgePts = $pastBadges->sum(fn ($award) => $this->badgePoints($award->badge?->key));
+
+        return $pastPts + $pastBadgePts + $thisCutoffPts;
     }
 
     public function currentCutoffFor(Employee $employee): ?PayrollCutoff

@@ -6,6 +6,7 @@ use App\Models\AttendanceScore;
 use App\Models\DailySchedule;
 use App\Models\Dtr;
 use App\Models\Employee;
+use App\Models\EmployeeSchedule;
 use App\Models\PayrollCutoff;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -15,6 +16,8 @@ use App\Services\GamificationService;
 
 class AttendanceScoringService
 {
+    private array $scheduleCache = [];
+
     public const RULE_NO_LATE = 'no_late_reward';
 
     public const RULE_NO_ABSENT = 'no_absent_reward';
@@ -264,12 +267,17 @@ class AttendanceScoringService
 
     public function scheduledWorkdayFor(Employee $employee, string $date): array
     {
+        $cacheKey = $employee->id . ':' . $date;
+        if (array_key_exists($cacheKey, $this->scheduleCache)) {
+            return $this->scheduleCache[$cacheKey];
+        }
+
         $dailySchedule = DailySchedule::where('employee_id', $employee->id)
             ->where('date', $date)
             ->first();
 
         if ($dailySchedule) {
-            return [
+            return $this->scheduleCache[$cacheKey] = [
                 'has_schedule' => ! $dailySchedule->is_day_off && (bool) $dailySchedule->work_start_time,
                 'source' => 'daily_schedule',
                 'work_start_time' => $dailySchedule->work_start_time,
@@ -282,7 +290,7 @@ class AttendanceScoringService
             ->first();
 
         if (! $schedule) {
-            return [
+            return $this->scheduleCache[$cacheKey] = [
                 'has_schedule' => false,
                 'source' => null,
                 'work_start_time' => null,
@@ -292,11 +300,88 @@ class AttendanceScoringService
         $dayName = Carbon::parse($date)->format('l');
         $restDays = $schedule->rest_days ?? [];
 
-        return [
+        return $this->scheduleCache[$cacheKey] = [
             'has_schedule' => ! in_array($dayName, $restDays, true) && (bool) $schedule->work_start_time,
             'source' => 'employee_schedule',
             'work_start_time' => $schedule->work_start_time,
         ];
+    }
+
+    /**
+     * Bulk-populate the schedule cache for many employees over a date range.
+     * Call this before iterating many employees to avoid per-employee DB queries.
+     */
+    public function preloadSchedules(Collection $employees, string $fromDate, string $toDate): void
+    {
+        if ($employees->isEmpty()) {
+            return;
+        }
+
+        $employeeIds = $employees->pluck('id')->all();
+
+        // One query for all daily overrides in the date range
+        $dailySchedules = DailySchedule::whereIn('employee_id', $employeeIds)
+            ->whereBetween('date', [$fromDate, $toDate])
+            ->get()
+            ->groupBy('employee_id')
+            ->map(fn ($group) => $group->keyBy(fn ($ds) => $ds->date->toDateString()));
+
+        // One query for all recurring schedules (all rows needed for fallback resolution)
+        $employeeSchedules = EmployeeSchedule::whereIn('employee_id', $employeeIds)
+            ->orderByDesc('week_start_date')
+            ->get()
+            ->groupBy('employee_id');
+
+        $period = CarbonPeriod::create($fromDate, $toDate);
+
+        foreach ($employees as $employee) {
+            $empDailySchedules = $dailySchedules->get($employee->id, collect());
+            // Already ordered desc — first() gives the most recent schedule for any date
+            $empSchedules = $employeeSchedules->get($employee->id, collect());
+
+            foreach ($period as $date) {
+                $dateStr = $date->toDateString();
+                $cacheKey = $employee->id . ':' . $dateStr;
+
+                if (array_key_exists($cacheKey, $this->scheduleCache)) {
+                    continue;
+                }
+
+                $dailySchedule = $empDailySchedules->get($dateStr);
+
+                if ($dailySchedule) {
+                    $this->scheduleCache[$cacheKey] = [
+                        'has_schedule' => ! $dailySchedule->is_day_off && (bool) $dailySchedule->work_start_time,
+                        'source' => 'daily_schedule',
+                        'work_start_time' => $dailySchedule->work_start_time,
+                    ];
+                    continue;
+                }
+
+                // Most recent EmployeeSchedule with week_start_date <= dateStr
+                $schedule = $empSchedules->first(
+                    fn ($s) => $s->week_start_date->toDateString() <= $dateStr
+                );
+
+                if (! $schedule) {
+                    $this->scheduleCache[$cacheKey] = [
+                        'has_schedule' => false,
+                        'source' => null,
+                        'work_start_time' => null,
+                    ];
+                    continue;
+                }
+
+                $dayName = $date->format('l');
+                $restDays = $schedule->rest_days ?? [];
+
+                $this->scheduleCache[$cacheKey] = [
+                    'has_schedule' => ! in_array($dayName, $restDays, true) && (bool) $schedule->work_start_time,
+                    'source' => 'employee_schedule',
+                    'work_start_time' => $schedule->work_start_time,
+                ];
+            }
+        }
     }
 
     private function item(?int $dtrId, ?string $workDate, string $ruleKey, string $description, int $points, ?array $metadata = null): array
