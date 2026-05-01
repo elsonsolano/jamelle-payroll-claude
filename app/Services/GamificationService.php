@@ -88,7 +88,10 @@ class GamificationService
         ];
     }
 
-    public function __construct(private AttendanceScoringService $scoringService) {}
+    public function __construct(
+        private AttendanceScoringService $scoringService,
+        private CommendationService $commendationService,
+    ) {}
 
     // Current consecutive on-time days streak (cross-cutoff)
     public function noLateStreak(Employee $employee, ?string $throughDate = null): int
@@ -385,8 +388,10 @@ class GamificationService
             ->get()
             ->groupBy('employee_id');
 
+        $commendationPoints = $this->commendationService->pointsByEmployee(collect($employeeIds));
+
         $allMapped = $employees
-            ->map(function (Employee $employee) use ($viewer, $cutoffsByEmployee, $allDtrs, $allScores, $allBadges) {
+            ->map(function (Employee $employee) use ($viewer, $cutoffsByEmployee, $allDtrs, $allScores, $allBadges, $commendationPoints) {
                 $cutoff = $cutoffsByEmployee->get($employee->id);
                 $cutoffId = $cutoff->id ?? null;
                 $employeeBadges = $allBadges->get($employee->id, collect());
@@ -411,6 +416,7 @@ class GamificationService
                     $pastScores,
                     $currentCutoffBadges,
                     $pastBadges,
+                    (int) ($commendationPoints[$employee->id] ?? 0),
                 );
 
                 return [
@@ -483,6 +489,7 @@ class GamificationService
         Collection $pastScores,
         Collection $currentCutoffBadges,
         Collection $pastBadges,
+        int $commendationPoints = 0,
     ): int {
         $trackingStart = $this->trackingStartDate($employee);
         $today = today()->toDateString();
@@ -580,7 +587,14 @@ class GamificationService
 
         $pastBadgePts = $pastBadges->sum(fn ($award) => $this->badgePoints($award->badge?->key));
 
-        return $pastPts + $pastBadgePts + $thisCutoffPts;
+        return $pastPts + $pastBadgePts + $thisCutoffPts + $commendationPoints;
+    }
+
+    public function pointsFor(Employee $employee): int
+    {
+        $cutoff = $this->currentCutoffFor($employee);
+
+        return (int) $this->achievementsData($employee, $cutoff)['total_points'];
     }
 
     public function currentCutoffFor(Employee $employee): ?PayrollCutoff
@@ -719,7 +733,7 @@ class GamificationService
             fn ($award) => $this->badgePoints($award->badge?->key)
         );
 
-        return $pastPts + $badgePts;
+        return $pastPts + $badgePts + $this->commendationService->pointsForEmployee($employee);
     }
 
     private function qualifiesForPerfectCutoff(AttendanceScore $score, Employee $employee, PayrollCutoff $cutoff): bool

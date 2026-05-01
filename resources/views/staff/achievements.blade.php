@@ -146,9 +146,16 @@ function achievementCountdown() {
 
 /* Modal overlay — must be in CSS so Alpine x-show can restore it correctly */
 .ach-overlay {
+    align-items: center;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+}
+
+.ach-modal {
+    margin: 0 auto;
+    max-width: 430px;
+    width: min(calc(100% - 32px), 430px);
 }
 
 .ach-tabs {
@@ -255,7 +262,16 @@ function achievementsPage() {
         tab: 'leaderboard',
         showSearch: false,
         showHowTo: false,
+        showCommend: false,
+        commendSending: false,
+        commendError: '',
+        commendSent: false,
+        selectedTraits: [],
+        sentTraits: [],
+        commendationTypes: @json($commendationTypes),
         searchUrl: @json(route('staff.achievements.search')),
+        commendationBaseUrl: @json(url('/staff/commendations')),
+        csrfToken: @json(csrf_token()),
         searchQuery: '',
         searchResults: [],
         selectedPlayer: null,
@@ -310,18 +326,155 @@ function achievementsPage() {
         },
         selectPlayer(player) {
             this.selectedPlayer = player;
+            this.resetCommendModal();
+            this.loadCommendations(player);
         },
         backToResults() {
             this.selectedPlayer = null;
+            this.resetCommendModal();
         },
         closeSearch() {
             this.showSearch     = false;
+            this.showCommend    = false;
             this.searchQuery    = '';
             this.searchResults  = [];
             this.selectedPlayer = null;
             this.hasSearched    = false;
             this.searchLoading  = false;
             this.searchError    = '';
+            this.resetCommendModal();
+        },
+        async loadCommendations(player) {
+            if (!player?.employee_id) return;
+
+            try {
+                const response = await fetch(`${this.commendationBaseUrl}/${player.employee_id}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                this.selectedPlayer = {
+                    ...this.selectedPlayer,
+                    commendations: data.summary,
+                };
+            } catch (error) {
+                // Keep the profile usable even if the live summary refresh fails.
+            }
+        },
+        traitById(id) {
+            return this.commendationTypes.find((trait) => trait.id === id) || null;
+        },
+        commendEntries() {
+            const counts = this.selectedPlayer?.commendations?.counts || {};
+
+            return Object.entries(counts)
+                .filter(([, count]) => Number(count) > 0)
+                .sort((a, b) => Number(b[1]) - Number(a[1]))
+                .map(([id, count]) => ({ ...this.traitById(id), id, count: Number(count) }))
+                .filter((trait) => trait.label);
+        },
+        hasSelectedTrait(id) {
+            return this.selectedTraits.includes(id);
+        },
+        canPickTrait(id) {
+            return this.hasSelectedTrait(id) || this.selectedTraits.length < 3;
+        },
+        toggleTrait(id) {
+            if (this.commendSending || this.commendSent || this.selectedPlayer?.commendations?.already_commended) return;
+
+            if (this.hasSelectedTrait(id)) {
+                this.selectedTraits = this.selectedTraits.filter((traitId) => traitId !== id);
+                return;
+            }
+
+            if (this.selectedTraits.length >= 3) return;
+
+            this.selectedTraits.push(id);
+        },
+        openCommendModal() {
+            if (!this.selectedPlayer || this.selectedPlayer.commendations?.already_commended) return;
+
+            this.resetCommendModal();
+            this.showCommend = true;
+        },
+        closeCommendModal() {
+            if (this.commendSending) return;
+
+            this.showCommend = false;
+            this.resetCommendModal();
+        },
+        resetCommendModal() {
+            this.commendSending = false;
+            this.commendError = '';
+            this.commendSent = false;
+            this.selectedTraits = [];
+            this.sentTraits = [];
+        },
+        selectedTraitLabels() {
+            return this.selectedTraits
+                .map((id) => this.traitById(id)?.label)
+                .filter(Boolean);
+        },
+        async sendCommendation() {
+            if (!this.selectedPlayer?.employee_id || this.selectedTraits.length === 0 || this.commendSending) return;
+
+            this.commendSending = true;
+            this.commendError = '';
+
+            try {
+                const response = await fetch(`${this.commendationBaseUrl}/${this.selectedPlayer.employee_id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ trait_ids: this.selectedTraits }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const messages = data.errors ? Object.values(data.errors).flat() : [];
+                    throw new Error(messages[0] || data.message || 'Unable to send commendation.');
+                }
+
+                this.sentTraits = [...this.selectedTraits];
+                this.selectedPlayer = {
+                    ...this.selectedPlayer,
+                    points: data.points,
+                    rank: data.rank,
+                    rank_name: data.rank_name,
+                    commendations: data.summary,
+                };
+                this.searchResults = this.searchResults.map((player) => {
+                    if (player.employee_id !== this.selectedPlayer.employee_id) return player;
+
+                    return {
+                        ...player,
+                        points: data.points,
+                        rank: data.rank,
+                        rank_name: data.rank_name,
+                        commendations: data.summary,
+                    };
+                });
+                this.commendSent = true;
+
+                setTimeout(() => {
+                    this.showCommend = false;
+                    this.resetCommendModal();
+                }, 1600);
+            } catch (error) {
+                this.commendError = error.message || 'Unable to send commendation.';
+            } finally {
+                this.commendSending = false;
+            }
         },
     };
 }
@@ -613,7 +766,9 @@ function achievementsPage() {
                     $av   = $avatarFor($person['name']);
                     $firstName = explode(' ', $person['name'])[0];
                 @endphp
-                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;">
+                <button type="button"
+                        @click="showSearch=true; selectPlayer(@js($person))"
+                        style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;border:none;background:none;padding:0;cursor:pointer;">
                     {{-- Crown --}}
                     <div style="font-size:{{ $pos===1?18:14 }}px;line-height:1;">{{ $pm['crown'] }}</div>
 
@@ -674,7 +829,7 @@ function achievementsPage() {
                             #{{ $pos }}
                         </span>
                     </div>
-                </div>
+                </button>
                 @endforeach
             </div>
         </div>
@@ -700,11 +855,13 @@ function achievementsPage() {
             @endunless
             @foreach($rows as $i => $row)
             @php $av = $avatarFor($row['name']); @endphp
-            <div class="ach-fadein"
+            <button type="button"
+                 @click="showSearch=true; selectPlayer(@js($row))"
+                 class="ach-fadein"
                  style="display:flex;align-items:center;gap:12px;padding:10px 16px;
                         border-radius:12px;
                         {{ $row['is_viewer'] ? 'background:rgba(91,191,39,.08);border:1px solid rgba(91,191,39,.25);' : 'background:transparent;border:1px solid transparent;' }}
-                        animation-delay:{{ $i * 0.05 }}s;">
+                        animation-delay:{{ $i * 0.05 }}s;width:100%;text-align:left;cursor:pointer;">
                 <span style="font-size:12px;font-weight:800;width:22px;text-align:center;flex-shrink:0;
                              color:{{ $row['is_viewer'] ? '#5BBF27' : 'rgba(255,255,255,.3)' }};">
                     #{{ $row['rank'] }}
@@ -744,7 +901,7 @@ function achievementsPage() {
                     </span>
                     <span style="font-size:9px;font-weight:600;color:rgba(255,255,255,.35);"> pts</span>
                 </div>
-            </div>
+            </button>
             @endforeach
         </div>
 
@@ -1101,7 +1258,233 @@ function achievementsPage() {
                                         letter-spacing:.08em;text-transform:uppercase;margin-top:2px;">Title</div>
                         </div>
                     </div>
+
+                    <div style="margin:0 16px 12px;
+                                background:rgba(255,255,255,.03);
+                                border:1px solid rgba(255,255,255,.07);
+                                border-radius:16px;padding:14px 16px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                            <div>
+                                <div style="font-size:12px;font-weight:800;color:#fff;">Commendations</div>
+                                <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:1px;">
+                                    <span x-text="selectedPlayer?.commendations?.total || 0"></span> total received
+                                </div>
+                            </div>
+                            <span style="font-size:18px;">🏅</span>
+                        </div>
+
+                        <div x-show="commendEntries().length === 0"
+                             style="text-align:center;padding:10px 0;color:rgba(255,255,255,.25);font-size:12px;font-style:italic;">
+                            No commendations yet
+                        </div>
+
+                        <div x-show="commendEntries().length > 0" x-cloak
+                             style="display:flex;flex-wrap:wrap;gap:6px;">
+                            <template x-for="trait in commendEntries()" :key="trait.id">
+                                <div :style="`display:flex;align-items:center;gap:5px;
+                                             width:fit-content;max-width:100%;
+                                             padding:5px 10px;border-radius:99px;
+                                             background:${trait.color}16;
+                                             border:1px solid ${trait.color}35;`">
+                                    <span style="font-size:12px;" x-text="trait.icon"></span>
+                                    <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.75);" x-text="trait.label"></span>
+                                    <span :style="`font-size:10px;font-weight:900;color:${trait.color};
+                                                  background:${trait.color}25;border-radius:99px;
+                                                  padding:1px 6px;margin-left:2px;`"
+                                          x-text="`×${trait.count}`"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div style="margin:0 16px 20px;">
+                        <button type="button"
+                                @click="openCommendModal()"
+                                :disabled="selectedPlayer?.is_viewer || selectedPlayer?.commendations?.already_commended"
+                                :style="selectedPlayer?.commendations?.already_commended || selectedPlayer?.is_viewer
+                                    ? `width:100%;padding:14px;background:rgba(255,255,255,.06);
+                                       border:1.5px solid rgba(255,255,255,.09);
+                                       border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;
+                                       color:rgba(255,255,255,.35);font-size:13px;font-weight:800;cursor:not-allowed;`
+                                    : `width:100%;padding:14px;
+                                       background:linear-gradient(135deg,rgba(91,191,39,.15),rgba(91,191,39,.07));
+                                       border:1.5px solid rgba(91,191,39,.35);
+                                       border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;
+                                       color:#5BBF27;font-size:13px;font-weight:800;
+                                       box-shadow:0 4px 16px rgba(91,191,39,.1);cursor:pointer;`">
+                            <span style="font-size:16px;" x-text="selectedPlayer?.commendations?.already_commended ? '✓' : '🤝'"></span>
+                            <span x-text="selectedPlayer?.is_viewer ? 'You Cannot Commend Yourself' : (selectedPlayer?.commendations?.already_commended ? 'Already Commended' : 'Give Commendation')"></span>
+                            <template x-if="!selectedPlayer?.commendations?.already_commended && !selectedPlayer?.is_viewer">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <path d="M9 18l6-6-6-6" stroke="#5BBF27" stroke-width="2"
+                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </template>
+                        </button>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════
+         COMMENDATION MODAL
+    ═══════════════════════════════════════════ --}}
+    <div x-show="showCommend" x-cloak
+         class="ach-overlay"
+         style="position:fixed;inset:0;background:rgba(0,0,0,.75);
+                z-index:60;backdrop-filter:blur(6px);"
+         @click="closeCommendModal()">
+        <div class="ach-modal"
+             style="background:#13131f;border-radius:22px 22px 0 0;
+                    padding:8px 20px 36px;
+                    border:1px solid rgba(255,255,255,.08);border-bottom:none;
+                    max-height:88vh;overflow-y:auto;"
+             @click.stop>
+            <div style="width:36px;height:4px;background:rgba(255,255,255,.15);
+                        border-radius:99px;margin:8px auto 18px;"></div>
+
+            <div x-show="!commendSent" x-cloak>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                    <template x-if="selectedPlayer?.profile_photo_url">
+                        <img :src="selectedPlayer.profile_photo_url" :alt="selectedPlayer.name"
+                             style="width:42px;height:42px;border-radius:50%;object-fit:cover;
+                                    border:2px solid #0d0d18;box-shadow:0 0 0 2px rgba(91,191,39,.45);">
+                    </template>
+                    <template x-if="!selectedPlayer?.profile_photo_url">
+                        <div :style="`width:42px;height:42px;border-radius:50%;
+                                      background:linear-gradient(135deg,${avatarGradient(selectedPlayer?.name||'')[0]},${avatarGradient(selectedPlayer?.name||'')[1]});
+                                      display:flex;align-items:center;justify-content:center;
+                                      font-size:13px;font-weight:900;color:#fff;letter-spacing:.02em;
+                                      border:2px solid #0d0d18;box-shadow:0 0 0 2px ${avatarGradient(selectedPlayer?.name||'')[0]}80;`"
+                             x-text="avatarInitials(selectedPlayer?.name || '')"></div>
+                    </template>
+                    <div>
+                        <div style="font-size:15px;font-weight:900;color:#fff;line-height:1.2;"
+                             x-text="`Commend ${(selectedPlayer?.name || '').split(' ')[0] || 'Staff'}`"></div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.4);font-weight:700;margin-top:1px;">
+                            Pick up to 3 commendations to give
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;
+                            min-height:34px;padding:8px 12px;margin-bottom:12px;
+                            background:rgba(91,191,39,.08);
+                            border:1px solid rgba(91,191,39,.25);
+                            border-radius:10px;">
+                    <span style="font-size:11px;font-weight:900;color:rgba(255,255,255,.55);">
+                        <span x-text="selectedTraits.length"></span> selected
+                    </span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="display:flex;gap:5px;">
+                            <span style="width:10px;height:10px;border-radius:50%;background:#10B981;"></span>
+                            <span style="width:10px;height:10px;border-radius:50%;background:#3B82F6;"></span>
+                            <span style="width:10px;height:10px;border-radius:50%;background:#F97316;"></span>
+                        </div>
+                        <span x-show="selectedTraits.length >= 3" x-cloak
+                              style="font-size:10px;font-weight:900;color:#5BBF27;">Max reached</span>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;">
+                    <template x-for="trait in commendationTypes" :key="trait.id">
+                        <button type="button"
+                                @click="toggleTrait(trait.id)"
+                                :disabled="!canPickTrait(trait.id)"
+                                :style="hasSelectedTrait(trait.id)
+                                    ? `position:relative;background:${trait.color}22;
+                                       border:1.5px solid ${trait.color};
+                                       border-radius:14px;padding:12px 6px;
+                                       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                                       min-height:74px;transform:scale(1.03);
+                                       box-shadow:0 0 14px ${trait.color}30;transition:all .15s ease;`
+                                    : (!canPickTrait(trait.id)
+                                        ? `position:relative;background:rgba(255,255,255,.025);
+                                           border:1.5px solid rgba(255,255,255,.035);
+                                           border-radius:14px;padding:12px 6px;
+                                           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                                           min-height:74px;opacity:.38;cursor:not-allowed;transition:all .15s ease;`
+                                        : `position:relative;background:rgba(255,255,255,.04);
+                                           border:1.5px solid rgba(255,255,255,.07);
+                                           border-radius:14px;padding:12px 6px;
+                                           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                                           min-height:74px;transition:all .15s ease;`)">
+                            <span x-show="hasSelectedTrait(trait.id)" x-cloak
+                                  :style="`position:absolute;top:8px;right:8px;
+                                            width:16px;height:16px;border-radius:50%;
+                                            background:${trait.color};color:#fff;
+                                            display:flex;align-items:center;justify-content:center;
+                                            font-size:10px;font-weight:900;`">✓</span>
+                            <span style="font-size:22px;" x-text="trait.icon"></span>
+                            <span :style="`font-size:9.5px;font-weight:800;text-align:center;line-height:1.25;color:${hasSelectedTrait(trait.id) ? trait.color : 'rgba(255,255,255,.5)'};`"
+                                  x-text="trait.label"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <div x-show="selectedTraits.length > 0" x-cloak
+                     style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;
+                            min-height:56px;padding:10px;border-radius:12px;
+                            background:rgba(255,255,255,.035);
+                            border:1px solid rgba(255,255,255,.07);">
+                    <template x-for="traitId in selectedTraits" :key="traitId">
+                        <button type="button" @click="toggleTrait(traitId)"
+                                :style="`display:inline-flex;align-items:center;gap:6px;
+                                          padding:6px 10px;border-radius:99px;
+                                          background:${traitById(traitId).color}16;
+                                          border:1px solid ${traitById(traitId).color}45;
+                                          color:${traitById(traitId).color};
+                                          font-size:11px;font-weight:900;`">
+                            <span x-text="traitById(traitId).icon"></span>
+                            <span x-text="traitById(traitId).label"></span>
+                            <span style="opacity:.6;">×</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div x-show="commendError" x-cloak
+                     style="font-size:12px;color:#ef4444;font-weight:800;margin-bottom:10px;text-align:center;"
+                     x-text="commendError"></div>
+
+                <button type="button"
+                        @click="sendCommendation()"
+                        :disabled="selectedTraits.length === 0 || commendSending"
+                        :style="selectedTraits.length === 0
+                            ? `width:100%;padding:15px;border-radius:14px;
+                               background:rgba(255,255,255,.07);
+                               color:rgba(255,255,255,.25);
+                               font-size:14px;font-weight:800;cursor:not-allowed;`
+                            : `width:100%;padding:15px;border-radius:14px;
+                               background:linear-gradient(135deg,#3D8C18,#5BBF27);
+                               color:#fff;font-size:14px;font-weight:900;
+                               box-shadow:0 8px 24px rgba(91,191,39,.35);
+                               cursor:pointer;`">
+                    <span x-text="commendSending ? 'Sending...' : (selectedTraits.length === 0 ? 'Select a commendation first' : `Send ${selectedTraits.length} ${selectedTraits.length === 1 ? 'Commendation' : 'Commendations'}`)"></span>
+                </button>
+            </div>
+
+            <div x-show="commendSent" x-cloak
+                 class="ach-popin"
+                 style="min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                <div style="font-size:52px;line-height:1;margin-bottom:18px;">🎉</div>
+                <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;">Commendations Sent!</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:280px;margin-bottom:12px;">
+                    <template x-for="traitId in sentTraits" :key="traitId">
+                        <span :style="`display:inline-flex;align-items:center;gap:6px;
+                                        width:fit-content;max-width:100%;
+                                        padding:6px 11px;border-radius:99px;
+                                        background:${traitById(traitId).color}18;
+                                        border:1px solid ${traitById(traitId).color}55;
+                                        color:${traitById(traitId).color};
+                                        font-size:12px;font-weight:900;`">
+                            <span x-text="traitById(traitId).icon"></span>
+                            <span x-text="traitById(traitId).label"></span>
+                        </span>
+                    </template>
+                </div>
+                <div style="font-size:12px;color:rgba(255,255,255,.35);font-weight:700;"
+                     x-text="`given to ${(selectedPlayer?.name || '').split(' ')[0] || 'staff'}`"></div>
             </div>
         </div>
     </div>

@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(PushSubscription::class);
     }
 
+    public function sentCommendations(): HasMany
+    {
+        return $this->hasMany(Commendation::class, 'sender_user_id');
+    }
+
     public function getProfilePhotoUrlAttribute(): ?string
     {
         if (! $this->profile_photo_path) {

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
+use App\Services\CommendationService;
 use App\Services\GamificationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +14,10 @@ use Illuminate\View\View;
 
 class AchievementsController extends Controller
 {
-    public function __construct(private GamificationService $gamification) {}
+    public function __construct(
+        private GamificationService $gamification,
+        private CommendationService $commendations,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -32,6 +37,10 @@ class AchievementsController extends Controller
         $cutoff = $this->gamification->currentCutoffFor($employee);
         $data = $this->gamification->achievementsData($employee, $cutoff);
         $leaderboard = $this->gamification->leaderboard($employee);
+        $leaderboard['top10'] = array_map(fn (array $row) => $this->withCommendationSummary($row), $leaderboard['top10']);
+        if ($leaderboard['viewerRank']) {
+            $leaderboard['viewerRank'] = $this->withCommendationSummary($leaderboard['viewerRank']);
+        }
 
         // Local preview override: ?pts=150 forces a specific point total for rank testing
         if (app()->isLocal() && request()->has('pts')) {
@@ -53,6 +62,7 @@ class AchievementsController extends Controller
             'noLateStreak' => $data['no_late_streak'],
             'rank' => $rank,
             'leaderboard' => $leaderboard,
+            'commendationTypes' => $this->commendations->traitsForClient(),
         ]);
     }
 
@@ -75,6 +85,7 @@ class AchievementsController extends Controller
 
         $results = collect($this->gamification->leaderboard($employee)['allEntries'])
             ->filter(fn (array $row) => str_contains(mb_strtolower($row['name']), $needle))
+            ->map(fn (array $row) => $this->withCommendationSummary($row))
             ->take(10)
             ->values()
             ->all();
@@ -82,5 +93,20 @@ class AchievementsController extends Controller
         return response()->json([
             'results' => $results,
         ]);
+    }
+
+    private function withCommendationSummary(array $row): array
+    {
+        $target = Employee::find($row['employee_id']);
+
+        if (! $target) {
+            return $row + [
+                'commendations' => ['counts' => [], 'total' => 0, 'already_commended' => false, 'viewer_trait_ids' => []],
+            ];
+        }
+
+        return $row + [
+            'commendations' => $this->commendations->summaryFor($target, Auth::user()),
+        ];
     }
 }

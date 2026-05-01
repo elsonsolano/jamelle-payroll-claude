@@ -68,6 +68,8 @@ Route::middleware(["auth", "staff"])->prefix("staff")->name("staff.")->group(fun
     Route::post("/payslips/{entry}/acknowledge", [\App\Http\Controllers\Staff\PayslipController::class, "acknowledge"])->name("payslips.acknowledge");
     Route::get("/achievements", [\App\Http\Controllers\Staff\AchievementsController::class, "index"])->name("achievements");
     Route::get("/achievements/search", [\App\Http\Controllers\Staff\AchievementsController::class, "search"])->name("achievements.search");
+    Route::get("/commendations/{employee}", [\App\Http\Controllers\Staff\CommendationController::class, "show"])->name("commendations.show");
+    Route::post("/commendations/{employee}", [\App\Http\Controllers\Staff\CommendationController::class, "store"])->name("commendations.store");
     Route::get("/announcements", [\App\Http\Controllers\Staff\AnnouncementController::class, "index"])->name("announcements.index");
     Route::get("/announcements/{announcement}", [\App\Http\Controllers\Staff\AnnouncementController::class, "show"])->name("announcements.show");
 });

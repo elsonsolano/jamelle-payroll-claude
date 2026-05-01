@@ -76,6 +76,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeAttendanceBadge::class);
     }
 
+    public function receivedCommendations(): HasMany
+    {
+        return $this->hasMany(Commendation::class, 'recipient_employee_id');
+    }
+
     public function attendanceBadges()
     {
         return $this->belongsToMany(AttendanceBadge::class, 'employee_attendance_badges')
