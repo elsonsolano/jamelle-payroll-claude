@@ -13,7 +13,14 @@ class ProfilePhotoController extends Controller
     {
         $viewer = $request->user();
 
-        abort_unless($viewer && ($viewer->isAdmin() || $viewer->is($user)), 403);
+        abort_unless(
+            $viewer && (
+                $viewer->isAdmin()
+                || $viewer->is($user)
+                || ($viewer->isStaff() && $user->isStaff())
+            ),
+            403
+        );
 
         $path = $user->profile_photo_path;
 

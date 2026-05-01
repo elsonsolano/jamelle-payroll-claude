@@ -12,6 +12,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StaffAchievementsLeaderboardTest extends TestCase
@@ -223,6 +224,24 @@ class StaffAchievementsLeaderboardTest extends TestCase
             'rank' => 11,
             'rank_name' => 'Crunch Keeper',
         ]);
+    }
+
+    public function test_staff_can_load_another_staff_members_leaderboard_profile_photo(): void
+    {
+        $disk = config('filesystems.profile_photos_disk', 'public');
+        Storage::fake($disk);
+
+        $branch = $this->branch('Main');
+        $viewer = $this->staffEmployee($branch, 'Viewer', 'Person', 'VIEWER');
+        $leader = $this->staffEmployee($branch, 'Ada', 'Lovelace', 'LEADER');
+        $path = "profile-photos/{$leader->user->id}/avatar.jpg";
+
+        Storage::disk($disk)->put($path, 'fake image bytes');
+        $leader->user->forceFill(['profile_photo_path' => $path])->save();
+
+        $response = $this->actingAs($viewer->user)->get($leader->user->profile_photo_url);
+
+        $response->assertOk();
     }
 
     public function test_staff_search_shows_empty_state_when_no_leaderboard_match_exists(): void
