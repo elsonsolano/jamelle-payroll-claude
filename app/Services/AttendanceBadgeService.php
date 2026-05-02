@@ -8,6 +8,7 @@ use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeAttendanceBadge;
 use App\Models\PayrollCutoff;
+use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -174,8 +175,11 @@ class AttendanceBadgeService
 
     private function scheduledDates(PayrollCutoff $cutoff, Employee $employee, \Illuminate\Support\Collection $dtrs): \Illuminate\Support\Collection
     {
+        $trackingStart = $this->trackingStartDate($employee);
+
         return collect(CarbonPeriod::create($cutoff->start_date, $cutoff->end_date))
-            ->map(fn ($date) => $date->toDateString())
+            ->filter(fn (Carbon $date) => $date->gte($trackingStart))
+            ->map(fn (Carbon $date) => $date->toDateString())
             ->filter(fn (string $date) => $this->attendanceScoringService->scheduledWorkdayForDtr($employee, $date, $dtrs->get($date))['has_schedule'])
             ->values();
     }
@@ -189,8 +193,13 @@ class AttendanceBadgeService
             'start_date' => null,
             'end_date' => null,
         ];
+        $trackingStart = $this->trackingStartDate($employee);
 
         foreach (CarbonPeriod::create($cutoff->start_date, $cutoff->end_date) as $date) {
+            if ($date->lt($trackingStart)) {
+                continue;
+            }
+
             $dateString = $date->toDateString();
             $dtr = $dtrs->get($dateString);
             $schedule = $this->attendanceScoringService->scheduledWorkdayForDtr($employee, $dateString, $dtr);
@@ -219,6 +228,30 @@ class AttendanceBadgeService
         }
 
         return $best + ['required_streak' => 7];
+    }
+
+    private function trackingStartDate(Employee $employee): Carbon
+    {
+        $employee->loadMissing('user');
+
+        $launch = Carbon::parse(GamificationService::GAMIFICATION_LAUNCH_DATE)->startOfDay();
+
+        $candidates = array_filter([
+            $employee->created_at?->copy()->startOfDay(),
+            $employee->user?->created_at?->copy()->startOfDay(),
+            $employee->hired_date?->copy()->startOfDay(),
+        ]);
+
+        if ($candidates === []) {
+            return $launch;
+        }
+
+        $employeeStart = collect($candidates)
+            ->sortBy(fn (Carbon $date) => $date->timestamp)
+            ->last()
+            ->copy();
+
+        return $employeeStart->gt($launch) ? $employeeStart : $launch;
     }
 
     private function dateRangeMetadata(\Illuminate\Support\Collection $dates): array

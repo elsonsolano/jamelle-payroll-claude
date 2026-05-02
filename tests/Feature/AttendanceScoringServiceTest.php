@@ -269,6 +269,92 @@ class AttendanceScoringServiceTest extends TestCase
         );
     }
 
+    public function test_pre_launch_cutoff_does_not_award_attendance_badges(): void
+    {
+        $branch = Branch::create([
+            'name' => 'Main',
+            'address' => 'Test',
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $employee = Employee::create([
+            'first_name' => 'Flora',
+            'last_name' => 'Prelaunch',
+            'employee_code' => 'EMP-PRE',
+            'branch_id' => $branch->id,
+            'salary_type' => 'daily',
+            'rate' => 500,
+            'active' => true,
+        ]);
+        $employee->forceFill([
+            'created_at' => '2026-04-01 10:00:00',
+            'updated_at' => '2026-04-01 10:00:00',
+        ])->save();
+
+        EmployeeSchedule::create([
+            'employee_id' => $employee->id,
+            'week_start_date' => '2026-04-01',
+            'rest_days' => [],
+            'work_start_time' => '09:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $cutoff = PayrollCutoff::create([
+            'branch_id' => $branch->id,
+            'name' => 'Prelaunch April',
+            'start_date' => '2026-04-01',
+            'end_date' => '2026-04-13',
+            'status' => 'finalized',
+            'finalized_at' => '2026-04-15 10:00:00',
+        ]);
+
+        PayrollEntry::create([
+            'payroll_cutoff_id' => $cutoff->id,
+            'employee_id' => $employee->id,
+        ]);
+
+        foreach (Carbon::parse('2026-04-01')->daysUntil('2026-04-07') as $date) {
+            Dtr::create([
+                'employee_id' => $employee->id,
+                'date' => $date->toDateString(),
+                'time_in' => '09:00',
+                'am_out' => '12:00',
+                'pm_in' => '13:00',
+                'time_out' => '18:00',
+                'late_mins' => 0,
+                'overtime_hours' => 0,
+                'ot_status' => 'none',
+            ]);
+        }
+
+        $score = app(AttendanceScoringService::class)->scoreEmployeeForCutoff($cutoff, $employee);
+
+        $this->assertSame(0, $score->total_points);
+        $this->assertSame(0, $score->on_time_days);
+
+        $badgeService = app(AttendanceBadgeService::class);
+        $badgeService->ensureDefaultBadges();
+
+        $badge = \App\Models\AttendanceBadge::where('key', AttendanceBadgeService::BADGE_ON_TIME_7)->firstOrFail();
+        EmployeeAttendanceBadge::create([
+            'employee_id' => $employee->id,
+            'attendance_badge_id' => $badge->id,
+            'payroll_cutoff_id' => $cutoff->id,
+            'attendance_score_id' => $score->id,
+            'awarded_at' => '2026-04-15 10:00:00',
+            'metadata' => ['start_date' => '2026-04-01', 'end_date' => '2026-04-07'],
+        ]);
+
+        $awards = $badgeService->awardBadgesForEmployee($cutoff, $employee);
+
+        $this->assertCount(0, $awards);
+        $this->assertDatabaseMissing('employee_attendance_badges', [
+            'employee_id' => $employee->id,
+            'payroll_cutoff_id' => $cutoff->id,
+        ]);
+    }
+
     public function test_holidays_without_dtr_are_exempt_but_worked_holidays_are_scored_normally(): void
     {
         $branch = Branch::create([
