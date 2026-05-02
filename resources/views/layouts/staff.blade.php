@@ -262,6 +262,37 @@
                     radial-gradient(circle, rgba(246, 219, 43, .45) 0%, rgba(246, 219, 43, .2) 30%, transparent 62%),
                     radial-gradient(circle, rgba(74, 222, 45, .24) 0%, transparent 58%);
             }
+            .rankup-mascot-glow {
+                animation: rankup-mascot-pulse 1.8s ease-in-out infinite;
+                transform-origin: center bottom;
+            }
+            .rankup-mascot-float {
+                animation: rankup-mascot-float 3.2s ease-in-out infinite;
+                transform-origin: center bottom;
+                will-change: transform;
+            }
+            @keyframes rankup-mascot-pulse {
+                0%, 100% {
+                    box-shadow:
+                        0 0 12px rgba(74, 222, 45, .78),
+                        0 0 28px rgba(74, 222, 45, .55),
+                        0 0 56px rgba(74, 222, 45, .28);
+                    filter: brightness(1);
+                    transform: scale(1);
+                }
+                50% {
+                    box-shadow:
+                        0 0 18px rgba(132, 255, 84, 1),
+                        0 0 42px rgba(74, 222, 45, .82),
+                        0 0 86px rgba(74, 222, 45, .46);
+                    filter: brightness(1.04);
+                    transform: scale(1.025);
+                }
+            }
+            @keyframes rankup-mascot-float {
+                0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); }
+                50% { transform: translateY(-5px) rotate(1deg) scale(1.035); }
+            }
             .rankup-confetti {
                 inset: 0;
                 overflow: hidden;
@@ -301,6 +332,10 @@
                 50% { margin-left: var(--sway); }
             }
             @media (prefers-reduced-motion: reduce) {
+                .rankup-mascot-float,
+                .rankup-mascot-glow {
+                    animation: none;
+                }
                 .rankup-confetti span {
                     animation: none;
                     opacity: .65;
@@ -411,7 +446,8 @@
 
                         if (this.data.mascotUrl) {
                             const img = await this.loadImage(this.data.mascotUrl);
-                            this.glow(ctx, 540, 700, 190, 'rgba(74, 222, 45, .26)');
+                            this.glow(ctx, 540, 700, 245, 'rgba(74, 222, 45, .34)');
+                            this.glow(ctx, 540, 700, 155, 'rgba(132, 255, 84, .28)');
                             ctx.save();
                             ctx.beginPath();
                             ctx.arc(540, 700, 132, 0, Math.PI * 2);
@@ -422,8 +458,13 @@
                             ctx.arc(540, 700, 132, 0, Math.PI * 2);
                             ctx.strokeStyle = '#43e02a';
                             ctx.lineWidth = 10;
-                            ctx.shadowColor = 'rgba(74, 222, 45, .5)';
-                            ctx.shadowBlur = 28;
+                            ctx.shadowColor = 'rgba(74, 222, 45, .95)';
+                            ctx.shadowBlur = 48;
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.arc(540, 700, 142, 0, Math.PI * 2);
+                            ctx.strokeStyle = 'rgba(141, 255, 93, .38)';
+                            ctx.lineWidth = 6;
                             ctx.stroke();
                             ctx.shadowBlur = 0;
                         } else {
@@ -584,11 +625,11 @@
 
                 <div class="relative mx-auto mt-4 flex h-36 w-36 items-center justify-center">
                     <div class="rankup-aura absolute inset-[-18px] rounded-full"></div>
-                    <div class="relative flex h-28 w-28 items-center justify-center">
+                    <div class="rankup-mascot-float relative flex h-28 w-28 items-center justify-center">
                         @if($rankUpMascotUrl)
                             <img src="{{ $rankUpMascotUrl }}"
                                  alt="{{ $rankUpEvent->new_rank_name }}"
-                                 class="h-28 w-28 rounded-full border-[3px] border-green-500 object-cover shadow-[0_0_28px_rgba(74,222,45,.45)]">
+                                 class="rankup-mascot-glow h-28 w-28 rounded-full border-[3px] border-green-400 object-cover shadow-[0_0_14px_rgba(74,222,45,.95),0_0_34px_rgba(74,222,45,.72),0_0_68px_rgba(74,222,45,.34)]">
                         @else
                             <span class="flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-green-500 bg-[#0b220d] text-3xl shadow-[0_0_24px_rgba(74,222,45,.24)]">👑</span>
                         @endif
