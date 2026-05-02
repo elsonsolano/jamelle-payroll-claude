@@ -306,7 +306,7 @@ class ReportsController extends Controller
             )
             ->with([
                 'employee.branch',
-                'payrollCutoff',
+                'payrollCutoff.philhealthPartnerCutoff',
                 'payrollVariableDeductions' => fn ($q) => $q->where('description', 'PHILHEALTH Premium'),
             ]);
 
@@ -321,13 +321,40 @@ class ReportsController extends Controller
             });
         }
 
-        $grouped = $query->get()
+        $entries = $query->get();
+        $partnerCutoffIds = $entries
+            ->pluck('payrollCutoff.philhealth_partner_cutoff_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $partnerEntries = PayrollEntry::query()
+            ->whereIn('payroll_cutoff_id', $partnerCutoffIds)
+            ->whereIn('employee_id', $entries->pluck('employee_id')->unique()->values())
+            ->get()
+            ->keyBy(fn ($entry) => $entry->payroll_cutoff_id . '-' . $entry->employee_id);
+
+        $grouped = $entries
             ->groupBy('employee_id')
-            ->map(function ($entries) {
+            ->map(function ($entries) use ($partnerEntries) {
+                $partnerBasicPay = $entries->sum(function ($entry) use ($partnerEntries) {
+                    $partnerCutoffId = $entry->payrollCutoff?->philhealth_partner_cutoff_id;
+
+                    if (! $partnerCutoffId) {
+                        return 0;
+                    }
+
+                    $partnerEntry = $partnerEntries->get($partnerCutoffId . '-' . $entry->employee_id);
+
+                    return $partnerEntry ? (float) $partnerEntry->basic_pay : 0;
+                });
+                $currentBasicPay = $entries->sum(fn ($entry) => (float) $entry->basic_pay);
                 $employeeShare = $entries->sum(fn ($entry) => (float) $entry->payrollVariableDeductions->sum('amount'));
 
                 return [
                     'employee' => $entries->first()->employee,
+                    'partner_basic_pay' => round($partnerBasicPay, 2),
+                    'current_basic_pay' => round($currentBasicPay, 2),
                     'employee_share' => round($employeeShare, 2),
                     'employer_share' => round($employeeShare, 2),
                 ];

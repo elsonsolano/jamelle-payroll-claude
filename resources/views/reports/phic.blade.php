@@ -86,6 +86,8 @@
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Employee Name</th>
+                        <th class="px-4 py-3 text-right font-semibold text-gray-600">1st Cutoff Salary</th>
+                        <th class="px-4 py-3 text-right font-semibold text-gray-600">2nd Cutoff Salary</th>
                         <th class="px-4 py-3 text-right font-semibold text-gray-600">Employee Share</th>
                         <th class="px-4 py-3 text-right font-semibold text-gray-600">Employer Share</th>
                     </tr>
@@ -95,6 +97,8 @@
                     @foreach($grouped as $row)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 font-medium text-gray-900">{{ $row['employee']->full_name }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">₱{{ number_format($row['partner_basic_pay'], 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">₱{{ number_format($row['current_basic_pay'], 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">₱{{ number_format($row['employee_share'], 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">₱{{ number_format($row['employer_share'], 2) }}</td>
                         </tr>
@@ -105,6 +109,12 @@
                     <tr>
                         <td class="px-4 py-3 text-sm font-semibold text-gray-700">Grand Total</td>
                         <td class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                            ₱{{ number_format($grouped->sum('partner_basic_pay'), 2) }}
+                        </td>
+                        <td class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                            ₱{{ number_format($grouped->sum('current_basic_pay'), 2) }}
+                        </td>
+                        <td class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
                             ₱{{ number_format($grouped->sum('employee_share'), 2) }}
                         </td>
                         <td class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
@@ -112,7 +122,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td colspan="3" class="px-4 py-3 text-right text-sm font-bold text-emerald-700">
+                        <td colspan="5" class="px-4 py-3 text-right text-sm font-bold text-emerald-700">
                             Grand Total: ₱{{ number_format($grandTotal, 2) }}
                         </td>
                     </tr>
