@@ -7,6 +7,7 @@ use App\Models\Dtr;
 use App\Models\Employee;
 use App\Models\EmployeeAttendanceBadge;
 use App\Models\PayrollCutoff;
+use App\Models\RankUpEvent;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
@@ -92,6 +93,34 @@ class GamificationService
         private AttendanceScoringService $scoringService,
         private CommendationService $commendationService,
     ) {}
+
+    public function recordRankUpIfNeeded(Employee $employee, int $beforePoints, int $afterPoints, string $source): ?RankUpEvent
+    {
+        $beforeRank = $this->rankFor($beforePoints);
+        $afterRank = $this->rankFor($afterPoints);
+
+        if ($afterRank['number'] <= $beforeRank['number']) {
+            return null;
+        }
+
+        $employee->loadMissing('user');
+
+        return RankUpEvent::firstOrCreate(
+            [
+                'employee_id' => $employee->id,
+                'new_rank_number' => $afterRank['number'],
+            ],
+            [
+                'user_id' => $employee->user?->id,
+                'old_rank_number' => $beforeRank['number'],
+                'old_rank_name' => $beforeRank['name'],
+                'new_rank_name' => $afterRank['name'],
+                'points' => $afterPoints,
+                'source' => $source,
+                'occurred_at' => now(),
+            ]
+        );
+    }
 
     // Current consecutive on-time days streak (cross-cutoff)
     public function noLateStreak(Employee $employee, ?string $throughDate = null): int

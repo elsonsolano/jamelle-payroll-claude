@@ -35,15 +35,15 @@ class Employee extends Model
     ];
 
     protected $casts = [
-        'active'     => 'boolean',
+        'active' => 'boolean',
         'hired_date' => 'date',
-        'birthday'   => 'date',
-        'rate'       => 'decimal:2',
+        'birthday' => 'date',
+        'rate' => 'decimal:2',
     ];
 
     public function getFullNameAttribute(): string
     {
-        return $this->first_name . ' ' . $this->last_name;
+        return $this->first_name.' '.$this->last_name;
     }
 
     public function branch(): BelongsTo
@@ -74,6 +74,11 @@ class Employee extends Model
     public function employeeAttendanceBadges(): HasMany
     {
         return $this->hasMany(EmployeeAttendanceBadge::class);
+    }
+
+    public function rankUpEvents(): HasMany
+    {
+        return $this->hasMany(RankUpEvent::class);
     }
 
     public function receivedCommendations(): HasMany

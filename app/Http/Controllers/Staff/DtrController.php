@@ -9,6 +9,7 @@ use App\Models\PayrollEntry;
 use App\Notifications\OtSubmitted;
 use App\Services\DtrComputationService;
 use App\Services\GamificationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,14 +39,14 @@ class DtrController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'date'     => 'required|date|before_or_equal:today',
-            'time_in'  => 'required|date_format:H:i',
-            'am_out'   => 'nullable|date_format:H:i',
-            'pm_in'    => 'nullable|date_format:H:i',
+            'date' => 'required|date|before_or_equal:today',
+            'time_in' => 'required|date_format:H:i',
+            'am_out' => 'nullable|date_format:H:i',
+            'pm_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
-            'has_ot'   => 'boolean',
+            'has_ot' => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
-            'notes'    => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
@@ -59,8 +60,8 @@ class DtrController extends Controller
             return back()->withErrors(['date' => 'A DTR already exists for this date.'])->withInput();
         }
 
-        $hasOt    = $request->boolean('has_ot') && !empty($validated['ot_hours']);
-        $otHours  = $hasOt ? (float) $validated['ot_hours'] : null;
+        $hasOt = $request->boolean('has_ot') && ! empty($validated['ot_hours']);
+        $otHours = $hasOt ? (float) $validated['ot_hours'] : null;
 
         $computed = $this->computer->compute(
             $employee,
@@ -74,24 +75,24 @@ class DtrController extends Controller
 
         // Derive ot_end_time from time_out + ot_hours (for display in approval page)
         $otEndTime = null;
-        if ($hasOt && !empty($validated['time_out'])) {
-            $otEndTime = \Carbon\Carbon::createFromTimeString($validated['time_out'])
+        if ($hasOt && ! empty($validated['time_out'])) {
+            $otEndTime = Carbon::createFromTimeString($validated['time_out'])
                 ->addMinutes((int) ($otHours * 60))
                 ->format('H:i:s');
         }
 
         $dtr = Dtr::create([
-            'employee_id'    => $employee->id,
-            'date'           => $validated['date'],
-            'time_in'        => $validated['time_in'] ?? null,
-            'am_out'         => $validated['am_out'] ?? null,
-            'pm_in'          => $validated['pm_in'] ?? null,
-            'time_out'       => $validated['time_out'] ?? null,
-            'ot_end_time'    => $otEndTime,
-            'ot_status'      => $hasOt ? 'pending' : 'none',
-            'source'         => 'manual',
-            'status'         => 'Pending',
-            'notes'          => $validated['notes'] ?? null,
+            'employee_id' => $employee->id,
+            'date' => $validated['date'],
+            'time_in' => $validated['time_in'] ?? null,
+            'am_out' => $validated['am_out'] ?? null,
+            'pm_in' => $validated['pm_in'] ?? null,
+            'time_out' => $validated['time_out'] ?? null,
+            'ot_end_time' => $otEndTime,
+            'ot_status' => $hasOt ? 'pending' : 'none',
+            'source' => 'manual',
+            'status' => 'Pending',
+            'notes' => $validated['notes'] ?? null,
             ...$computed,
         ]);
 
@@ -109,31 +110,34 @@ class DtrController extends Controller
         }
 
         return redirect()->route('staff.dtr.index')
-            ->with('success', 'DTR submitted successfully.' . ($hasOt ? ' Overtime request is pending approval.' : ''));
+            ->with('success', 'DTR submitted successfully.'.($hasOt ? ' Overtime request is pending approval.' : ''));
     }
 
     public function logEvent(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
-            'event'    => 'required|in:time_in,am_out,pm_in,time_out',
-            'time'     => 'required|date_format:H:i',
-            'date'     => 'required|date|before_or_equal:today',
-            'has_ot'   => 'boolean',
+            'event' => 'required|in:time_in,am_out,pm_in,time_out',
+            'time' => 'required|date_format:H:i',
+            'date' => 'required|date|before_or_equal:today',
+            'has_ot' => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
-            'notes'    => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
+        $beforePoints = $validated['event'] === 'time_in'
+            ? $this->gamification->pointsFor($employee)
+            : null;
 
         $dtr = Dtr::firstOrNew([
             'employee_id' => $employee->id,
-            'date'        => $validated['date'],
+            'date' => $validated['date'],
         ]);
 
         $this->ensureEditable($dtr);
 
-        if (!$dtr->exists) {
-            $dtr->source    = 'manual';
+        if (! $dtr->exists) {
+            $dtr->source = 'manual';
             $dtr->ot_status = 'none';
         } else {
             // Staff is editing an existing DTR — clear any prior admin approval
@@ -145,12 +149,12 @@ class DtrController extends Controller
 
         $dtr->{$validated['event']} = $validated['time'];
 
-        if (!empty($validated['notes'])) {
+        if (! empty($validated['notes'])) {
             $dtr->notes = $validated['notes'];
         }
 
         // Handle OT when logging Time Out
-        $hasOt   = $validated['event'] === 'time_out' && $request->boolean('has_ot') && !empty($validated['ot_hours']);
+        $hasOt = $validated['event'] === 'time_out' && $request->boolean('has_ot') && ! empty($validated['ot_hours']);
         $otHours = $hasOt ? (float) $validated['ot_hours'] : (($dtr->overtime_hours > 0) ? (float) $dtr->overtime_hours : null);
 
         if ($validated['event'] === 'time_out') {
@@ -173,7 +177,7 @@ class DtrController extends Controller
 
         // Compute ot_end_time
         if ($hasOt && $dtr->time_out) {
-            $dtr->ot_end_time = \Carbon\Carbon::createFromTimeString($dtr->time_out)
+            $dtr->ot_end_time = Carbon::createFromTimeString($dtr->time_out)
                 ->addMinutes((int) ($otHours * 60))
                 ->format('H:i:s');
         }
@@ -181,6 +185,11 @@ class DtrController extends Controller
         $dtr->save();
 
         $this->recordLogEvent($dtr, $validated['event'], $validated['time'], 'staff_dashboard');
+
+        if ($beforePoints !== null) {
+            $afterPoints = $this->gamification->pointsFor($employee->fresh());
+            $this->gamification->recordRankUpIfNeeded($employee->fresh(), $beforePoints, $afterPoints, 'time_in');
+        }
 
         if ($hasOt) {
             $approvers = DtrComputationService::getOtApprovers($employee, Auth::user());
@@ -190,28 +199,29 @@ class DtrController extends Controller
         }
 
         $labels = [
-            'time_in'  => 'Clock In',
-            'am_out'   => 'Start Break',
-            'pm_in'    => 'End Break',
+            'time_in' => 'Clock In',
+            'am_out' => 'Start Break',
+            'pm_in' => 'End Break',
             'time_out' => 'Clock Out',
         ];
 
         $loggedTimeDisplay = date('g:i A', strtotime($validated['time']));
 
         if ($request->expectsJson()) {
-            $launchAt = \Carbon\Carbon::parse('2026-05-01 06:00:00', 'Asia/Manila');
+            $launchAt = Carbon::parse('2026-05-01 06:00:00', 'Asia/Manila');
             $celebration = now('Asia/Manila')->gte($launchAt)
                 ? $this->gamification->celebrationData($employee, $dtr->fresh())
                 : null;
+
             return response()->json([
-                'success'      => true,
-                'logged_time'  => $loggedTimeDisplay,
-                'celebration'  => $celebration,
+                'success' => true,
+                'logged_time' => $loggedTimeDisplay,
+                'celebration' => $celebration,
             ]);
         }
 
         return redirect()->route('staff.dashboard')
-            ->with('success', $labels[$validated['event']] . ' logged at ' . $loggedTimeDisplay . '.' . ($hasOt ? ' Overtime request sent for approval.' : ''));
+            ->with('success', $labels[$validated['event']].' logged at '.$loggedTimeDisplay.'.'.($hasOt ? ' Overtime request sent for approval.' : ''));
     }
 
     public function edit(Dtr $dtr): View
@@ -228,21 +238,21 @@ class DtrController extends Controller
         $this->ensureEditable($dtr);
 
         $validated = $request->validate([
-            'date'     => 'required|date|before_or_equal:today',
-            'time_in'  => 'nullable|date_format:H:i',
-            'am_out'   => 'nullable|date_format:H:i',
-            'pm_in'    => 'nullable|date_format:H:i',
+            'date' => 'required|date|before_or_equal:today',
+            'time_in' => 'nullable|date_format:H:i',
+            'am_out' => 'nullable|date_format:H:i',
+            'pm_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i',
-            'has_ot'   => 'boolean',
+            'has_ot' => 'boolean',
             'ot_hours' => 'nullable|numeric|min:0.5|max:24|required_if:has_ot,1',
-            'notes'    => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $employee = Auth::user()->employee;
 
-        $hasOt   = $request->boolean('has_ot') && !empty($validated['ot_hours']);
+        $hasOt = $request->boolean('has_ot') && ! empty($validated['ot_hours']);
         $otHours = $hasOt ? (float) $validated['ot_hours'] : null;
-        $wasOt   = $dtr->ot_status !== 'none';
+        $wasOt = $dtr->ot_status !== 'none';
 
         $computed = $this->computer->compute(
             $employee,
@@ -255,27 +265,27 @@ class DtrController extends Controller
         );
 
         $otEndTime = null;
-        if ($hasOt && !empty($validated['time_out'])) {
-            $otEndTime = \Carbon\Carbon::createFromTimeString($validated['time_out'])
+        if ($hasOt && ! empty($validated['time_out'])) {
+            $otEndTime = Carbon::createFromTimeString($validated['time_out'])
                 ->addMinutes((int) ($otHours * 60))
                 ->format('H:i:s');
         }
 
         $dtr->update([
-            'date'                => $validated['date'],
-            'time_in'             => $validated['time_in'] ?? null,
-            'am_out'              => $validated['am_out'] ?? null,
-            'pm_in'               => $validated['pm_in'] ?? null,
-            'time_out'            => $validated['time_out'] ?? null,
-            'ot_end_time'         => $otEndTime,
-            'ot_status'           => $hasOt ? 'pending' : 'none',
-            'ot_approved_by'      => null,
-            'ot_approved_at'      => null,
+            'date' => $validated['date'],
+            'time_in' => $validated['time_in'] ?? null,
+            'am_out' => $validated['am_out'] ?? null,
+            'pm_in' => $validated['pm_in'] ?? null,
+            'time_out' => $validated['time_out'] ?? null,
+            'ot_end_time' => $otEndTime,
+            'ot_status' => $hasOt ? 'pending' : 'none',
+            'ot_approved_by' => null,
+            'ot_approved_at' => null,
             'ot_rejection_reason' => null,
-            'notes'               => $validated['notes'] ?? null,
-            'status'              => 'Pending',
-            'status_changed_by'   => null,
-            'status_changed_at'   => null,
+            'notes' => $validated['notes'] ?? null,
+            'status' => 'Pending',
+            'status_changed_by' => null,
+            'status_changed_at' => null,
             ...$computed,
         ]);
 
@@ -286,7 +296,7 @@ class DtrController extends Controller
         }
 
         // Notify approvers if OT was newly added or re-submitted after rejection
-        if ($hasOt && (!$wasOt || $dtr->wasChanged('ot_status'))) {
+        if ($hasOt && (! $wasOt || $dtr->wasChanged('ot_status'))) {
             $approvers = DtrComputationService::getOtApprovers($employee, Auth::user());
             foreach ($approvers as $approver) {
                 $approver->notify(new OtSubmitted($dtr->fresh()));
@@ -294,7 +304,7 @@ class DtrController extends Controller
         }
 
         return redirect()->route('staff.dtr.index')
-            ->with('success', 'DTR updated successfully.' . ($hasOt ? ' Overtime request is pending approval.' : ''));
+            ->with('success', 'DTR updated successfully.'.($hasOt ? ' Overtime request is pending approval.' : ''));
     }
 
     private function authorizeOwner(Dtr $dtr): void
@@ -309,8 +319,8 @@ class DtrController extends Controller
         // Block editing if DTR date is within a finalized payroll
         $finalized = PayrollEntry::whereHas('payrollCutoff', function ($q) use ($dtr) {
             $q->where('status', 'finalized')
-              ->where('start_date', '<=', $dtr->date)
-              ->where('end_date', '>=', $dtr->date);
+                ->where('start_date', '<=', $dtr->date)
+                ->where('end_date', '>=', $dtr->date);
         })->where('employee_id', $dtr->employee_id)->exists();
 
         if ($finalized) {
@@ -321,14 +331,14 @@ class DtrController extends Controller
     private function recordLogEvent(Dtr $dtr, string $eventKey, string $loggedTime, string $source): void
     {
         DtrLogEvent::create([
-            'dtr_id'       => $dtr->id,
-            'employee_id'  => $dtr->employee_id,
-            'work_date'    => $dtr->date,
-            'event_key'    => $eventKey,
-            'logged_time'  => $loggedTime,
+            'dtr_id' => $dtr->id,
+            'employee_id' => $dtr->employee_id,
+            'work_date' => $dtr->date,
+            'event_key' => $eventKey,
+            'logged_time' => $loggedTime,
             'submitted_at' => now(),
-            'source'       => $source,
-            'created_by'   => Auth::id(),
+            'source' => $source,
+            'created_by' => Auth::id(),
         ]);
     }
 }

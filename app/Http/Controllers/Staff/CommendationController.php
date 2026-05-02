@@ -36,9 +36,11 @@ class CommendationController extends Controller
             'trait_ids.*' => ['required', 'string'],
         ]);
 
+        $beforePoints = $this->gamification->pointsFor($employee);
         $commendation = $this->commendations->create(Auth::user(), $employee, $validated['trait_ids']);
         $summary = $this->commendations->summaryFor($employee, Auth::user());
         $points = $this->gamification->pointsFor($employee);
+        $this->gamification->recordRankUpIfNeeded($employee->fresh(), $beforePoints, $points, 'commendation');
         $rank = $this->gamification->rankFor($points);
         $leaderboardRow = collect($this->gamification->leaderboard(Auth::user()->employee)['allEntries'])
             ->firstWhere('employee_id', $employee->id);

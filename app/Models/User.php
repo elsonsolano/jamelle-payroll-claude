@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(Commendation::class, 'sender_user_id');
     }
 
+    public function rankUpEvents(): HasMany
+    {
+        return $this->hasMany(RankUpEvent::class);
+    }
+
     public function getProfilePhotoUrlAttribute(): ?string
     {
         if (! $this->profile_photo_path) {

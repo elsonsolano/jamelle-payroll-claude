@@ -12,6 +12,7 @@ class AttendanceRecalculationService
         private DtrComputationService $dtrComputationService,
         private AttendanceScoringService $attendanceScoringService,
         private AttendanceBadgeService $attendanceBadgeService,
+        private GamificationService $gamificationService,
     ) {}
 
     public function recomputeDtrAndRefreshGamification(Employee $employee, string $date): ?Dtr
@@ -64,6 +65,8 @@ class AttendanceRecalculationService
 
     public function refreshFinalizedGamification(Employee $employee, string $date): void
     {
+        $beforePoints = $this->gamificationService->pointsFor($employee);
+
         $cutoffs = PayrollCutoff::where('status', 'finalized')
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
@@ -74,5 +77,8 @@ class AttendanceRecalculationService
             $this->attendanceScoringService->scoreEmployeeForCutoff($cutoff, $employee);
             $this->attendanceBadgeService->awardBadgesForEmployee($cutoff, $employee);
         }
+
+        $afterPoints = $this->gamificationService->pointsFor($employee->fresh());
+        $this->gamificationService->recordRankUpIfNeeded($employee->fresh(), $beforePoints, $afterPoints, 'attendance_recalculation');
     }
 }
