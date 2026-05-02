@@ -243,6 +243,8 @@
             $rankUpMascotPath = "images/rank-mascots/mascot-{$rankUpMascotFile}.png";
             $rankUpMascotUrl = file_exists(public_path($rankUpMascotPath)) ? asset($rankUpMascotPath) : null;
             $rankUpFirstName = $rankUpEvent->employee?->first_name ?? Auth::user()->name;
+            $rankUpMeta = \App\Services\GamificationService::RANKS[$rankUpEvent->new_rank_number - 1] ?? null;
+            $rankUpDesc = $rankUpMeta['desc'] ?? '';
         @endphp
 
         <style>
@@ -487,23 +489,29 @@
                         ctx.font = '900 76px Inter, Arial, sans-serif';
                         this.wrapCentered(ctx, this.data.rankName, 540, 975, 760, 82);
 
+                        if (this.data.rankDesc) {
+                            ctx.fillStyle = 'rgba(255,255,255,.48)';
+                            ctx.font = '800 32px Inter, Arial, sans-serif';
+                            this.wrapCentered(ctx, this.data.rankDesc, 540, 1062, 760, 40);
+                        }
+
                         ctx.fillStyle = 'rgba(255,255,255,.36)';
                         ctx.font = '800 34px Inter, Arial, sans-serif';
-                        ctx.fillText(`${this.data.points.toLocaleString()} pts milestone reached`, 540, 1096);
+                        ctx.fillText(`${this.data.points.toLocaleString()} pts milestone reached`, 540, this.data.rankDesc ? 1144 : 1096);
 
                         ctx.strokeStyle = 'rgba(255,255,255,.13)';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
-                        ctx.moveTo(170, 1210);
-                        ctx.lineTo(910, 1210);
+                        ctx.moveTo(170, 1238);
+                        ctx.lineTo(910, 1238);
                         ctx.stroke();
 
                         ctx.fillStyle = '#ffffff';
                         ctx.font = '900 42px Inter, Arial, sans-serif';
-                        ctx.fillText('Jamelle Payroll', 540, 1328);
+                        ctx.fillText('Jamelle Payroll', 540, 1348);
                         ctx.fillStyle = 'rgba(255,255,255,.36)';
                         ctx.font = '700 28px Inter, Arial, sans-serif';
-                        ctx.fillText('Celebrating growth, one shift at a time', 540, 1380);
+                        ctx.fillText('Celebrating growth, one shift at a time', 540, 1400);
 
                         return new Promise((resolve) => canvas.toBlob(resolve, 'image/png', .95));
                     },
@@ -568,6 +576,7 @@
         <div x-data="rankUpModal(@js([
                 'firstName' => $rankUpFirstName,
                 'rankName' => $rankUpEvent->new_rank_name,
+                'rankDesc' => $rankUpDesc,
                 'rankSlug' => str($rankUpEvent->new_rank_name)->slug()->toString(),
                 'points' => $rankUpEvent->points,
                 'mascotUrl' => $rankUpMascotUrl,
@@ -638,6 +647,9 @@
 
                 <p class="mt-1 text-[11px] font-black tracking-widest text-white/30">NEW RANK</p>
                 <p class="mt-1 text-2xl font-black leading-tight text-[#46bf1c]">{{ $rankUpEvent->new_rank_name }}</p>
+                @if($rankUpDesc)
+                    <p class="mt-1 text-xs font-extrabold leading-snug text-white/40">{{ $rankUpDesc }}</p>
+                @endif
                 <p class="mt-1 text-sm font-extrabold text-white/35">{{ number_format($rankUpEvent->points) }} pts milestone reached</p>
 
                 <div class="my-5 h-px bg-white/10"></div>
