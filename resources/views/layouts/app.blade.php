@@ -156,6 +156,13 @@
                 13th Month
             </x-sidebar-link>
 
+            <x-sidebar-link :href="route('reports.phic')" :active="request()->routeIs('reports.phic')" @click="sidebarOpen = false">
+                <x-slot name="icon">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4m4-4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V8l7-3 7 3z"/></svg>
+                </x-slot>
+                PHIC
+            </x-sidebar-link>
+
             <div class="pt-3 pb-1 px-3">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Developer</p>
             </div>

@@ -284,4 +284,61 @@ class ReportsController extends Controller
 
         return view('reports.thirteenth-month', compact('branches', 'grouped', 'year', 'years', 'branchId', 'search'));
     }
+
+    public function phic(Request $request)
+    {
+        $branches = Branch::orderBy('name')->get();
+
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        $branchId = $request->input('branch_id');
+        $search = $request->input('search');
+
+        $query = PayrollEntry::query()
+            ->whereHas('payrollCutoff', fn ($q) => $q
+                ->where('status', 'finalized')
+                ->whereMonth('end_date', $month)
+                ->whereYear('end_date', $year)
+            )
+            ->whereHas('payrollVariableDeductions', fn ($q) => $q
+                ->where('description', 'PHILHEALTH Premium')
+                ->where('amount', '>', 0)
+            )
+            ->with([
+                'employee.branch',
+                'payrollCutoff',
+                'payrollVariableDeductions' => fn ($q) => $q->where('description', 'PHILHEALTH Premium'),
+            ]);
+
+        if ($branchId) {
+            $query->whereHas('employee', fn ($q) => $q->where('branch_id', $branchId));
+        }
+
+        if ($search) {
+            $query->whereHas('employee', function ($q) use ($search) {
+                $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        $grouped = $query->get()
+            ->groupBy('employee_id')
+            ->map(function ($entries) {
+                $employeeShare = $entries->sum(fn ($entry) => (float) $entry->payrollVariableDeductions->sum('amount'));
+
+                return [
+                    'employee' => $entries->first()->employee,
+                    'employee_share' => round($employeeShare, 2),
+                    'employer_share' => round($employeeShare, 2),
+                ];
+            })
+            ->sortBy(fn ($row) => $row['employee']->full_name)
+            ->values();
+
+        $months = collect(range(1, 12))->mapWithKeys(fn ($m) => [$m => Carbon::create(null, $m)->format('F')]);
+        $years = range(now()->year, max(now()->year - 5, 2020));
+        $grandTotal = round($grouped->sum('employee_share') + $grouped->sum('employer_share'), 2);
+
+        return view('reports.phic', compact('branches', 'grouped', 'month', 'year', 'months', 'years', 'branchId', 'search', 'grandTotal'));
+    }
 }
