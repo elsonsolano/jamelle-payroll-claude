@@ -245,6 +245,7 @@ class DashboardController extends Controller
     {
         $quotes = [
             // Love life / hugot
+            'Hi mahal, eat ka na? Wag ka pagutom ha... Sorry, wrong send!',
             'Ang love life mo parang brownout — biglang nawawala, tapos hindi mo alam kailan babalik.',
             'Hindi ka ghoster, busy ka lang talaga… mag-reply sa ibang tao.',
             'Ang pag-ibig parang ulam sa handaan — akala mo para sa\'yo, pero naubusan ka rin pala.',
