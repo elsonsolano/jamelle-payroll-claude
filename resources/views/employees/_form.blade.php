@@ -204,4 +204,28 @@
         <label for="active" class="text-sm font-medium text-gray-700">Active Employee</label>
     </div>
 
+    {{-- Employment Status --}}
+    <div x-data="{ empStatus: '{{ old('employment_status', $employee->employment_status ?? 'regular') }}' }">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
+                <select name="employment_status" x-model="empStatus"
+                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="regular">Regular</option>
+                    <option value="probation">Probation</option>
+                </select>
+                @error('employment_status')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div x-show="empStatus === 'probation'" x-cloak>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Probation End Date <span class="text-red-500">*</span>
+                </label>
+                <input type="date" name="probation_end_date"
+                       value="{{ old('probation_end_date', isset($employee->probation_end_date) ? $employee->probation_end_date->format('Y-m-d') : '') }}"
+                       class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                @error('probation_end_date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+        </div>
+    </div>
+
 </div>

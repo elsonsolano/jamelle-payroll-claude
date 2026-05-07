@@ -78,19 +78,21 @@ class EmployeeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
-            'nickname'      => 'nullable|string|max:100',
-            'email'         => 'nullable|email|max:255|unique:employees,email',
-            'employee_code' => 'required|string|max:50|unique:employees,employee_code',
-            'branch_id'     => 'required|exists:branches,id',
-            'timemark_id'   => 'nullable|string|max:100|unique:employees,timemark_id',
-            'salary_type'   => 'required|in:daily,monthly',
-            'rate'          => 'required|numeric|min:0',
-            'hired_date'    => 'nullable|date',
-            'birthday'      => 'nullable|date',
-            'position'      => 'nullable|string|max:255',
-            'active'        => 'boolean',
+            'first_name'        => 'required|string|max:255',
+            'last_name'         => 'required|string|max:255',
+            'nickname'          => 'nullable|string|max:100',
+            'email'             => 'nullable|email|max:255|unique:employees,email',
+            'employee_code'     => 'required|string|max:50|unique:employees,employee_code',
+            'branch_id'         => 'required|exists:branches,id',
+            'timemark_id'       => 'nullable|string|max:100|unique:employees,timemark_id',
+            'salary_type'       => 'required|in:daily,monthly',
+            'rate'              => 'required|numeric|min:0',
+            'hired_date'        => 'nullable|date',
+            'birthday'          => 'nullable|date',
+            'position'          => 'nullable|string|max:255',
+            'active'            => 'boolean',
+            'employment_status' => 'required|in:regular,probation',
+            'probation_end_date' => 'nullable|date|required_if:employment_status,probation',
             'sss_no'                         => 'nullable|string|max:50',
             'phic_no'                        => 'nullable|string|max:50',
             'pagibig_no'                     => 'nullable|string|max:50',
@@ -103,6 +105,10 @@ class EmployeeController extends Controller
         ]);
 
         $validated['active'] = $request->boolean('active', true);
+
+        if ($validated['employment_status'] === 'regular') {
+            $validated['probation_end_date'] = null;
+        }
 
         $employee = Employee::create($validated);
 
@@ -124,19 +130,21 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee): RedirectResponse
     {
         $validated = $request->validate([
-            'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
-            'nickname'      => 'nullable|string|max:100',
-            'email'         => 'nullable|email|max:255|unique:employees,email,' . $employee->id,
-            'employee_code' => 'required|string|max:50|unique:employees,employee_code,' . $employee->id,
-            'branch_id'     => 'required|exists:branches,id',
-            'timemark_id'   => 'nullable|string|max:100|unique:employees,timemark_id,' . $employee->id,
-            'salary_type'   => 'required|in:daily,monthly',
-            'rate'          => 'required|numeric|min:0',
-            'hired_date'    => 'nullable|date',
-            'birthday'      => 'nullable|date',
-            'position'      => 'nullable|string|max:255',
-            'active'        => 'boolean',
+            'first_name'        => 'required|string|max:255',
+            'last_name'         => 'required|string|max:255',
+            'nickname'          => 'nullable|string|max:100',
+            'email'             => 'nullable|email|max:255|unique:employees,email,' . $employee->id,
+            'employee_code'     => 'required|string|max:50|unique:employees,employee_code,' . $employee->id,
+            'branch_id'         => 'required|exists:branches,id',
+            'timemark_id'       => 'nullable|string|max:100|unique:employees,timemark_id,' . $employee->id,
+            'salary_type'       => 'required|in:daily,monthly',
+            'rate'              => 'required|numeric|min:0',
+            'hired_date'        => 'nullable|date',
+            'birthday'          => 'nullable|date',
+            'position'          => 'nullable|string|max:255',
+            'active'            => 'boolean',
+            'employment_status' => 'required|in:regular,probation',
+            'probation_end_date' => 'nullable|date|required_if:employment_status,probation',
             'sss_no'                         => 'nullable|string|max:50',
             'phic_no'                        => 'nullable|string|max:50',
             'pagibig_no'                     => 'nullable|string|max:50',
@@ -149,6 +157,10 @@ class EmployeeController extends Controller
         ]);
 
         $validated['active'] = $request->boolean('active');
+
+        if ($validated['employment_status'] === 'regular') {
+            $validated['probation_end_date'] = null;
+        }
 
         $employee->update($validated);
 

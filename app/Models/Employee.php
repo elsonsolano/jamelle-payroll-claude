@@ -20,6 +20,8 @@ class Employee extends Model
         'salary_type',
         'rate',
         'active',
+        'employment_status',
+        'probation_end_date',
         'hired_date',
         'birthday',
         'position',
@@ -38,6 +40,7 @@ class Employee extends Model
         'active' => 'boolean',
         'hired_date' => 'date',
         'birthday' => 'date',
+        'probation_end_date' => 'date',
         'rate' => 'decimal:2',
     ];
 

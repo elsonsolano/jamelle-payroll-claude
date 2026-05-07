@@ -1,6 +1,28 @@
 <x-app-layout>
     <x-slot name="title">Dashboard</x-slot>
 
+    {{-- Probation ending soon banner (super admin only) --}}
+    @if(auth()->user()->isSuperAdmin() && $probationEndingSoon->isNotEmpty())
+        <div class="mb-6 space-y-2">
+            @foreach($probationEndingSoon as $emp)
+                @php
+                    $daysLeft = today()->diffInDays($emp->probation_end_date);
+                    $daysLabel = $daysLeft === 0 ? 'today' : 'in ' . $daysLeft . ' ' . ($daysLeft === 1 ? 'day' : 'days');
+                @endphp
+                <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span>
+                        <a href="{{ route('employees.show', $emp) }}"
+                           class="font-semibold hover:underline">{{ $emp->full_name }}</a>
+                        probation status will end {{ $daysLabel }}.
+                    </span>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Stat Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
 

@@ -35,6 +35,16 @@ class DashboardController extends Controller
 
         $scheduleGrid = $this->buildScheduleGrid();
 
+        $probationEndingSoon = collect();
+        if (auth()->user()->isSuperAdmin()) {
+            $probationEndingSoon = Employee::where('active', true)
+                ->where('employment_status', 'probation')
+                ->whereNotNull('probation_end_date')
+                ->whereBetween('probation_end_date', [today(), today()->addDays(14)])
+                ->orderBy('probation_end_date')
+                ->get(['id', 'first_name', 'last_name', 'probation_end_date']);
+        }
+
         return view('dashboard', compact(
             'totalEmployees',
             'totalBranches',
@@ -43,7 +53,8 @@ class DashboardController extends Controller
             'recentCutoffs',
             'employeesByBranch',
             'calendarEvents',
-            'scheduleGrid'
+            'scheduleGrid',
+            'probationEndingSoon'
         ));
     }
 

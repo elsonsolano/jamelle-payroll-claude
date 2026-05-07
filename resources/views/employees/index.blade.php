@@ -110,6 +110,7 @@
                     <th class="px-5 py-3 font-semibold text-gray-600">Pag-IBIG No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">TIN No.</th>
                     <th class="px-5 py-3 font-semibold text-gray-600">Status</th>
+                    <th class="px-5 py-3 font-semibold text-gray-600">Employment</th>
                     <th class="px-5 py-3 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
             </thead>
@@ -166,6 +167,17 @@
                                 </span>
                             @endif
                         </td>
+                        <td class="px-5 py-3">
+                            @if(($employee->employment_status ?? 'regular') === 'probation')
+                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Probation
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Regular
+                                </span>
+                            @endif
+                        </td>
                         <td class="px-5 py-3 text-right" onclick="event.stopPropagation()">
                             <div class="inline-flex items-center gap-3">
                                 <a href="{{ route('employees.edit', $employee) }}"
@@ -180,7 +192,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="px-5 py-10 text-center text-gray-400">
+                        <td colspan="11" class="px-5 py-10 text-center text-gray-400">
                             No employees found.
                             @if(!request()->hasAny(['search','branch_id','status']))
                                 <a href="{{ route('employees.create') }}" class="text-indigo-600 hover:underline">Add one</a>.
